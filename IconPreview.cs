@@ -66,7 +66,7 @@ namespace Kontro
                         for (int r = 0; r < Tamanhos.Length; r++)
                         {
                             int s = Tamanhos[r];
-                            var img = Carregar(claro ? "light" : "dark", arquivo, s);
+                            var img = TrayRenderer.CarregarImagem(claro ? "light" : "dark", arquivo, s);
                             if (img == null) continue;
                             dc.DrawImage(img, new Rect(
                                 x + (celula - s) / 2.0,
@@ -90,21 +90,6 @@ namespace Kontro
             var enc = new PngBitmapEncoder();
             enc.Frames.Add(BitmapFrame.Create(bmp));
             enc.Save(fs);
-        }
-
-        private static BitmapImage Carregar(string tema, string arquivo, int tamanho)
-        {
-            try
-            {
-                var img = new BitmapImage();
-                img.BeginInit();
-                img.UriSource = new Uri($"pack://application:,,,/Assets/tray/{tema}/{arquivo}-{tamanho}.png");
-                img.CacheOption = BitmapCacheOption.OnLoad;
-                img.EndInit();
-                img.Freeze();
-                return img;
-            }
-            catch { return null; }
         }
 
         private static void Texto(DrawingContext dc, string s, Brush cor, double tamanho, double x, double y)

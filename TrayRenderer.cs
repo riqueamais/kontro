@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using D = System.Drawing;
@@ -96,18 +97,62 @@ namespace Kontro
 
         private static D.Icon Carregar(string tema, string nome, int tamanho)
         {
+            var img = CarregarImagem(tema, nome, tamanho);
+            return img == null ? null : ToIcon(img);
+        }
+
+        /// <summary>Carrega o arquivo do pacote, ja com o realce do estado desconectado.</summary>
+        internal static BitmapSource CarregarImagem(string tema, string nome, int tamanho)
+        {
             try
             {
-                var uri = new Uri($"pack://application:,,,/Assets/tray/{tema}/{nome}-{tamanho}.png");
                 var img = new BitmapImage();
                 img.BeginInit();
-                img.UriSource = uri;
+                img.UriSource = new Uri($"pack://application:,,,/Assets/tray/{tema}/{nome}-{tamanho}.png");
                 img.CacheOption = BitmapCacheOption.OnLoad;
                 img.EndInit();
                 img.Freeze();
-                return ToIcon(img);
+
+                return nome == "off" ? RealcarTranslucidos(img) : img;
             }
             catch { return null; }
+        }
+
+        /// <summary>
+        /// No estado desconectado o desenho usa opacidades baixas: o anel a 13% e o
+        /// controle a 45%. Isso funciona no tamanho grande, mas em 16px o controle vira
+        /// quatro pixels translucidos e desaparece na barra — sobra so a barra diagonal,
+        /// que sozinha nao diz "controle desconectado".
+        ///
+        /// A curva levanta as opacidades intermediarias sem tocar no que ja e opaco nem
+        /// no que e totalmente transparente, entao a forma continua sendo exatamente a
+        /// que o design desenhou; so fica visivel no tamanho em que ela vive.
+        ///
+        /// Vale para todos os tamanhos, e nao so para os pequenos: aplicar apenas embaixo
+        /// deixava o icone de 32px mais apagado que o de 16px, o oposto do esperado.
+        /// </summary>
+        private static BitmapSource RealcarTranslucidos(BitmapSource origem, double gama = 0.45)
+        {
+            var fonte = new FormatConvertedBitmap(origem, PixelFormats.Bgra32, null, 0);
+            int largura = fonte.PixelWidth, altura = fonte.PixelHeight;
+            int passo = largura * 4;
+            var pixels = new byte[altura * passo];
+            fonte.CopyPixels(pixels, passo, 0);
+
+            var tabela = new byte[256];
+            for (int i = 0; i < 256; i++)
+                tabela[i] = (byte)Math.Round(255 * Math.Pow(i / 255.0, gama));
+
+            for (int i = 3; i < pixels.Length; i += 4)
+            {
+                byte a = pixels[i];
+                if (a != 0 && a != 255) pixels[i] = tabela[a];
+            }
+
+            var saida = BitmapSource.Create(largura, altura, 96, 96,
+                PixelFormats.Bgra32, null, pixels, passo);
+            saida.Freeze();
+            return saida;
         }
 
         /// <summary>
