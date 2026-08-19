@@ -2,6 +2,8 @@
 
 Bateria do seu controle, em tempo real, na bandeja do sistema.
 
+**[kontro.riqueamais.github.io](https://riqueamais.github.io/kontro/)** · [baixar a última versão](https://github.com/riqueamais/kontro/releases/latest)
+
 O ícone mostra a porcentagem exata e muda de cor conforme a carga cai. Quando não há
 controle ligado, ele vira um controle riscado. O app avisa quando a bateria fica baixa
 e estima quanto tempo ainda dá para jogar, a partir do consumo medido.
