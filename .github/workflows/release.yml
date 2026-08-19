@@ -60,7 +60,7 @@ jobs:
             --packTitle Kontro `
             --packAuthors riqueamais `
             --icon app.ico `
-            --framework net8.0-x64-desktop
+            --framework net8-x64-desktop
 
       - name: Conferir o que foi gerado
         shell: pwsh
