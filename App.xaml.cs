@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using Microsoft.Win32;
 using WF = System.Windows.Forms;
 using D = System.Drawing;
 
@@ -84,6 +85,8 @@ namespace Kontro
                 if (args.Button == WF.MouseButtons.Left) OpenSettings();
             };
             _tray.BalloonTipClicked += OnBalloonClicked;
+
+            SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
 
             StartShowListener();
 
@@ -260,6 +263,23 @@ namespace Kontro
             _main.ShowAndFocus();
         }
 
+        /// <summary>
+        /// A barra de tarefas pode trocar de claro para escuro a qualquer momento.
+        /// Quando isso acontece o icone precisa ser redesenhado, senao o glifo branco
+        /// some numa barra clara.
+        /// </summary>
+        private void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+        {
+            if (e.Category != UserPreferenceCategory.General &&
+                e.Category != UserPreferenceCategory.Color &&
+                e.Category != UserPreferenceCategory.VisualStyle) return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (_monitor != null) UpdateTray(_monitor.Current);
+            }));
+        }
+
         private void OnSettingsChanged()
         {
             // limiares novos merecem uma nova chance de avisar
@@ -281,7 +301,7 @@ namespace Kontro
         private void UpdateTray(BatteryState s)
         {
             int size = WF.SystemInformation.SmallIconSize.Width;
-            var icon = TrayRenderer.Render(s, size);
+            var icon = TrayRenderer.Render(s, size, _settings);
 
             var old = _currentIcon;
             _currentIcon = icon;
@@ -381,6 +401,7 @@ namespace Kontro
         {
             try
             {
+                SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
                 _timer?.Stop();
                 _updateTimer?.Stop();
                 _monitor?.Dispose();

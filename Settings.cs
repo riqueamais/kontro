@@ -36,6 +36,13 @@ namespace Kontro
         public int WarnThreshold { get; set; } = 20;
         public int CriticalThreshold { get; set; } = 10;
 
+        // Faixas de cor do anel. Sao separadas dos limiares de aviso de proposito:
+        // avisar aos 60% seria insuportavel, e pintar o anel de vermelho so aos 10%
+        // esconderia a informacao justamente quando ela importa. Os padroes sao os
+        // do sistema de design.
+        public int RingAmberBelow { get; set; } = 60;
+        public int RingRedBelow { get; set; } = 30;
+
         public bool AutoCheckUpdates { get; set; } = true;
         public DateTime? LastUpdateCheck { get; set; }
         /// <summary>Versao que o usuario mandou ignorar, para nao insistir no aviso.</summary>
@@ -79,6 +86,10 @@ namespace Kontro
             WarnThreshold = Math.Clamp(WarnThreshold, 5, 90);
             CriticalThreshold = Math.Clamp(CriticalThreshold, 1, 50);
             if (CriticalThreshold >= WarnThreshold) CriticalThreshold = Math.Max(1, WarnThreshold - 5);
+
+            RingAmberBelow = Math.Clamp(RingAmberBelow, 10, 95);
+            RingRedBelow = Math.Clamp(RingRedBelow, 5, 90);
+            if (RingRedBelow >= RingAmberBelow) RingRedBelow = Math.Max(5, RingAmberBelow - 10);
             return this;
         }
     }

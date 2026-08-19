@@ -1,94 +1,114 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using D = System.Drawing;
-using System.Drawing.Drawing2D;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace Kontro
 {
     /// <summary>
-    /// Gera o app.ico a partir da geometria do controle, em todas as resolucoes que o
-    /// Windows pede. Cada tamanho e redesenhado, nunca escalado a partir de outro: escalar
-    /// um icone pequeno borra o traco.
+    /// Gera o app.ico a partir da mesma geometria do sistema "Anel", nas nove resolucoes
+    /// que o Windows pede. Cada tamanho e redesenhado no proprio tamanho, nunca escalado.
+    ///
+    /// O arquivo que acompanha o repositorio veio rasterizado do vetor original; isto aqui
+    /// existe para regenerar um equivalente quando a geometria mudar.
     /// </summary>
     internal static class IconBuilder
     {
-        private static readonly D.Color Branco = D.Color.FromArgb(0xFF, 0xFF, 0xFF);
-        private static readonly D.Color FundoTopo = D.Color.FromArgb(0x1E, 0x1F, 0x22);
-        private static readonly D.Color FundoBase = D.Color.FromArgb(0x0A, 0x0B, 0x0C);
-        private static readonly D.Color Vazado = D.Color.FromArgb(0x11, 0x12, 0x15);
+        private static readonly int[] Tamanhos = { 16, 20, 24, 32, 40, 48, 64, 128, 256 };
 
-        private static readonly int[] Tamanhos = { 16, 20, 24, 32, 48, 64, 128, 256 };
+        /// <summary>Fracao do anel no icone de marca. E ilustrativa, nao mede nada.</summary>
+        private const double FracaoIlustrativa = 0.72;
 
         internal static void Write(string icoPath, string previewPath = null)
         {
             var pngs = new List<byte[]>();
-            foreach (var s in Tamanhos) pngs.Add(RenderPng(s));
+            foreach (var s in Tamanhos) pngs.Add(Encode(Render(s)));
             WriteIco(icoPath, Tamanhos, pngs);
 
             if (previewPath != null) WritePreview(previewPath);
         }
 
-        private static byte[] RenderPng(int size)
+        /// <summary>Icone do aplicativo: fundo circular, anel em degrade e o controle solido.</summary>
+        internal static BitmapSource Render(int size)
         {
-            using var bmp = Render(size);
-            using var ms = new MemoryStream();
-            bmp.Save(ms, D.Imaging.ImageFormat.Png);
-            return ms.ToArray();
-        }
-
-        internal static D.Bitmap Render(int size)
-        {
-            var bmp = new D.Bitmap(size, size, D.Imaging.PixelFormat.Format32bppArgb);
-            using var g = D.Graphics.FromImage(bmp);
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.Clear(D.Color.Transparent);
-
-            using (var bg = new GraphicsPath())
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
             {
-                AddRounded(bg, 0, 0, size, size, size * 0.26f);
-                using var brush = new LinearGradientBrush(
-                    new D.PointF(0, 0), new D.PointF(0, size), FundoTopo, FundoBase);
-                g.FillPath(brush, bg);
+                double s = size / 512.0;
+                dc.PushTransform(new ScaleTransform(s, s));
+                var centro = new Point(256, 256);
+
+                var fundo = new SolidColorBrush(ControllerGeometry.Shell);
+                dc.DrawEllipse(fundo, null, centro, 256, 256);
+
+                var borda = new Pen(new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)), 8);
+                dc.DrawEllipse(null, borda, centro, 252, 252);
+
+                // trilha e anel de carga
+                var trilha = new Pen(new SolidColorBrush(Color.FromArgb(33, 255, 255, 255)), 30);
+                dc.DrawEllipse(null, trilha, centro, 202, 202);
+
+                var degrade = new LinearGradientBrush(
+                    ControllerGeometry.Green, ControllerGeometry.Teal,
+                    new Point(120.0 / 512, 80.0 / 512), new Point(400.0 / 512, 440.0 / 512));
+                degrade.Freeze();
+                DrawArc(dc, centro, 202, 30, FracaoIlustrativa, degrade);
+
+                // controle: aqui os sticks sao pintados na cor do fundo, nao vazados,
+                // porque o icone tem fundo proprio
+                dc.PushTransform(new TranslateTransform(256, 274));
+                dc.PushTransform(new ScaleTransform(0.6, 0.6));
+                dc.PushTransform(new TranslateTransform(-256, -288));
+                dc.DrawGeometry(Brushes.White, null, Geometry.Parse(ControllerGeometry.PadPath));
+                dc.Pop(); dc.Pop(); dc.Pop();
+
+                dc.DrawEllipse(fundo, null, new Point(180, 238), 29, 29);
+                dc.DrawEllipse(fundo, null, new Point(332, 238), 29, 29);
+
+                dc.Pop();
             }
 
-            DrawCentered(g, size, 0.80f, dentro =>
-            {
-                // o contorno so se sustenta enquanto o traco tem pelo menos um pixel;
-                // abaixo disso a silhueta cheia comunica melhor
-                if (size >= 48) ControllerShape.DrawOutline(g, 100, Branco);
-                else ControllerShape.DrawSolid(g, 100, Branco, Vazado);
-            });
-
+            var bmp = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(visual);
+            bmp.Freeze();
             return bmp;
         }
 
-        /// <summary>
-        /// Encaixa o desenho de 100x100 no icone: o controle e mais largo que alto,
-        /// entao centralizamos pelo miolo real da forma, nao pelo meio da caixa.
-        /// </summary>
-        internal static void DrawCentered(D.Graphics g, float size, float ocupacao, Action<float> desenhar)
+        private static void DrawArc(DrawingContext dc, Point c, double r, double width,
+                                    double fracao, Brush pincel)
         {
-            const float larguraForma = 95f;   // a forma vai de x=2.5 a x=97.5
-            const float centroX = 50f;
-            const float centroY = 51f;        // miolo vertical real, entre y=15 e y=87
+            var caneta = new Pen(pincel, width)
+            {
+                StartLineCap = PenLineCap.Round,
+                EndLineCap = PenLineCap.Round
+            };
+            if (fracao >= 1) { dc.DrawEllipse(null, caneta, c, r, r); return; }
 
-            float escala = size * ocupacao / larguraForma;
-            var estado = g.Save();
-            g.TranslateTransform(size / 2f - centroX * escala, size / 2f - centroY * escala);
-            g.ScaleTransform(escala, escala);
-            desenhar(100f);
-            g.Restore(estado);
+            double a0 = -Math.PI / 2;
+            double a1 = a0 + fracao * 2 * Math.PI;
+            var figura = new PathFigure
+            {
+                StartPoint = new Point(c.X + r * Math.Cos(a0), c.Y + r * Math.Sin(a0)),
+                IsClosed = false
+            };
+            figura.Segments.Add(new ArcSegment(
+                new Point(c.X + r * Math.Cos(a1), c.Y + r * Math.Sin(a1)),
+                new Size(r, r), 0, fracao > 0.5, SweepDirection.Clockwise, true));
+            var geo = new PathGeometry();
+            geo.Figures.Add(figura);
+            geo.Freeze();
+            dc.DrawGeometry(null, caneta, geo);
         }
 
-        private static void AddRounded(GraphicsPath p, float x, float y, float w, float h, float r)
+        private static byte[] Encode(BitmapSource bmp)
         {
-            float d = Math.Min(r * 2, Math.Min(w, h));
-            p.AddArc(x, y, d, d, 180, 90);
-            p.AddArc(x + w - d, y, d, d, 270, 90);
-            p.AddArc(x + w - d, y + h - d, d, d, 0, 90);
-            p.AddArc(x, y + h - d, d, d, 90, 90);
-            p.CloseFigure();
+            using var ms = new MemoryStream();
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(bmp));
+            enc.Save(ms);
+            return ms.ToArray();
         }
 
         /// <summary>ICO com cada imagem embutida como PNG, suportado desde o Vista.</summary>
@@ -114,23 +134,29 @@ namespace Kontro
 
         private static void WritePreview(string path)
         {
-            int pad = 16, x = pad, width = pad;
-            foreach (var s in Tamanhos) width += s + pad;
+            const int pad = 16;
+            int largura = pad;
+            foreach (var s in Tamanhos) largura += s + pad;
 
-            using var sheet = new D.Bitmap(Math.Max(width, 600), 256 + pad * 2 + 22);
-            using var g = D.Graphics.FromImage(sheet);
-            g.Clear(D.Color.FromArgb(0x08, 0x09, 0x0A));
-            using var font = new D.Font("Segoe UI", 9);
-            using var cinza = new D.SolidBrush(D.Color.FromArgb(0x8B, 0x95, 0xA1));
-
-            foreach (var s in Tamanhos)
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
             {
-                using var img = Render(s);
-                g.DrawImageUnscaled(img, x, pad + (256 - s));
-                g.DrawString(s + "px", font, cinza, x, pad + 258);
-                x += s + pad;
+                dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(8, 9, 10)), null,
+                                 new Rect(0, 0, largura, 256 + pad * 2));
+                int x = pad;
+                foreach (var s in Tamanhos)
+                {
+                    dc.DrawImage(Render(s), new Rect(x, pad + (256 - s), s, s));
+                    x += s + pad;
+                }
             }
-            sheet.Save(path, D.Imaging.ImageFormat.Png);
+            var bmp = new RenderTargetBitmap(largura, 256 + pad * 2, 96, 96, PixelFormats.Pbgra32);
+            bmp.Render(visual);
+
+            using var fs = new FileStream(path, FileMode.Create);
+            var enc = new PngBitmapEncoder();
+            enc.Frames.Add(BitmapFrame.Create(bmp));
+            enc.Save(fs);
         }
     }
 }
