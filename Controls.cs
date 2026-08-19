@@ -102,10 +102,6 @@ namespace Kontro
             double w = ActualWidth, h = ActualHeight;
             if (w <= 0 || h <= 0) return;
 
-            // linha de base sempre visivel, mesmo sem dados
-            var baseline = new Pen(new SolidColorBrush(Color.FromArgb(26, 255, 255, 255)), 1);
-            dc.DrawLine(baseline, new Point(0, h - 0.5), new Point(w, h - 0.5));
-
             if (data == null || data.Count < 2) return;
 
             double tMin = data[0].T.ToOADate();
@@ -127,47 +123,22 @@ namespace Kontro
                 h - pad - ((s.P - lo) / range) * (h - pad * 2));
 
             var line = new StreamGeometry();
-            var area = new StreamGeometry();
 
             using (var lc = line.Open())
-            using (var ac = area.Open())
             {
-                var first = Map(data[0]);
-                lc.BeginFigure(first, false, false);
-                ac.BeginFigure(new Point(first.X, h), true, true);
-                ac.LineTo(first, true, false);
-
-                for (int i = 1; i < data.Count; i++)
-                {
-                    var p = Map(data[i]);
-                    lc.LineTo(p, true, true);
-                    ac.LineTo(p, true, false);
-                }
-                ac.LineTo(new Point(w, h), true, false);
+                lc.BeginFigure(Map(data[0]), false, false);
+                for (int i = 1; i < data.Count; i++) lc.LineTo(Map(data[i]), true, true);
             }
             line.Freeze();
-            area.Freeze();
 
-            var baseColor = (Stroke as SolidColorBrush)?.Color ?? Colors.LimeGreen;
-            var fill = new LinearGradientBrush(
-                Color.FromArgb(70, baseColor.R, baseColor.G, baseColor.B),
-                Color.FromArgb(0, baseColor.R, baseColor.G, baseColor.B),
-                new Point(0, 0), new Point(0, 1));
-            fill.Freeze();
-
-            dc.DrawGeometry(fill, null, area);
-            dc.DrawGeometry(null, new Pen(Stroke, 2)
+            // o design pede linha de 1px, sem area preenchida, sem eixo e sem grade:
+            // o historico e contexto, nao protagonista
+            dc.DrawGeometry(null, new Pen(Stroke, 1)
             {
                 LineJoin = PenLineJoin.Round,
                 StartLineCap = PenLineCap.Round,
                 EndLineCap = PenLineCap.Round
             }, line);
-
-            // ponto final destacado
-            var lastPt = Map(data[^1]);
-            dc.DrawEllipse(Stroke, null, lastPt, 3, 3);
-            dc.DrawEllipse(new SolidColorBrush(Color.FromArgb(60, baseColor.R, baseColor.G, baseColor.B)),
-                null, lastPt, 6.5, 6.5);
         }
     }
 }

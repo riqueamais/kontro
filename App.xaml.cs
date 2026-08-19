@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using WF = System.Windows.Forms;
+using D = System.Drawing;
 
 namespace Kontro
 {
@@ -62,9 +63,15 @@ namespace Kontro
             _monitor = new BatteryMonitor(_history, _known);
 
             _flyout = new FlyoutWindow(_history);
-            _flyout.QuitRequested += Quit;
+            _flyout.SettingsRequested += OpenSettings;
+            _flyout.RefreshRequested += async () =>
+            {
+                // leitura sob demanda: o usuario pediu agora, nao no proximo ciclo
+                await _monitor.PollAsync();
+                _flyout.Apply(_monitor.Current);
+            };
 
-            _main = new MainWindow(_settings);
+            _main = new MainWindow(_settings, _history);
             _main.QuitRequested += Quit;
             _main.SettingsChanged += OnSettingsChanged;
 
@@ -230,28 +237,46 @@ namespace Kontro
             listener.Start();
         }
 
+        private WF.ToolStripMenuItem _estadoItem;
+
         private WF.ContextMenuStrip BuildMenu()
         {
-            var menu = new WF.ContextMenuStrip();
+            var menu = new WF.ContextMenuStrip
+            {
+                Renderer = new TrayMenuRenderer(),
+                BackColor = TrayMenuRenderer.SurfaceAlt,
+                ForeColor = TrayMenuRenderer.TextPrimary,
+                ShowImageMargin = false,
+                Font = new D.Font("Segoe UI", 9f)
+            };
+            menu.MinimumSize = new D.Size(200, 0);
 
-            var panel = new WF.ToolStripMenuItem("Ver bateria");
-            panel.Click += (_, _) => _flyout.ShowNearTray();
+            // primeiro item e o estado, desabilitado: serve de cabecalho, nao de acao
+            _estadoItem = new WF.ToolStripMenuItem("Sem leitura") { Enabled = false };
+
+            var painel = new WF.ToolStripMenuItem("Ver bateria");
+            painel.Click += (_, _) => _flyout.ShowNearTray();
 
             var config = new WF.ToolStripMenuItem("Configurações...");
             config.Click += (_, _) => OpenSettings();
 
             var update = new WF.ToolStripMenuItem("Procurar atualizações");
-            update.Click += async (_, _) => await CheckUpdatesInteractiveAsync();
+            update.Click += (_, _) => OpenSettings();
 
             var quit = new WF.ToolStripMenuItem("Sair");
             quit.Click += (_, _) => Quit();
 
-            menu.Items.Add(panel);
+            menu.Items.Add(_estadoItem);
+            menu.Items.Add(new WF.ToolStripSeparator());
+            menu.Items.Add(painel);
             menu.Items.Add(config);
             menu.Items.Add(new WF.ToolStripSeparator());
             menu.Items.Add(update);
-            menu.Items.Add(new WF.ToolStripSeparator());
             menu.Items.Add(quit);
+
+            foreach (WF.ToolStripItem item in menu.Items)
+                if (item is WF.ToolStripMenuItem mi) mi.Padding = new WF.Padding(12, 8, 12, 8);
+
             return menu;
         }
 
@@ -294,6 +319,7 @@ namespace Kontro
             {
                 UpdateTray(s);
                 _flyout.Apply(s);
+                _main.Apply(s);
                 CheckThresholds(s);
             });
         }
@@ -318,6 +344,7 @@ namespace Kontro
             var text = $"{name} — {pct} · {mode}{suffix}";
             // o tooltip da bandeja trunca em 63 caracteres
             _tray.Text = text.Length > 62 ? text[..62] : text;
+            if (_estadoItem != null) _estadoItem.Text = $"{pct} · {mode}";
         }
 
         private void CheckThresholds(BatteryState s)
