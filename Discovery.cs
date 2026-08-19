@@ -125,9 +125,8 @@ namespace Kontro
     /// </summary>
     public sealed class KnownControllers
     {
-        private static readonly string Dir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kontro");
-        private static readonly string FilePath = Path.Combine(Dir, "controllers.json");
+        private static readonly string Dir = AppPaths.DataDir;
+        private static readonly string FilePath = AppPaths.File("controllers.json");
 
         private readonly List<ControllerInfo> _items = new();
 

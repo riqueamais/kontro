@@ -18,9 +18,8 @@ namespace Kontro
     /// </summary>
     public sealed class History
     {
-        private static readonly string Dir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kontro");
-        private static readonly string FilePath = Path.Combine(Dir, "history.json");
+        private static readonly string Dir = AppPaths.DataDir;
+        private static readonly string FilePath = AppPaths.File("history.json");
 
         private readonly Dictionary<string, List<Sample>> _byDevice = new(StringComparer.OrdinalIgnoreCase);
         private DateTime _lastSave = DateTime.MinValue;

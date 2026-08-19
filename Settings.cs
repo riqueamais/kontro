@@ -19,9 +19,8 @@ namespace Kontro
     /// </summary>
     public sealed class Settings
     {
-        private static readonly string Dir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Kontro");
-        private static readonly string FilePath = Path.Combine(Dir, "settings.json");
+        private static readonly string Dir = AppPaths.DataDir;
+        private static readonly string FilePath = AppPaths.File("settings.json");
 
         private static readonly JsonSerializerOptions JsonOpts = new()
         {

@@ -48,6 +48,8 @@ namespace Kontro
                 return;
             }
 
+            AppPaths.MigrateLegacy();
+
             _settings = Settings.Load();
             // o registro manda: o usuario pode ter mexido no autostart por fora
             _settings.StartWithWindows = Autostart.IsEnabled();
