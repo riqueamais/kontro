@@ -122,6 +122,42 @@ namespace Kontro
                 return true;
             }
 
+            int checkIndex = Array.IndexOf(args, "--check-update");
+            if (checkIndex >= 0)
+            {
+                string saida = checkIndex + 1 < args.Length && !args[checkIndex + 1].StartsWith("--")
+                    ? args[checkIndex + 1]
+                    : null;
+                bool aplicar = Array.IndexOf(args, "--apply") >= 0;
+                _ = System.Threading.Tasks.Task.Run(async () =>
+                {
+                    string texto;
+                    try
+                    {
+                        var r = await Updater.CheckAsync();
+                        texto = $"versao atual : {Updater.CurrentVersion}\n" +
+                                $"instalado    : {Updater.IsInstalled}\n" +
+                                $"tem update   : {r.HasUpdate}\n" +
+                                $"versao nova  : {r.Version ?? "-"}\n" +
+                                $"aplicavel    : {r.CanApply}\n" +
+                                $"mensagem     : {r.Message}\n";
+
+                        if (aplicar && r.HasUpdate && r.CanApply)
+                        {
+                            texto += "\naplicando...\n";
+                            if (saida != null) System.IO.File.WriteAllText(saida, texto);
+                            await Updater.ApplyAsync(r);   // reinicia o processo, nao retorna
+                            texto += "a atualizacao nao foi aplicada\n";
+                        }
+                    }
+                    catch (Exception ex) { texto = "FALHOU: " + ex; }
+
+                    if (saida != null) System.IO.File.WriteAllText(saida, texto);
+                    Dispatcher.Invoke(Shutdown);
+                });
+                return true;
+            }
+
             int makeIndex = Array.IndexOf(args, "--make-icon");
             if (makeIndex >= 0 && makeIndex + 1 < args.Length)
             {
