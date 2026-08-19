@@ -5,7 +5,6 @@ using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using WF = System.Windows.Forms;
-using D = System.Drawing;
 
 namespace Kontro
 {
@@ -23,7 +22,6 @@ namespace Kontro
         private WF.NotifyIcon _tray;
         private DispatcherTimer _timer;
         private DispatcherTimer _updateTimer;
-        private D.Icon _currentIcon;
         private Mutex _instanceMutex;
         private EventWaitHandle _showEvent;
 
@@ -276,6 +274,8 @@ namespace Kontro
 
             Dispatcher.BeginInvoke(new Action(() =>
             {
+                // o tema decide qual pasta de icones usar, entao o cache inteiro caduca
+                TrayRenderer.LimparCache();
                 if (_monitor != null) UpdateTray(_monitor.Current);
             }));
         }
@@ -302,11 +302,8 @@ namespace Kontro
         {
             int size = WF.SystemInformation.SmallIconSize.Width;
             var icon = TrayRenderer.Render(s, size, _settings);
-
-            var old = _currentIcon;
-            _currentIcon = icon;
-            _tray.Icon = icon;
-            old?.Dispose();
+            // nao descartamos o icone: quem e dono dele e o cache do TrayRenderer
+            if (icon != null) _tray.Icon = icon;
 
             string mode = s.Mode switch
             {
@@ -409,7 +406,7 @@ namespace Kontro
                 _known?.Save();
                 _settings?.Save();
                 if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }
-                _currentIcon?.Dispose();
+                TrayRenderer.LimparCache();
                 _showEvent?.Dispose();
                 if (_instanceMutex != null)
                 {
