@@ -1,0 +1,175 @@
+<Window x:Class="Kontro.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kontro"
+        Icon="app.ico"
+        Width="560" Height="716"
+        MinWidth="520" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource WindowBg}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <Grid Margin="26,22,26,20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- cabecalho -->
+        <Grid Grid.Row="0" Margin="0,0,0,18">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Width="54" Height="54" CornerRadius="16"
+                    Background="#1B1E23" Margin="0,0,14,0">
+                <Image x:Name="AppIcon" Width="34" Height="34" Source="app.ico"/>
+            </Border>
+
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock x:Name="HeaderTitle" Text="Kontro"
+                           FontFamily="Segoe UI" FontSize="19" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimary}"/>
+                <TextBlock x:Name="HeaderSubtitle" Style="{StaticResource RowHint}"
+                           Text="Configure como o app se comporta."/>
+            </StackPanel>
+        </Grid>
+
+        <!-- conteudo -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+            <StackPanel>
+
+                <!-- inicializacao -->
+                <TextBlock Text="INICIALIZAÇÃO" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource CardBg}" CornerRadius="16" Padding="18,6" Margin="0,0,0,18">
+                    <StackPanel>
+                        <Grid Margin="0,10">
+                            <StackPanel Margin="0,0,60,0">
+                                <TextBlock Text="Iniciar com o Windows" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="O app sobe junto com o sistema e já começa a monitorar."/>
+                            </StackPanel>
+                            <CheckBox x:Name="SwStartup" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{StaticResource HairLine}"/>
+
+                        <Grid Margin="0,10">
+                            <StackPanel Margin="0,0,60,0">
+                                <TextBlock Text="Iniciar minimizado" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="Abre direto na bandeja, sem mostrar esta janela."/>
+                            </StackPanel>
+                            <CheckBox x:Name="SwStartMinimized" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- botao fechar -->
+                <TextBlock Text="AO CLICAR NO X" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource CardBg}" CornerRadius="16" Padding="18,18,18,8" Margin="0,0,0,18">
+                    <StackPanel>
+                        <RadioButton x:Name="RbMinimize" Style="{StaticResource Choice}" GroupName="closeAction">
+                            <StackPanel>
+                                <TextBlock Text="Minimizar para a bandeja" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="O app continua rodando em segundo plano e avisando sobre a bateria."/>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="RbExit" Style="{StaticResource Choice}" GroupName="closeAction">
+                            <StackPanel>
+                                <TextBlock Text="Fechar o app" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="Encerra tudo. Você deixa de receber avisos até abrir de novo."/>
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
+                </Border>
+
+                <!-- notificacoes -->
+                <TextBlock Text="NOTIFICAÇÕES" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource CardBg}" CornerRadius="16" Padding="18,6" Margin="0,0,0,18">
+                    <StackPanel>
+                        <Grid Margin="0,10">
+                            <StackPanel Margin="0,0,60,0">
+                                <TextBlock Text="Avisar quando a bateria estiver baixa" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="Só funciona no Bluetooth, que é onde existe percentual real."/>
+                            </StackPanel>
+                            <CheckBox x:Name="SwNotify" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{StaticResource HairLine}"/>
+
+                        <Grid x:Name="WarnRow" Margin="0,12,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Aviso de bateria baixa" Style="{StaticResource RowTitle}"/>
+                            <TextBlock x:Name="WarnValue" Grid.Column="1" Style="{StaticResource RowTitle}"
+                                       Foreground="{StaticResource Warn}" FontWeight="SemiBold"/>
+                        </Grid>
+                        <Slider x:Name="SlWarn" Minimum="10" Maximum="60" TickFrequency="5"
+                                IsSnapToTickEnabled="True" Margin="0,0,0,12"/>
+
+                        <Grid Margin="0,4,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Aviso crítico" Style="{StaticResource RowTitle}"/>
+                            <TextBlock x:Name="CritValue" Grid.Column="1" Style="{StaticResource RowTitle}"
+                                       Foreground="{StaticResource Crit}" FontWeight="SemiBold"/>
+                        </Grid>
+                        <Slider x:Name="SlCrit" Minimum="3" Maximum="30" TickFrequency="1"
+                                IsSnapToTickEnabled="True" Margin="0,0,0,14"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- atualizacoes -->
+                <TextBlock Text="ATUALIZAÇÕES" Style="{StaticResource SectionTitle}"/>
+                <Border Background="{StaticResource CardBg}" CornerRadius="16" Padding="18,6" Margin="0,0,0,8">
+                    <StackPanel>
+                        <Grid Margin="0,10">
+                            <StackPanel Margin="0,0,60,0">
+                                <TextBlock Text="Procurar atualizações automaticamente" Style="{StaticResource RowTitle}"/>
+                                <TextBlock Style="{StaticResource RowHint}"
+                                           Text="Consulta as releases do GitHub uma vez por dia e avisa se houver versão nova."/>
+                            </StackPanel>
+                            <CheckBox x:Name="SwAutoUpdate" Style="{StaticResource Switch}" HorizontalAlignment="Right"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{StaticResource HairLine}"/>
+
+                        <Grid Margin="0,12,0,14">
+                            <StackPanel Margin="0,0,130,0">
+                                <TextBlock x:Name="VersionText" Style="{StaticResource RowTitle}" Text="Versão 1.0.0"/>
+                                <TextBlock x:Name="UpdateStatus" Style="{StaticResource RowHint}" Text=""/>
+                            </StackPanel>
+                            <Button x:Name="BtnCheckUpdate" Content="Procurar agora"
+                                    Style="{StaticResource Ghost}" HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- rodape -->
+        <Grid Grid.Row="2" Margin="0,16,0,0">
+            <Border Height="1" VerticalAlignment="Top" Background="{StaticResource HairLine}"/>
+            <TextBlock x:Name="FooterHint" VerticalAlignment="Center" Margin="0,16,0,0"
+                       Style="{StaticResource RowHint}"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                <Button x:Name="BtnQuit" Content="Encerrar app" Style="{StaticResource Ghost}" Margin="0,0,8,0"/>
+                <Button x:Name="BtnDone" Content="Concluir" Style="{StaticResource Primary}"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
+
+

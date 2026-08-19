@@ -1,0 +1,83 @@
+name: release
+
+# A tag e a fonte da versao: empurrar v1.2.3 gera a release 1.2.3.
+# Assim o numero nunca fica duplicado entre o csproj e o repositorio.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Versao a partir da tag
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $v = $tag -replace '^v', ''
+          if ($v -notmatch '^\d+\.\d+\.\d+') {
+            Write-Error "Tag '$tag' nao esta no formato vX.Y.Z"
+            exit 1
+          }
+          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "versao: $v"
+
+      - name: Publicar
+        shell: pwsh
+        run: |
+          dotnet publish Kontro.csproj `
+            -c Release `
+            -o publish `
+            -p:Version=${{ steps.ver.outputs.version }} `
+            -p:FileVersion=${{ steps.ver.outputs.version }}.0 `
+            -p:InformationalVersion=${{ steps.ver.outputs.version }}
+
+      - name: Instalar o empacotador
+        shell: pwsh
+        run: dotnet tool install --global vpk
+
+      - name: Gerar o instalador
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Kontro `
+            --packVersion ${{ steps.ver.outputs.version }} `
+            --packDir publish `
+            --mainExe Kontro.exe `
+            --packTitle Kontro `
+            --packAuthors riqueamais `
+            --icon app.ico `
+            --framework net8.0-x64-desktop
+
+      - name: Conferir o que foi gerado
+        shell: pwsh
+        run: Get-ChildItem Releases | Select-Object Name, Length | Format-Table -AutoSize
+
+      - name: Publicar a release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $arquivos = (Get-ChildItem Releases -File).FullName
+          gh release create "${{ github.ref_name }}" $arquivos `
+            --title "Kontro ${{ github.ref_name }}" `
+            --generate-notes
+
+      - name: Guardar o instalador como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: kontro-${{ steps.ver.outputs.version }}
+          path: Releases/
