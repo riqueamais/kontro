@@ -39,6 +39,8 @@
     <Page Include="App.xaml" />
     <!-- o mesmo ico serve de icone do executavel e da janela -->
     <Resource Include="app.ico" />
+    <!-- icones da bandeja e material de marca, rasterizados do vetor -->
+    <Resource Include="Assets\**\*.png" />
   </ItemGroup>
 </Project>
 

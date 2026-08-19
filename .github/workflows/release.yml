@@ -59,7 +59,8 @@ jobs:
             --mainExe Kontro.exe `
             --packTitle Kontro `
             --packAuthors riqueamais `
-            --icon app.ico `
+            --icon setup.ico `
+            --splashImage Assets/branding/installer/splash.png `
             --framework net8-x64-desktop
 
       - name: Conferir o que foi gerado
