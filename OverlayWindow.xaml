@@ -9,24 +9,33 @@
         ShowActivated="False" Focusable="False" IsHitTestVisible="False"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
 
-    <!-- compacto de proposito: e um medidor para o canto da tela, nao um painel -->
-    <Border x:Name="Painel" CornerRadius="{StaticResource RadiusField}"
-            Background="#D90B0E11"
-            BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-            Padding="10,7">
-        <Border.LayoutTransform>
+    <!-- a folga acomoda a sombra, que e o que separa a pilula do jogo -->
+    <Grid Margin="12">
+        <Grid.LayoutTransform>
             <ScaleTransform x:Name="Escala" ScaleX="1" ScaleY="1" />
-        </Border.LayoutTransform>
+        </Grid.LayoutTransform>
 
-        <StackPanel Orientation="Horizontal">
-            <Grid Width="26" Height="26" VerticalAlignment="Center">
-                <local:RingControl x:Name="Ring" StrokeThickness="3"
-                                   TrackBrush="{StaticResource RingTrack}" />
-            </Grid>
-            <TextBlock x:Name="PercentText" Margin="9,0,2,0" VerticalAlignment="Center"
-                       FontFamily="{StaticResource FontMono}" FontSize="15"
-                       FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"
-                       Text="--" />
-        </StackPanel>
-    </Border>
+        <Border x:Name="Painel" CornerRadius="21" Padding="10,7,14,7"
+                Background="#F00A0D10">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270"
+                                  Color="#FF000000" Opacity="0.6" />
+            </Border.Effect>
+
+            <StackPanel Orientation="Horizontal">
+                <Grid Width="28" Height="28" VerticalAlignment="Center">
+                    <local:RingControl x:Name="Ring" StrokeThickness="3.5"
+                                       TrackBrush="#26FFFFFF" />
+                </Grid>
+
+                <!-- largura fixa: sem isso a pilula encolhe e cresce conforme o numero
+                     muda de 100% para 69%, e ancorada a direita ela ficaria pulando -->
+                <TextBlock x:Name="PercentText" MinWidth="46" Margin="10,0,0,0"
+                           VerticalAlignment="Center" TextAlignment="Center"
+                           FontFamily="{StaticResource FontMono}" FontSize="16"
+                           FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"
+                           Text="--" />
+            </StackPanel>
+        </Border>
+    </Grid>
 </Window>
