@@ -26,11 +26,13 @@
                 <Grid Width="30" Height="30" VerticalAlignment="Center">
                     <local:RingControl x:Name="Ring" StrokeThickness="3.5"
                                        TrackBrush="#26FFFFFF" />
-                    <!-- o controle no miolo e a marca: o anel e o dado, ele e a identidade -->
-                    <Viewbox Width="15" Height="15" Stretch="Uniform"
-                             HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Path x:Name="Glifo" Fill="{StaticResource TextPrimary}" />
-                    </Viewbox>
+                    <!-- O controle no miolo e a marca: o anel e o dado, ele e a
+                         identidade. O Stretch vai no proprio Path: a geometria comeca
+                         longe da origem, e sem normalizar isso o desenho fica deslocado
+                         dentro da caixa que deveria centraliza-lo. -->
+                    <Path x:Name="Glifo" Width="15" Height="15" Stretch="Uniform"
+                          Fill="{StaticResource TextPrimary}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
 
                 <!-- largura fixa: sem isso a pilula encolhe e cresce conforme o numero

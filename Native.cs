@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace Kontro
@@ -206,6 +207,33 @@ namespace Kontro
                 catch { return false; }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Bateria que o XInput relata por slot. E grosseira -- quatro niveis, nao
+        /// percentual -- mas e a unica fonte que funciona igual para controle no cabo,
+        /// no adaptador sem fio e em dongle generico, sem depender de Bluetooth.
+        /// </summary>
+        internal static IEnumerable<(int Slot, byte Tipo, byte Nivel, string Descricao)> BateriasXInput()
+        {
+            string[] tipos = { "desconectado", "com fio", "alcalina", "recarregavel" };
+            string[] niveis = { "vazia", "baixa", "media", "cheia" };
+
+            for (uint i = 0; i < 4; i++)
+            {
+                XINPUT_BATTERY_INFORMATION info;
+                try
+                {
+                    if (XInputGetCapabilities(i, 0, out _) != ERROR_SUCCESS) continue;
+                    if (XInputGetBatteryInformation(i, (byte)BATTERY_DEVTYPE_GAMEPAD, out info) != ERROR_SUCCESS)
+                        continue;
+                }
+                catch { yield break; }
+
+                string t = info.BatteryType < tipos.Length ? tipos[info.BatteryType] : "desconhecido";
+                string n = info.BatteryLevel < niveis.Length ? niveis[info.BatteryLevel] : "desconhecido";
+                yield return ((int)i, info.BatteryType, info.BatteryLevel, $"{t} / {n}");
+            }
         }
 
         internal static bool AnyControllerPresent()
