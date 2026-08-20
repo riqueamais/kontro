@@ -492,15 +492,50 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 56px ocupa a tela inteira com duas palavras por linha. clamp() mantem o tamanho
   // original no desktop e reduz de forma continua conforme a tela estreita, sem
   // precisar de ponto de quebra.
+  // O layout do design usa grids de duas colunas em pixels fixos (588+435, 526+526,
+  // 464+567) e um cabecalho em flex-wrap:nowrap. Nada disso colapsa: em tela estreita
+  // a segunda coluna simplesmente sai da tela, e a navegacao monta em cima da marca.
+  //
+  // Como nao da para selecionar "grid de varias colunas" em CSS, marcamos esses
+  // elementos por script e o media query cuida do resto.
   var CSS = [
     'h1{font-size:clamp(30px,7.2vw,56px)!important;line-height:1.08!important;',
     'letter-spacing:-.02em!important;overflow-wrap:break-word!important}',
     'h2{font-size:clamp(19px,3.4vw,24px)!important;line-height:1.2!important}',
-    '@media (max-width:640px){',
-    'body{-webkit-text-size-adjust:100%}',
-    'img,svg,canvas{max-width:100%!important;height:auto!important}',
+
+    '@media (max-width:900px){',
+      // a segunda coluna desce em vez de sair pela direita
+      '.k-empilha{grid-template-columns:1fr!important;gap:28px!important}',
+      // sem isto o conteudo longo estica a coluna e volta a estourar
+      '.k-empilha>*{min-width:0!important}',
+      'header{flex-wrap:wrap!important;gap:12px!important;padding:20px!important}',
+      'nav{flex-wrap:wrap!important;gap:14px!important;row-gap:8px!important}',
+      'section{padding-left:20px!important;padding-right:20px!important}',
+      'img,svg,canvas,video{max-width:100%!important;height:auto!important}',
+      'pre,code{white-space:pre-wrap!important;word-break:break-word!important}',
+      'body{-webkit-text-size-adjust:100%;overflow-x:hidden}',
+    '}',
+
+    '@media (max-width:560px){',
+      'section{padding-left:16px!important;padding-right:16px!important;',
+      'padding-top:36px!important;padding-bottom:40px!important}',
+      'nav{width:100%!important}',
     '}'
   ].join('');
+
+  // marca os containers que precisam empilhar. Roda junto com o resto, entao
+  // acompanha o bundle caso ele reconstrua a arvore.
+  function marcarLayouts() {
+    var nos = document.querySelectorAll('section,header,main,article,div');
+    for (var i = 0; i < nos.length; i++) {
+      var el = nos[i];
+      if (el.classList.contains('k-empilha')) continue;
+      var c = getComputedStyle(el);
+      if (c.display === 'grid' && c.gridTemplateColumns.indexOf(' ') > 0) {
+        el.classList.add('k-empilha');
+      }
+    }
+  }
 
   function garantirMeta(chave, nome, valor) {
     var el = document.head.querySelector('meta[' + chave + '="' + nome + '"]');
@@ -531,6 +566,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (aplicando) return;
     aplicando = true;
     try {
+      marcarLayouts();
       document.documentElement.lang = 'pt-BR';
       if (document.title !== TITULO) document.title = TITULO;
 
