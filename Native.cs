@@ -236,6 +236,37 @@ namespace Kontro
             }
         }
 
+        /// <summary>
+        /// Slots do XInput com controle conectado.
+        ///
+        /// Importa porque nem todo controle e um dispositivo HID. Quem usa o driver do
+        /// Xbox 360 -- caso dos dongles que emulam esse controle -- existe apenas para o
+        /// XInput, e uma busca por HID simplesmente nao o encontra.
+        /// </summary>
+        internal static List<int> SlotsXInputConectados()
+        {
+            var slots = new List<int>();
+            for (uint i = 0; i < 4; i++)
+            {
+                try { if (XInputGetCapabilities(i, 0, out _) == ERROR_SUCCESS) slots.Add((int)i); }
+                catch { break; }
+            }
+            return slots;
+        }
+
+        /// <summary>Bateria de um slot especifico. Nulo quando o slot nao informa carga.</summary>
+        internal static (byte Tipo, byte Nivel)? BateriaDoSlot(int slot)
+        {
+            try
+            {
+                if (XInputGetCapabilities((uint)slot, 0, out _) != ERROR_SUCCESS) return null;
+                if (XInputGetBatteryInformation((uint)slot, (byte)BATTERY_DEVTYPE_GAMEPAD, out var info) != ERROR_SUCCESS)
+                    return null;
+                return (info.BatteryType, info.BatteryLevel);
+            }
+            catch { return null; }
+        }
+
         internal static bool AnyControllerPresent()
         {
             for (uint i = 0; i < 4; i++)

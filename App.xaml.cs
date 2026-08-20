@@ -208,6 +208,18 @@ namespace Kontro
                 return true;
             }
 
+            // mesma ideia para a caixa de dialogo: conferir o desenho sem precisar de
+            // uma release nova esperando do outro lado
+            if (Array.IndexOf(args, "--dialog-demo") >= 0)
+            {
+                DialogWindow.Perguntar(null, "Atualização disponível",
+                    "A versão 1.5.0 está disponível. Você está na 1.4.0.\n\n" +
+                    "Baixar e instalar agora? O app reinicia sozinho ao terminar.",
+                    "Atualizar agora");
+                Shutdown();
+                return true;
+            }
+
             int makeIndex = Array.IndexOf(args, "--make-icon");
             if (makeIndex >= 0 && makeIndex + 1 < args.Length)
             {
@@ -367,6 +379,7 @@ namespace Kontro
                 _main.Apply(s);
                 CheckThresholds(s);
                 AvisarConexao(s);
+                _toast?.Atualizar(s);
                 AtualizarSobreposicao(s);
             });
         }
@@ -459,14 +472,9 @@ namespace Kontro
             // nao descartamos o icone: quem e dono dele e o cache do TrayRenderer
             if (icon != null) _tray.Icon = icon;
 
-            string mode = s.Mode switch
-            {
-                LinkMode.Bluetooth => "Bluetooth",
-                LinkMode.Cable => s.Charging ? "carregando" : "no cabo",
-                _ => "desconectado"
-            };
-            string pct = s.Percent.HasValue ? $"{s.Percent}%" : "sem leitura";
-            string suffix = s.Stale && s.Percent.HasValue ? " (última leitura)" : "";
+            string mode = s.TextoDaLigacao;
+            string pct = s.Preenchimento.HasValue ? s.TextoDaCarga : "sem leitura";
+            string suffix = s.Stale && s.Preenchimento.HasValue ? " (última leitura)" : "";
 
             string name = string.IsNullOrWhiteSpace(s.DeviceName) ? "Controle" : s.DeviceName;
             var text = $"{name} — {pct} · {mode}{suffix}";

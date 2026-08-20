@@ -25,12 +25,19 @@ namespace Kontro
         public string InstanceId { get; set; }
 
         /// <summary>
+        /// Slot do XInput, quando o controle so existe por ali. Vale -1 para quem foi
+        /// encontrado como dispositivo HID.
+        /// </summary>
+        public int XInputSlot { get; set; } = -1;
+
+        /// <summary>
         /// Identidade estavel do controle. Com Bluetooth e o endereco; sem ele, o
         /// proprio id da interface, que ja carrega fabricante, produto e uma parte
         /// especifica daquela conexao.
         /// </summary>
-        public string Key => Address != 0
-            ? Address.ToString("x12")
+        public string Key =>
+            Address != 0 ? Address.ToString("x12")
+            : XInputSlot >= 0 ? "xinput:" + XInputSlot
             : "hid:" + ChaveDoHid(HidId);
 
         private static string ChaveDoHid(string id)
@@ -67,8 +74,9 @@ namespace Kontro
 
         internal static async Task<List<ControllerInfo>> DiscoverAsync()
         {
+            // Sem HID ainda pode haver controle: o XUSB e um mundo a parte, conferido
+            // mais abaixo. Desistir aqui era justamente o que escondia esses controles.
             var encontrados = await GamepadsHidAsync();
-            if (encontrados.Count == 0) return new List<ControllerInfo>();
 
             // Nomes bons vem do Bluetooth: o HID costuma devolver rotulos genericos
             // como "Controlador de jogo compativel com HID".
@@ -90,6 +98,7 @@ namespace Kontro
             catch { }
 
             var resultado = new List<ControllerInfo>();
+            var containersHid = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var g in encontrados)
             {
                 // sem endereco significa cabo ou dongle de radio: continua sendo um
@@ -106,12 +115,145 @@ namespace Kontro
                     InstanceId = g.IdInstancia,
                     LastSeen = DateTime.Now
                 });
+                containersHid.Add(g.Container);
             }
+
+            await AcrescentarSomenteXInputAsync(resultado, containersHid);
             return resultado;
         }
 
+        /// <summary>Interface que o Windows publica para todo controle atendido pelo XUSB.</summary>
+        private const string GuidXusb = "{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}";
+        private const string PropContainer = "System.Devices.ContainerId";
+        private const string PropInstancia = "System.Devices.DeviceInstanceId";
+
+        /// <summary>
+        /// Acrescenta controles que existem apenas para o XInput.
+        ///
+        /// Quem usa o driver do Xbox 360 -- o caso dos dongles que emulam esse controle,
+        /// e do que o Windows lista como "Xbox 360 for Windows" -- nao e dispositivo HID.
+        /// A busca por HID passa direto por ele, e sem isto esse controle simplesmente
+        /// nao existe para o app.
+        ///
+        /// A comparacao e por container, que e o aparelho fisico: um controle atendido
+        /// por HID e por XUSB publica as duas interfaces sob o mesmo container. Container
+        /// de XUSB que nao apareceu no HID e, por definicao, controle que so o XInput
+        /// enxerga -- criterio que nao depende de contar dispositivos nem de adivinhar
+        /// quem e quem.
+        /// </summary>
+        private static async Task AcrescentarSomenteXInputAsync(
+            List<ControllerInfo> encontrados, HashSet<string> containersHid)
+        {
+            List<int> slots;
+            try { slots = Native.SlotsXInputConectados(); }
+            catch { return; }
+            if (slots.Count == 0) return;
+
+            var xusb = await DispositivosXusbAsync();
+
+            List<(string Nome, string Instancia)> somente;
+            if (xusb.Count == 0)
+            {
+                // Sem lista de XUSB nao ha container para comparar. Ainda assim, se o
+                // XInput ve controle e o HID nao viu nenhum, nao existe com o que
+                // confundir e os slots sao todos de controles invisiveis ao HID.
+                if (encontrados.Count > 0) return;
+                somente = slots.Select(_ => ((string)null, (string)null)).ToList();
+            }
+            else
+            {
+                somente = xusb
+                    .Where(x => string.IsNullOrEmpty(x.Container) || !containersHid.Contains(x.Container))
+                    .Select(x => (x.Nome, x.Instancia))
+                    .ToList();
+            }
+            if (somente.Count == 0 || somente.Count > slots.Count) return;
+
+            // na pratica os slots ocupados por controle HID vem primeiro na contagem do
+            // XInput, entao o que sobra na ponta pertence a estes
+            var meus = slots.Skip(slots.Count - somente.Count).ToList();
+            var reserva = NomesDisponiveis(encontrados);
+
+            for (int i = 0; i < somente.Count; i++)
+            {
+                encontrados.Add(new ControllerInfo
+                {
+                    Address = 0,
+                    XInputSlot = meus[i],
+                    InstanceId = somente[i].Instancia,
+                    Name = EscolherNome(somente[i].Nome, reserva, meus[i]),
+                    LastSeen = DateTime.Now
+                });
+            }
+        }
+
+        /// <summary>Controles publicados pela interface do XUSB, com container e id.</summary>
+        private static async Task<List<(string Container, string Nome, string Instancia)>>
+            DispositivosXusbAsync()
+        {
+            var lista = new List<(string, string, string)>();
+            try
+            {
+                var props = new[] { PropContainer, PropInstancia };
+                var seletor = "System.Devices.InterfaceClassGuid:=\"" + GuidXusb + "\""
+                            + " AND System.Devices.InterfaceEnabled:=System.StructuredQueryType.Boolean#True";
+                var achados = await DeviceInformation.FindAllAsync(seletor, props);
+                foreach (var d in achados)
+                {
+                    d.Properties.TryGetValue(PropContainer, out var container);
+                    d.Properties.TryGetValue(PropInstancia, out var instancia);
+                    lista.Add((Texto(container), d.Name, instancia as string));
+                }
+            }
+            catch { }
+            return lista;
+        }
+
+        /// <summary>O container vem como Guid, nao como texto, dependendo da consulta.</summary>
+        private static string Texto(object valor) => valor switch
+        {
+            null => string.Empty,
+            Guid g => g.ToString("B"),
+            _ => valor.ToString()
+        };
+
+        /// <summary>
+        /// O XInput nao informa nome nenhum, e o nome da interface do XUSB costuma ser
+        /// generico. O Gaming.Input sabe o nome comercial, mas lista tambem os controles
+        /// ja achados pelo HID -- por isso os repetidos saem antes.
+        /// </summary>
+        private static List<string> NomesDisponiveis(List<ControllerInfo> jaEncontrados)
+        {
+            var nomes = new List<string>();
+            try
+            {
+                var usados = new HashSet<string>(
+                    jaEncontrados.Select(c => c.Name ?? string.Empty), StringComparer.OrdinalIgnoreCase);
+                foreach (var raw in Windows.Gaming.Input.RawGameController.RawGameControllers)
+                {
+                    var nome = raw.DisplayName;
+                    if (string.IsNullOrWhiteSpace(nome) || !usados.Add(nome)) continue;
+                    nomes.Add(nome);
+                }
+            }
+            catch { }
+            return nomes;
+        }
+
+        private static string EscolherNome(string doXusb, List<string> reserva, int slot)
+        {
+            if (reserva.Count > 0)
+            {
+                var nome = reserva[0];
+                reserva.RemoveAt(0);
+                return nome;
+            }
+            if (!string.IsNullOrWhiteSpace(doXusb)) return doXusb;
+            return $"Controle {slot + 1}";
+        }
+
         private readonly record struct GamepadHid(
-            string IdHid, string IdInstancia, string Nome, ulong Endereco);
+            string IdHid, string IdInstancia, string Nome, ulong Endereco, string Container);
 
         /// <summary>Todo dispositivo HID que se declara controle, com ou sem Bluetooth.</summary>
         private static async Task<List<GamepadHid>> GamepadsHidAsync()
@@ -119,7 +261,7 @@ namespace Kontro
             var lista = new List<GamepadHid>();
             var vistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             ushort[] usages = { UsageGamepad, UsageJoystick, UsageMultiAxis };
-            var props = new[] { "System.Devices.DeviceInstanceId" };
+            var props = new[] { PropInstancia, PropContainer };
 
             foreach (var usage in usages)
             {
@@ -134,8 +276,10 @@ namespace Kontro
                 foreach (var d in achados)
                 {
                     if (!vistos.Add(d.Id)) continue;
-                    d.Properties.TryGetValue(props[0], out var instancia);
-                    lista.Add(new GamepadHid(d.Id, instancia as string, d.Name, ExtractAddress(d.Id)));
+                    d.Properties.TryGetValue(PropInstancia, out var instancia);
+                    d.Properties.TryGetValue(PropContainer, out var container);
+                    lista.Add(new GamepadHid(d.Id, instancia as string, d.Name,
+                        ExtractAddress(d.Id), Texto(container)));
                 }
             }
             return lista;
@@ -221,6 +365,7 @@ namespace Kontro
                     if (existing.Name != d.Name) { existing.Name = d.Name; dirty = true; }
                     existing.HidId = d.HidId;
                     existing.InstanceId = d.InstanceId;
+                    existing.XInputSlot = d.XInputSlot;
                     existing.LastSeen = d.LastSeen;
                 }
             }

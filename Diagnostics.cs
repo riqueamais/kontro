@@ -85,7 +85,14 @@ namespace Kontro
             var controllers = await Discovery.DiscoverAsync();
             if (controllers.Count == 0) sb.AppendLine("   (nenhum controle ligado agora)");
             foreach (var c in controllers)
-                sb.AppendLine($"   {c.Name}   [{c.PrettyAddress}]");
+            {
+                string via = c.Address != 0 ? "Bluetooth"
+                    : c.XInputSlot >= 0 ? $"somente XInput, slot {c.XInputSlot}"
+                    : "HID";
+                sb.AppendLine($"   {c.Name}   [{c.PrettyAddress ?? via}]");
+                sb.AppendLine($"      chave={c.Key}   via={via}");
+                if (!string.IsNullOrEmpty(c.HidId)) sb.AppendLine($"      hid={c.HidId}");
+            }
 
             File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
         }

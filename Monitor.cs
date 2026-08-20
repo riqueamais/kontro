@@ -10,7 +10,12 @@ using Windows.Storage.Streams;
 
 namespace Kontro
 {
-    public enum LinkMode { Offline, Bluetooth, Cable }
+    /// <summary>
+    /// Como o controle esta ligado. Sem fio nao e sinonimo de Bluetooth: dongle de radio
+    /// e adaptador sem fio ligam sem cabo e sem Bluetooth nenhum, e a diferenca importa
+    /// porque so o Bluetooth entrega percentual exato e avisa sozinho quando muda.
+    /// </summary>
+    public enum LinkMode { Offline, Bluetooth, Cable, Wireless }
 
     public sealed class BatteryState
     {
@@ -56,6 +61,22 @@ namespace Kontro
         /// <summary>Verdadeiro quando ha numero para mostrar dentro do anel.</summary>
         public bool TemNumero => Precisao == Precisao.Exata && Percent.HasValue;
 
+        /// <summary>Como o controle esta ligado, em uma palavra.</summary>
+        public string TextoDaLigacao => Mode switch
+        {
+            LinkMode.Bluetooth => "Bluetooth",
+            LinkMode.Wireless => "sem fio",
+            LinkMode.Cable => Charging ? "carregando" : "no cabo",
+            _ => "desconectado"
+        };
+
+        /// <summary>
+        /// Controle ligado do qual nao se conseguiu carga alguma. Acontece com controle
+        /// que so existe para o XInput e nao reporta bateria: dizer isso e mais util que
+        /// mostrar um tracinho e deixar o usuario achando que o app travou.
+        /// </summary>
+        public bool ConectadoSemCarga => Mode != LinkMode.Offline && Preenchimento == null;
+
         public bool SameAs(BatteryState o) =>
             o != null && o.Mode == Mode && o.Percent == Percent && o.Charging == Charging
             && o.Stale == Stale && o.Key == Key && o.DeviceName == DeviceName
@@ -76,6 +97,14 @@ namespace Kontro
             public int? Nivel;
             public Precisao Precisao;
             public DateTime? At;
+
+            /// <summary>
+            /// Quando tentamos ler pela ultima vez, tendo dado certo ou nao. Separado de
+            /// At porque uma tentativa frustrada nao pode se passar por leitura nova nem
+            /// apagar a ultima carga conhecida -- so serve para nao repetir a tentativa
+            /// a cada ciclo.
+            /// </summary>
+            public DateTime? Tentativa;
         }
 
         private readonly History _history;
@@ -91,6 +120,9 @@ namespace Kontro
         private GattDeviceService _service;
 
         private DateTime _lastDiscovery = DateTime.MinValue;
+
+        /// <summary>Chaves vistas na ultima descoberta, ou seja, ligadas agora.</summary>
+        private HashSet<string> _presentes = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>Espacamento entre leituras que exigem perguntar ao dispositivo.</summary>
         private static readonly TimeSpan IntervaloSemBluetooth = TimeSpan.FromSeconds(20);
@@ -162,6 +194,8 @@ namespace Kontro
                 {
                     _lastDiscovery = DateTime.Now;
                     var found = await Discovery.DiscoverAsync();
+                    _presentes = new HashSet<string>(
+                        found.Select(f => f.Key), StringComparer.OrdinalIgnoreCase);
                     if (found.Count > 0) _known.Merge(found);
                     await EnsureDeviceObjectsAsync();
                 }
@@ -184,9 +218,19 @@ namespace Kontro
                 {
                     DropGatt();
                     bool wired = IsWired();
-                    mode = wired ? LinkMode.Cable : LinkMode.Offline;
 
-                    var best = _known.Items.OrderByDescending(i => i.LastSeen).FirstOrDefault();
+                    // Sem cabo e sem Bluetooth, o XInput ainda enxergar um controle so
+                    // pode significar ligacao sem fio propria -- dongle ou adaptador.
+                    // Antes isto virava "desconectado" e o app nem tentava ler a carga.
+                    mode = wired ? LinkMode.Cable
+                         : Native.AnyControllerPresent() ? LinkMode.Wireless
+                         : LinkMode.Offline;
+
+                    // quem esta na tomada agora vem antes de quem so foi visto um dia
+                    var best = _known.Items
+                        .OrderByDescending(i => _presentes.Contains(i.Key))
+                        .ThenByDescending(i => i.LastSeen)
+                        .FirstOrDefault();
                     if (best != null) _active = best;
                     else if (wired) _active = SyntheticWired();
 
@@ -350,12 +394,25 @@ namespace Kontro
         private async Task LerSemBluetoothAsync(ControllerInfo info)
         {
             var r = Get(info.Key);
-            if (r.At.HasValue && (DateTime.Now - r.At.Value) < IntervaloSemBluetooth) return;
+            if (r.Tentativa.HasValue && (DateTime.Now - r.Tentativa.Value) < IntervaloSemBluetooth) return;
+            r.Tentativa = DateTime.Now;
 
+            // da via mais precisa para a menos: percentual do proprio HID, percentual
+            // que o Windows guarda, degrau do slot certo do XInput, degrau de qualquer
+            // slot, e por fim adivinhar pelo nome do dispositivo
             var leitura = await BatteryReaders.LerHidAsync(info.HidId);
             if (!leitura.Tem) leitura = await BatteryReaders.LerPropriedadeDoWindowsAsync(info.InstanceId);
+            if (!leitura.Tem && info.XInputSlot >= 0) leitura = BatteryReaders.LerXInputDoSlot(info.XInputSlot);
             if (!leitura.Tem) leitura = BatteryReaders.LerXInput();
+            if (!leitura.Tem) leitura = await BatteryReaders.ProcurarCargaDeControleAsync();
+
             if (!leitura.Tem) return;
+
+            // Controle de Bluetooth tem fonte melhor que qualquer uma daqui. Num
+            // intervalo em que o GATT nao respondeu, aceitar o degrau do XInput no lugar
+            // trocaria "69%" por "carga cheia" -- perder precisao que ja se tinha.
+            if (leitura.Precisao == Precisao.Aproximada
+                && r.Precisao == Precisao.Exata && info.Address != 0) return;
 
             r.At = DateTime.Now;
             r.Precisao = leitura.Precisao;

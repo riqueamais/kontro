@@ -82,9 +82,11 @@ namespace Kontro
                     PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
                     PercentText.Text = s.TextoDaCarga;
                     DeviceText.Text = nome;
-                    EstimateText.Text = s.Precisao == Precisao.Aproximada
-                        ? s.TextoDaCarga + " · sem percentual neste controle"
-                        : Autonomia(s);
+                    EstimateText.Text =
+                        s.ConectadoSemCarga ? "conectado " + s.TextoDaLigacao + " · não informa bateria"
+                        : s.Precisao == Precisao.Aproximada
+                            ? s.TextoDaCarga + " · sem percentual neste controle"
+                            : Autonomia(s);
                     break;
             }
 

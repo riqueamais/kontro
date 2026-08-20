@@ -36,6 +36,20 @@ namespace Kontro
             _permanencia.Tick += (_, _) => Esconder();
         }
 
+        /// <summary>
+        /// Acompanha o estado enquanto o aviso esta na tela.
+        ///
+        /// O aviso nasce no instante em que o controle conecta, e nesse instante a carga
+        /// ainda e a ultima que se conhecia. A leitura de verdade chega segundos depois:
+        /// sem seguir o estado, o aviso ficaria os quatro segundos exibindo um numero
+        /// velho enquanto o resto do app ja mostra o certo.
+        /// </summary>
+        public void Atualizar(BatteryState s)
+        {
+            if (!IsVisible || _saindo) return;
+            Aplicar(s);
+        }
+
         public void Mostrar(BatteryState s)
         {
             Aplicar(s);
@@ -73,14 +87,26 @@ namespace Kontro
                 StateText.Text = s.Charging ? "conectado · carregando" : "conectado pelo cabo";
                 Ring.Value = 100;
             }
+            else if (s.Stale)
+            {
+                // numero velho nao entra: no instante da conexao a unica carga conhecida
+                // e a da sessao passada, e mostra-la seria contradizer o app inteiro
+                // alguns segundos depois, quando a leitura real chegar
+                PercentText.Visibility = Visibility.Collapsed;
+                StateText.Text = "conectado · " + s.TextoDaLigacao + " · lendo a carga";
+                Ring.Value = 0;
+            }
             else
             {
-                PercentText.Visibility = Visibility.Visible;
-                PercentText.Text = s.Percent.HasValue ? s.Percent.Value + "%" : "--";
-                StateText.Text = s.Percent.HasValue
-                    ? "conectado · Bluetooth"
-                    : "conectado · lendo a carga";
-                Ring.Value = s.Percent ?? 0;
+                // so o percentual cabe no miolo do anel; degrau e ausencia de leitura
+                // viram texto embaixo, onde ha espaco para uma frase
+                PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
+                PercentText.Text = s.TextoDaCarga;
+                StateText.Text =
+                    s.TemNumero ? "conectado · " + s.TextoDaLigacao
+                    : s.Preenchimento.HasValue ? s.TextoDaCarga + " · " + s.TextoDaLigacao
+                    : "conectado " + s.TextoDaLigacao + " · lendo a carga";
+                Ring.Value = s.Preenchimento ?? 0;
             }
         }
 
@@ -129,9 +155,10 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
-            if (s.Mode == LinkMode.Cable || !s.Percent.HasValue) return ControllerGeometry.Gray;
-            if (s.Percent < VermelhoAbaixoDe) return ControllerGeometry.Red;
-            if (s.Percent < AmbarAbaixoDe) return ControllerGeometry.Amber;
+            if (s.Mode == LinkMode.Cable || s.Stale || !s.Preenchimento.HasValue)
+                return ControllerGeometry.Gray;
+            if (s.Preenchimento < VermelhoAbaixoDe) return ControllerGeometry.Red;
+            if (s.Preenchimento < AmbarAbaixoDe) return ControllerGeometry.Amber;
             return ControllerGeometry.Green;
         }
     }

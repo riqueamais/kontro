@@ -1,0 +1,49 @@
+<Window x:Class="Kontro.DialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kontro"
+        Width="424" SizeToContent="Height"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <!-- as folgas dao espaco para a sombra se dissipar, como no painel da bandeja -->
+    <Border x:Name="Painel" Margin="20,44,20,44"
+            CornerRadius="{StaticResource RadiusWindow}"
+            Background="{StaticResource Ink}"
+            BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+            Effect="{StaticResource FlyoutShadow}"
+            RenderTransformOrigin="0.5,0.5">
+        <Border.RenderTransform>
+            <ScaleTransform x:Name="Escala" ScaleX="1" ScaleY="1" />
+        </Border.RenderTransform>
+
+        <StackPanel Margin="24">
+            <StackPanel Orientation="Horizontal">
+                <!-- o anel com o controle e a assinatura do app; aqui ele so identifica
+                     de quem e a janela, entao fica em tamanho reduzido -->
+                <Grid Width="34" Height="34" VerticalAlignment="Center" Margin="0,0,12,0">
+                    <Ellipse Stroke="{StaticResource StrokeStrong}" StrokeThickness="2" />
+                    <Path x:Name="Glifo" Width="17" Height="17" Stretch="Uniform"
+                          Data="{StaticResource ControllerPad}"
+                          Fill="{StaticResource TextSecondary}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <TextBlock x:Name="TitleText" Style="{StaticResource SubtitleText}"
+                           VerticalAlignment="Center" Text="Kontro" />
+            </StackPanel>
+
+            <TextBlock x:Name="BodyText" Style="{StaticResource BodyText}"
+                       Margin="0,16,0,0" TextWrapping="Wrap" Text="" />
+
+            <StackPanel x:Name="Acoes" Orientation="Horizontal" HorizontalAlignment="Right"
+                        Margin="0,24,0,0">
+                <Button x:Name="BtnSecundario" Style="{StaticResource GhostButton}"
+                        Content="Agora não" Margin="0,0,8,0" IsCancel="True" />
+                <Button x:Name="BtnPrimario" Style="{StaticResource PrimaryButton}"
+                        Content="OK" IsDefault="True" />
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

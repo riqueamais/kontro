@@ -68,7 +68,10 @@ namespace Kontro
             {
                 PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
                 PercentText.Text = s.TextoDaCarga;
-                StateText.Text = s.Mode == LinkMode.Offline ? "Desconectado"
+                StateText.Text =
+                    s.Mode == LinkMode.Offline ? "Desconectado"
+                    : s.ConectadoSemCarga
+                        ? "Conectado " + s.TextoDaLigacao + " · este controle não informa a bateria"
                     : s.Precisao == Precisao.Aproximada
                         ? s.TextoDaCarga + " · este controle não informa percentual"
                         : Autonomia(s);
@@ -328,25 +331,58 @@ namespace Kontro
                 _settings.Save();
                 UpdateStatus.Text = r.Message;
 
-                if (r.HasUpdate)
-                {
-                    var resposta = MessageBox.Show(this,
-                        $"A versão {r.Version} está disponível.\n\nVocê está na {Updater.CurrentVersion}.\n\nBaixar e instalar agora? O app reinicia ao terminar.",
-                        "Atualização disponível", MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (!r.HasUpdate) return;
 
-                    if (resposta == MessageBoxResult.Yes)
-                    {
-                        UpdateStatus.Text = "baixando atualização...";
-                        await Updater.ApplyAsync(r);
-                        UpdateStatus.Text = "não foi possível aplicar a atualização";
-                    }
+                // Copia solta nao tem estrutura de update: oferecer "atualizar agora" e
+                // nao cumprir seria pior do que dizer onde baixar.
+                if (!r.CanApply)
+                {
+                    if (DialogWindow.Perguntar(this, "Atualização disponível",
+                            $"A versão {r.Version} saiu no GitHub. Você está na {Updater.CurrentVersion}.\n\n" +
+                            "Esta cópia foi aberta fora da instalação, então não se atualiza sozinha. " +
+                            "O instalador da nova versão está na página da release.",
+                            "Abrir a página", "Fechar"))
+                        AbrirNoNavegador(r.ReleaseUrl ?? Updater.RepoUrl);
+                    return;
                 }
+
+                bool aceitou = DialogWindow.Perguntar(this, "Atualização disponível",
+                    $"A versão {r.Version} está disponível. Você está na {Updater.CurrentVersion}.\n\n" +
+                    "Baixar e instalar agora? O app reinicia sozinho ao terminar.",
+                    "Atualizar agora");
+                if (!aceitou)
+                {
+                    UpdateStatus.Text = $"versão {r.Version} disponível";
+                    return;
+                }
+
+                UpdateStatus.Text = "baixando atualização...";
+                // o progresso do Velopack chega de outra thread
+                await Updater.ApplyAsync(r, pct => Dispatcher.Invoke(() =>
+                    UpdateStatus.Text = pct >= 100 ? "instalando..." : $"baixando... {pct}%"));
+
+                // dando certo, ApplyAsync reinicia o processo: chegar aqui e sinal de falha
+                UpdateStatus.Text = "não foi possível aplicar";
+                DialogWindow.Avisar(this, "A atualização não foi aplicada",
+                    "O download terminou, mas a troca de versão não completou. " +
+                    "Baixar o instalador direto da release costuma resolver.");
             }
             catch (Exception ex)
             {
-                UpdateStatus.Text = "falha ao verificar: " + ex.Message;
+                UpdateStatus.Text = "falha ao verificar";
+                DialogWindow.Avisar(this, "Não deu para verificar", ex.Message);
             }
             finally { BtnCheckUpdate.IsEnabled = true; }
+        }
+
+        private static void AbrirNoNavegador(string url)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(
+                    new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch { }
         }
 
         // ---------- janela ----------

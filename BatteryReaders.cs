@@ -142,6 +142,61 @@ namespace Kontro
             return Leitura.Vazia;
         }
 
+        /// <summary>Carga de um slot especifico do XInput.</summary>
+        internal static Leitura LerXInputDoSlot(int slot)
+        {
+            var info = Native.BateriaDoSlot(slot);
+            if (info == null) return Leitura.Vazia;
+            if (info.Value.Tipo is 0 or 1) return Leitura.Vazia;
+            return new Leitura(Math.Clamp((int)info.Value.Nivel, 0, 3), Precisao.Aproximada);
+        }
+
+        /// <summary>
+        /// Ultimo recurso para controle que nao e HID: procurar, entre os dispositivos
+        /// cuja carga o Windows conhece, algum que se pareca com controle pelo nome.
+        ///
+        /// E frouxo de proposito. Sem id de instancia -- que um controle so-XInput nao
+        /// nos da -- nao ha como casar com precisao, entao isto so entra depois que toda
+        /// via direta falhou, e ainda assim mede o nome antes de acreditar.
+        /// </summary>
+        internal static async Task<Leitura> ProcurarCargaDeControleAsync()
+        {
+            string[] pistas =
+            {
+                "control", "gamepad", "joystick", "xbox", "gamesir",
+                "dualsense", "dualshock", "wireless receiver"
+            };
+            try
+            {
+                var props = new[] { ChavePnpNivel, ChavePnpInstancia };
+                var nos = await DeviceInformation.FindAllAsync("", props, DeviceInformationKind.Device);
+                foreach (var no in nos)
+                {
+                    if (!no.Properties.TryGetValue(ChavePnpNivel, out var bruto) || bruto == null) continue;
+
+                    // Dispositivo Bluetooth fica de fora, e essa e a trava que impede o
+                    // erro pior possivel aqui: o Windows guarda a ultima carga de um
+                    // controle pareado mesmo desligado, e sem esta linha um controle de
+                    // dongle mudo herdaria a porcentagem de outro controle da casa.
+                    no.Properties.TryGetValue(ChavePnpInstancia, out var id);
+                    var instancia = (id as string ?? string.Empty).ToUpperInvariant();
+                    if (instancia.StartsWith("BTHLE", StringComparison.Ordinal)
+                        || instancia.StartsWith("BTHENUM", StringComparison.Ordinal)) continue;
+
+                    var nome = (no.Name ?? string.Empty).ToLowerInvariant();
+                    bool parece = false;
+                    foreach (var pista in pistas)
+                        if (nome.Contains(pista)) { parece = true; break; }
+                    if (!parece) continue;
+
+                    int pct = Convert.ToInt32(bruto);
+                    if (pct is >= 0 and <= 100) return new Leitura(pct, Precisao.Exata);
+                }
+            }
+            catch { }
+            return Leitura.Vazia;
+        }
+
         /// <summary>Texto para uma leitura aproximada, que nao tem numero para mostrar.</summary>
         internal static string DescreverNivel(int nivel) => nivel switch
         {
