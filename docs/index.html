@@ -508,6 +508,9 @@ document.addEventListener('DOMContentLoaded', async function() {
       '.k-empilha{grid-template-columns:1fr!important;gap:28px!important}',
       // sem isto o conteudo longo estica a coluna e volta a estourar
       '.k-empilha>*{min-width:0!important}',
+      // linhas flex que nao quebravam e escapavam pela direita
+      '.k-quebra{flex-wrap:wrap!important}',
+      '.k-quebra>*{min-width:0!important}',
       'header{flex-wrap:wrap!important;gap:12px!important;padding:20px!important}',
       'nav{flex-wrap:wrap!important;gap:14px!important;row-gap:8px!important}',
       'section{padding-left:20px!important;padding-right:20px!important}',
@@ -529,10 +532,17 @@ document.addEventListener('DOMContentLoaded', async function() {
     var nos = document.querySelectorAll('section,header,main,article,div');
     for (var i = 0; i < nos.length; i++) {
       var el = nos[i];
-      if (el.classList.contains('k-empilha')) continue;
+      if (el.classList.contains('k-empilha') || el.classList.contains('k-quebra')) continue;
       var c = getComputedStyle(el);
       if (c.display === 'grid' && c.gridTemplateColumns.indexOf(' ') > 0) {
         el.classList.add('k-empilha');
+      }
+      // Linha flex sem quebra: quando o conteudo nao cabe ela nao reorganiza,
+      // apenas escapa pela direita. Permitir a quebra so tem efeito quando
+      // faltaria espaco, entao nao altera nada onde ja cabia.
+      else if (c.display === 'flex' && c.flexDirection === 'row' &&
+               c.flexWrap === 'nowrap' && el.children.length > 1) {
+        el.classList.add('k-quebra');
       }
     }
   }
