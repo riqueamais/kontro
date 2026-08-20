@@ -16,6 +16,14 @@ namespace Kontro
     {
         public LinkMode Mode { get; init; }
         public int? Percent { get; init; }
+
+        /// <summary>
+        /// Quanto vale o numero acima. Nem toda via de leitura entrega percentual: o
+        /// XInput so sabe quatro degraus, e transformar isso em porcentagem seria
+        /// inventar precisao. Quando e aproximada, Percent fica nulo e Nivel manda.
+        /// </summary>
+        public Precisao Precisao { get; init; }
+        public int? Nivel { get; init; }
         public DateTime? ReadAt { get; init; }
         public bool Charging { get; init; }
         /// <summary>True quando o percentual e a ultima leitura conhecida, nao um valor ao vivo.</summary>
@@ -25,10 +33,33 @@ namespace Kontro
         public string Key { get; init; }
         public int KnownCount { get; init; }
 
+        /// <summary>Quanto do anel preencher. Nulo quando nao ha leitura alguma.</summary>
+        public int? Preenchimento => Precisao switch
+        {
+            Precisao.Exata => Percent,
+            Precisao.Aproximada when Nivel.HasValue => BatteryReaders.PreenchimentoDoNivel(Nivel.Value),
+            _ => null
+        };
+
+        /// <summary>
+        /// O que escrever sobre a carga. Com leitura aproximada devolve texto em vez de
+        /// numero: mostrar "35%" para um dado que so sabe dizer "baixa" seria inventar
+        /// uma precisao que ninguem mediu.
+        /// </summary>
+        public string TextoDaCarga => Precisao switch
+        {
+            Precisao.Exata when Percent.HasValue => Percent.Value + "%",
+            Precisao.Aproximada when Nivel.HasValue => BatteryReaders.DescreverNivel(Nivel.Value),
+            _ => "--"
+        };
+
+        /// <summary>Verdadeiro quando ha numero para mostrar dentro do anel.</summary>
+        public bool TemNumero => Precisao == Precisao.Exata && Percent.HasValue;
+
         public bool SameAs(BatteryState o) =>
             o != null && o.Mode == Mode && o.Percent == Percent && o.Charging == Charging
             && o.Stale == Stale && o.Key == Key && o.DeviceName == DeviceName
-            && o.KnownCount == KnownCount;
+            && o.KnownCount == KnownCount && o.Precisao == Precisao && o.Nivel == Nivel;
     }
 
     /// <summary>
@@ -42,6 +73,8 @@ namespace Kontro
         private sealed class Reading
         {
             public int? Percent;
+            public int? Nivel;
+            public Precisao Precisao;
             public DateTime? At;
         }
 
@@ -58,6 +91,9 @@ namespace Kontro
         private GattDeviceService _service;
 
         private DateTime _lastDiscovery = DateTime.MinValue;
+
+        /// <summary>Espacamento entre leituras que exigem perguntar ao dispositivo.</summary>
+        private static readonly TimeSpan IntervaloSemBluetooth = TimeSpan.FromSeconds(20);
         private BatteryState _last;
 
         public event Action<BatteryState> Changed;
@@ -70,7 +106,11 @@ namespace Kontro
             foreach (var c in _known.Items)
             {
                 var last = _history.Last(c.Key);
-                if (last != null) _readings[c.Key] = new Reading { Percent = last.P, At = last.T };
+                if (last != null)
+                    _readings[c.Key] = new Reading
+                    {
+                        Percent = last.P, At = last.T, Precisao = Precisao.Exata
+                    };
             }
             _active = _known.Items.OrderByDescending(i => i.LastSeen).FirstOrDefault();
         }
@@ -95,6 +135,7 @@ namespace Kontro
 
                 existing.Percent = r.Percent;
                 existing.At = r.When;
+                existing.Precisao = Precisao.Exata;
                 _history.Add(info.Key, r.Percent, r.When);
             }
             Emit(Build(_last?.Mode ?? LinkMode.Offline));
@@ -148,6 +189,11 @@ namespace Kontro
                     var best = _known.Items.OrderByDescending(i => i.LastSeen).FirstOrDefault();
                     if (best != null) _active = best;
                     else if (wired) _active = SyntheticWired();
+
+                    // sem Bluetooth ainda pode haver leitura: dongle e cabo tem
+                    // caminhos proprios, so que piores
+                    if (_active != null && mode != LinkMode.Offline)
+                        await LerSemBluetoothAsync(_active);
                     // controle so-cabo que foi desplugado: sem endereco nao ha o que lembrar,
                     // entao limpamos para nao continuar exibindo o nome de quem ja saiu
                     else if (_active != null && _active.Address == 0) _active = null;
@@ -292,6 +338,41 @@ namespace Kontro
 
         private static byte ReadByte(IBuffer buf) => DataReader.FromBuffer(buf).ReadByte();
 
+        /// <summary>
+        /// Tenta as vias que nao dependem de Bluetooth, da melhor para a pior: o proprio
+        /// HID do controle, a carga que o Windows mantem para o dispositivo e, por
+        /// ultimo, os quatro degraus do XInput.
+        ///
+        /// E espacado no tempo de proposito. Ao contrario do GATT, que avisa sozinho
+        /// quando muda, estas vias exigem perguntar -- e abrir o dispositivo HID a cada
+        /// dois segundos seria trabalho constante para um numero que muda devagar.
+        /// </summary>
+        private async Task LerSemBluetoothAsync(ControllerInfo info)
+        {
+            var r = Get(info.Key);
+            if (r.At.HasValue && (DateTime.Now - r.At.Value) < IntervaloSemBluetooth) return;
+
+            var leitura = await BatteryReaders.LerHidAsync(info.HidId);
+            if (!leitura.Tem) leitura = await BatteryReaders.LerPropriedadeDoWindowsAsync(info.InstanceId);
+            if (!leitura.Tem) leitura = BatteryReaders.LerXInput();
+            if (!leitura.Tem) return;
+
+            r.At = DateTime.Now;
+            r.Precisao = leitura.Precisao;
+            if (leitura.Precisao == Precisao.Exata)
+            {
+                r.Percent = leitura.Valor;
+                r.Nivel = null;
+                _history.Add(info.Key, leitura.Valor, r.At.Value);
+            }
+            else
+            {
+                // degrau nao vira historico: a serie ficaria com saltos artificiais
+                r.Nivel = leitura.Valor;
+                r.Percent = null;
+            }
+        }
+
         private void Record(ulong address, int percent)
         {
             if (percent < 0 || percent > 100) return;
@@ -300,6 +381,8 @@ namespace Kontro
 
             var r = Get(key);
             r.Percent = percent;
+            r.Nivel = null;
+            r.Precisao = Precisao.Exata;
             r.At = DateTime.Now;
             _history.Add(key, percent, r.At.Value);
         }
@@ -321,12 +404,17 @@ namespace Kontro
             string key = info?.Key ?? "wired";
             var r = Get(key);
 
-            bool live = mode == LinkMode.Bluetooth && r.At.HasValue;
+            // leitura recente por qualquer via conta como ao vivo, nao so o GATT
+            bool live = r.At.HasValue &&
+                        (mode == LinkMode.Bluetooth ||
+                         (DateTime.Now - r.At.Value) < IntervaloSemBluetooth * 2);
 
             return new BatteryState
             {
                 Mode = mode,
                 Percent = r.Percent,
+                Precisao = r.Precisao,
+                Nivel = r.Nivel,
                 ReadAt = r.At,
                 Charging = mode == LinkMode.Cable && DetectCharging(),
                 Stale = !live,

@@ -478,7 +478,9 @@ namespace Kontro
         private void CheckThresholds(BatteryState s)
         {
             if (_settings == null || !_settings.NotificationsEnabled) return;
-            if (!s.Percent.HasValue || s.Mode != LinkMode.Bluetooth) return;
+            // limiar em porcentagem so faz sentido com leitura exata; com quatro
+            // degraus nao da para dizer se passou de 20%
+            if (!s.TemNumero || s.Mode == LinkMode.Offline) return;
 
             int p = s.Percent.Value;
 

@@ -60,9 +60,10 @@ namespace Kontro
 
         private static string NomeDoEstado(BatteryState s)
         {
-            if (s.Mode == LinkMode.Cable) return "cable";
-            if (s.Mode == LinkMode.Offline || !s.Percent.HasValue) return "off";
-            return "level-" + DegrauMaisProximo(s.Percent.Value);
+            if (s.Mode == LinkMode.Cable && s.Preenchimento == null) return "cable";
+            if (s.Mode == LinkMode.Offline || s.Preenchimento == null) return "off";
+            // leitura aproximada tambem cai num dos degraus desenhados
+            return "level-" + DegrauMaisProximo(s.Preenchimento.Value);
         }
 
         internal static int DegrauMaisProximo(int percentual)

@@ -57,7 +57,7 @@ namespace Kontro
             pincel.Freeze();
             Ring.RingBrush = pincel;
 
-            if (s.Mode == LinkMode.Cable)
+            if (s.Mode == LinkMode.Cable && s.Preenchimento == null)
             {
                 PercentText.Visibility = Visibility.Collapsed;
                 StateText.Text = s.Charging
@@ -66,15 +66,16 @@ namespace Kontro
             }
             else
             {
-                PercentText.Visibility = Visibility.Visible;
-                PercentText.Text = s.Percent.HasValue ? s.Percent.Value + "%" : "--";
-                StateText.Text = s.Mode == LinkMode.Offline
-                    ? "Desconectado"
-                    : Autonomia(s);
+                PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
+                PercentText.Text = s.TextoDaCarga;
+                StateText.Text = s.Mode == LinkMode.Offline ? "Desconectado"
+                    : s.Precisao == Precisao.Aproximada
+                        ? s.TextoDaCarga + " · este controle não informa percentual"
+                        : Autonomia(s);
             }
 
             Ring.BeginAnimation(RingControl.ValueProperty,
-                new DoubleAnimation(s.Mode == LinkMode.Cable ? 100 : (s.Percent ?? 0),
+                new DoubleAnimation(s.Preenchimento ?? (s.Mode == LinkMode.Cable ? 100 : 0),
                                     TimeSpan.FromMilliseconds(180))
                 {
                     EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
@@ -124,9 +125,10 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
-            if (s.Mode != LinkMode.Bluetooth || !s.Percent.HasValue) return ControllerGeometry.Gray;
-            if (s.Percent < VermelhoAbaixoDe) return ControllerGeometry.Red;
-            if (s.Percent < AmbarAbaixoDe) return ControllerGeometry.Amber;
+            int? nivel = s.Mode == LinkMode.Offline ? null : s.Preenchimento;
+            if (nivel == null) return ControllerGeometry.Gray;
+            if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;
+            if (nivel < AmbarAbaixoDe) return ControllerGeometry.Amber;
             return ControllerGeometry.Green;
         }
 

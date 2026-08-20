@@ -62,25 +62,29 @@ namespace Kontro
 
             switch (s.Mode)
             {
-                case LinkMode.Cable:
-                    // no cabo nao existe percentual confiavel: melhor nada que errado
+                case LinkMode.Cable when s.Preenchimento == null:
+                    // no cabo, sem via de leitura, nao existe percentual confiavel
                     PercentText.Visibility = Visibility.Collapsed;
                     DeviceText.Text = s.Charging ? "Carregando" : "No cabo";
                     EstimateText.Text = nome;
                     break;
 
                 case LinkMode.Offline:
-                    PercentText.Visibility = Visibility.Visible;
-                    PercentText.Text = s.Percent.HasValue ? s.Percent.Value + "%" : "--";
+                    PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
+                    PercentText.Text = s.TextoDaCarga;
                     DeviceText.Text = "Desconectado";
                     EstimateText.Text = nome;
                     break;
 
                 default:
-                    PercentText.Visibility = Visibility.Visible;
-                    PercentText.Text = s.Percent.HasValue ? s.Percent.Value + "%" : "--";
+                    // com leitura aproximada o texto vai embaixo, nao no miolo do anel:
+                    // "carga cheia" nao cabe ali e nao e um numero
+                    PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
+                    PercentText.Text = s.TextoDaCarga;
                     DeviceText.Text = nome;
-                    EstimateText.Text = Autonomia(s);
+                    EstimateText.Text = s.Precisao == Precisao.Aproximada
+                        ? s.TextoDaCarga + " · sem percentual neste controle"
+                        : Autonomia(s);
                     break;
             }
 
@@ -124,10 +128,10 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
-            if (s.Mode == LinkMode.Cable) return ControllerGeometry.Gray;
-            if (s.Mode == LinkMode.Offline || !s.Percent.HasValue) return ControllerGeometry.Gray;
-            if (s.Percent < VermelhoAbaixoDe) return ControllerGeometry.Red;
-            if (s.Percent < AmbarAbaixoDe) return ControllerGeometry.Amber;
+            int? nivel = s.Mode == LinkMode.Offline ? null : s.Preenchimento;
+            if (nivel == null) return ControllerGeometry.Gray;
+            if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;
+            if (nivel < AmbarAbaixoDe) return ControllerGeometry.Amber;
             return ControllerGeometry.Green;
         }
 
@@ -135,7 +139,7 @@ namespace Kontro
         private void AnimarAnel(BatteryState s)
         {
             // no cabo o anel fica cheio e cinza, dizendo "estou ligado, sem numero"
-            double alvo = s.Mode == LinkMode.Cable ? 100 : (s.Percent ?? 0);
+            double alvo = s.Preenchimento ?? (s.Mode == LinkMode.Cable ? 100 : 0);
             Ring.BeginAnimation(RingControl.ValueProperty,
                 new DoubleAnimation(alvo, TimeSpan.FromMilliseconds(180))
                 {

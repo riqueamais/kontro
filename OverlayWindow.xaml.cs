@@ -55,17 +55,19 @@ namespace Kontro
             pincel.Freeze();
             Ring.RingBrush = pincel;
 
-            if (s.Mode == LinkMode.Cable)
+            // sem leitura no cabo o anel cheio em cinza ao menos diz "ligado"
+            if (s.Mode == LinkMode.Cable && s.Preenchimento == null)
             {
-                // no cabo nao existe percentual: o anel cheio em cinza diz "ligado"
                 Ring.Value = 100;
                 PercentText.Text = "cabo";
+                return;
             }
-            else
-            {
-                Ring.Value = s.Percent ?? 0;
-                PercentText.Text = s.Percent.HasValue ? s.Percent.Value + "%" : "--";
-            }
+
+            Ring.Value = s.Preenchimento ?? 0;
+            // texto aproximado nao cabe na largura do numero, entao vira o degrau
+            PercentText.Text = s.Precisao == Precisao.Aproximada && s.Nivel.HasValue
+                ? new[] { "baixa", "baixa", "média", "cheia" }[Math.Clamp(s.Nivel.Value, 0, 3)]
+                : s.TextoDaCarga;
         }
 
         /// <summary>
@@ -117,9 +119,10 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
-            if (s.Mode == LinkMode.Cable || !s.Percent.HasValue) return ControllerGeometry.Gray;
-            if (s.Percent < VermelhoAbaixoDe) return ControllerGeometry.Red;
-            if (s.Percent < AmbarAbaixoDe) return ControllerGeometry.Amber;
+            int? nivel = s.Preenchimento;
+            if (nivel == null) return ControllerGeometry.Gray;
+            if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;
+            if (nivel < AmbarAbaixoDe) return ControllerGeometry.Amber;
             return ControllerGeometry.Green;
         }
     }
