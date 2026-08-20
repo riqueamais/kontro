@@ -421,21 +421,29 @@ namespace Kontro
         }
 
         /// <summary>
-        /// Em tela cheia exclusiva nenhuma janela comum e desenhada por cima. Sem
-        /// explicar isso, o usuario conclui que a sobreposicao esta quebrada. Avisamos
-        /// uma unica vez por sessao, com a saida pratica.
+        /// Explica, uma unica vez, por que a sobreposicao pode nao aparecer em certos
+        /// jogos.
+        ///
+        /// A redacao e condicional de proposito. O estado que o Windows relata nao
+        /// separa tela cheia exclusiva de tela cheia em janela: uma janela sem bordas
+        /// ocupando o monitor tambem e relatada como exclusiva. Afirmar que nao vai
+        /// aparecer seria falso justamente nos jogos em janela, onde ela aparece.
         /// </summary>
         private void AvisarTelaCheiaExclusiva()
         {
             if (_avisouTelaCheiaExclusiva) return;
-            if (!Native.EmTelaCheiaExclusiva()) return;
+            if (_settings == null || _settings.OverlayTipShown) return;
+            if (!Native.EmTelaCheia()) return;
 
             _avisouTelaCheiaExclusiva = true;
+            _settings.OverlayTipShown = true;
+            _settings.Save();
+
             _tray?.ShowBalloonTip(
                 10000,
-                "A sobreposição não aparece neste jogo",
-                "Ele está em tela cheia exclusiva, onde o Windows não desenha outras janelas por cima. " +
-                "Troque para \"tela cheia em janela\" nas opções de vídeo do jogo.",
+                "Sobreposição ativa",
+                "Se ela não aparecer dentro de algum jogo, é porque ele está em tela cheia exclusiva. " +
+                "Trocar para \"tela cheia em janela\" nas opções de vídeo resolve.",
                 WF.ToolTipIcon.Info);
         }
 

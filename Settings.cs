@@ -57,6 +57,8 @@ namespace Kontro
         public bool ConnectToastEnabled { get; set; } = true;
 
         public OverlayMode OverlayMode { get; set; } = OverlayMode.EmJogo;
+        /// <summary>A dica sobre tela cheia ja foi dada. E util uma vez, nao toda sessao.</summary>
+        public bool OverlayTipShown { get; set; }
         public OverlayCorner OverlayCorner { get; set; } = OverlayCorner.SuperiorDireito;
         public double OverlayScale { get; set; } = 1.0;
         public double OverlayOpacity { get; set; } = 0.9;
