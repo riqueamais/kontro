@@ -84,6 +84,11 @@ namespace Kontro
             _main = new MainWindow(_settings, _history);
             _main.QuitRequested += Quit;
             _main.SettingsChanged += OnSettingsChanged;
+            // aparecer ou sumir muda a previa da sobreposicao, mas nao as preferencias
+            _main.VisibilityChanged += () =>
+            {
+                if (_monitor != null) AtualizarSobreposicao(_monitor.Current);
+            };
 
             _tray = new WF.NotifyIcon
             {
@@ -194,7 +199,7 @@ namespace Kontro
                     Mode = LinkMode.Bluetooth,
                     Percent = pct,
                     ReadAt = DateTime.Now,
-                    DeviceName = "Xbox Wireless Controller",
+                    DeviceName = "Controle sem fio",
                     Key = "demo"
                 });
                 var relogio = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };

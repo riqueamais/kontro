@@ -23,9 +23,14 @@
             </Border.Effect>
 
             <StackPanel Orientation="Horizontal">
-                <Grid Width="28" Height="28" VerticalAlignment="Center">
+                <Grid Width="30" Height="30" VerticalAlignment="Center">
                     <local:RingControl x:Name="Ring" StrokeThickness="3.5"
                                        TrackBrush="#26FFFFFF" />
+                    <!-- o controle no miolo e a marca: o anel e o dado, ele e a identidade -->
+                    <Viewbox Width="15" Height="15" Stretch="Uniform"
+                             HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path x:Name="Glifo" Fill="{StaticResource TextPrimary}" />
+                    </Viewbox>
                 </Grid>
 
                 <!-- largura fixa: sem isso a pilula encolhe e cresce conforme o numero

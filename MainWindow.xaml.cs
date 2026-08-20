@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using WF = System.Windows.Forms;
 
 namespace Kontro
 {
@@ -21,6 +22,12 @@ namespace Kontro
 
         public event Action QuitRequested;
         public event Action SettingsChanged;
+        /// <summary>
+        /// A janela apareceu ou sumiu. E separado de SettingsChanged porque nada mudou
+        /// nas preferencias: tratar os dois como a mesma coisa fazia perder o registro
+        /// de quais avisos de bateria ja tinham sido dados, a cada perda de foco.
+        /// </summary>
+        public event Action VisibilityChanged;
 
         public MainWindow(Settings settings, History history)
         {
@@ -203,6 +210,15 @@ namespace Kontro
                 AtualizarRotulos();
             };
 
+            BtnOverlayMonitor.Click += (_, _) =>
+            {
+                // -1 e "segue o jogo"; depois disso, os indices de monitor em ordem
+                int total = WF.Screen.AllScreens.Length;
+                _settings.OverlayMonitor = _settings.OverlayMonitor + 1 >= total ? -1 : _settings.OverlayMonitor + 1;
+                Gravar(() => { });
+                AtualizarRotulos();
+            };
+
             BtnCloseAction.Click += (_, _) =>
             {
                 _settings.CloseAction = _settings.CloseAction == CloseAction.MinimizeToTray
@@ -249,6 +265,14 @@ namespace Kontro
                 _ => "Sempre visível"
             };
 
+            // a escolha de monitor so faz sentido com mais de uma tela
+            var telas = WF.Screen.AllScreens;
+            LinhaMonitor.Visibility = telas.Length > 1 ? Visibility.Visible : Visibility.Collapsed;
+            BtnOverlayMonitor.Content = _settings.OverlayMonitor >= 0 && _settings.OverlayMonitor < telas.Length
+                ? $"Monitor {_settings.OverlayMonitor + 1}" +
+                  (telas[_settings.OverlayMonitor].Primary ? " (principal)" : "")
+                : "Segue o jogo";
+
             BtnOverlayCorner.Content = _settings.OverlayCorner switch
             {
                 OverlayCorner.SuperiorEsquerdo => "Superior esquerdo",
@@ -286,7 +310,7 @@ namespace Kontro
                 SettingsChanged?.Invoke();
             }
             Hide();
-            SettingsChanged?.Invoke();
+            VisibilityChanged?.Invoke();
         }
 
         // ---------- atualizacoes ----------
@@ -331,7 +355,7 @@ namespace Kontro
             {
                 e.Cancel = true;
                 Hide();
-                SettingsChanged?.Invoke();
+                VisibilityChanged?.Invoke();
                 return;
             }
             QuitRequested?.Invoke();
@@ -344,7 +368,7 @@ namespace Kontro
         protected override void OnDeactivated(EventArgs e)
         {
             base.OnDeactivated(e);
-            SettingsChanged?.Invoke();
+            VisibilityChanged?.Invoke();
         }
 
         public void ShowAndFocus()

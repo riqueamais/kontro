@@ -60,6 +60,14 @@ namespace Kontro
         /// <summary>A dica sobre tela cheia ja foi dada. E util uma vez, nao toda sessao.</summary>
         public bool OverlayTipShown { get; set; }
         public OverlayCorner OverlayCorner { get; set; } = OverlayCorner.SuperiorDireito;
+
+        /// <summary>
+        /// Em qual monitor a sobreposicao fica. -1 significa acompanhar o que esta em
+        /// foco; a partir de 0, fica presa ao monitor daquele indice. Com mais de uma
+        /// tela, acompanhar o foco faz a pilula pular para o outro monitor a cada
+        /// clique fora do jogo, que e o oposto de "fixa".
+        /// </summary>
+        public int OverlayMonitor { get; set; } = -1;
         public double OverlayScale { get; set; } = 1.0;
         public double OverlayOpacity { get; set; } = 0.9;
 

@@ -22,10 +22,17 @@ namespace Kontro
         private const double Folga = 16;
 
         private OverlayCorner _canto = OverlayCorner.SuperiorDireito;
+        private int _monitor = -1;   // -1 acompanha o foco
 
         public OverlayWindow()
         {
             InitializeComponent();
+
+            // A silhueta cheia vira uma mancha neste tamanho. Com os analogicos
+            // recortados -- a mesma geometria do icone da bandeja -- ela volta a
+            // se ler como controle.
+            Glifo.Data = ControllerGeometry.PadWithHollowSticks();
+
             SourceInitialized += (_, _) =>
                 Native.MakeClickThrough(new WindowInteropHelper(this).Handle);
             // o tamanho muda com a escala, entao a posicao precisa acompanhar
@@ -35,6 +42,7 @@ namespace Kontro
         public void AplicarPreferencias(Settings s)
         {
             _canto = s.OverlayCorner;
+            _monitor = s.OverlayMonitor;
             Escala.ScaleX = Escala.ScaleY = s.OverlayScale;
             Painel.Opacity = s.OverlayOpacity;
             Reposicionar();
@@ -71,13 +79,7 @@ namespace Kontro
             // evento de tamanho chama este metodo de novo assim que houver medida.
             if (ActualWidth <= 0 || ActualHeight <= 0) return;
 
-            var tela = WF.Screen.PrimaryScreen;
-            try
-            {
-                var foco = Native.GetForegroundWindow();
-                if (foco != IntPtr.Zero) tela = WF.Screen.FromHandle(foco);
-            }
-            catch { }
+            var tela = EscolherTela();
 
             var origem = PresentationSource.FromVisual(this)?.CompositionTarget;
             double ex = origem?.TransformToDevice.M11 ?? 1;
@@ -92,6 +94,25 @@ namespace Kontro
 
             Left = aDireita ? esquerda + largura - ActualWidth - Folga : esquerda + Folga;
             Top = embaixo ? topo + altura - ActualHeight - Folga : topo + Folga;
+        }
+
+        /// <summary>
+        /// Monitor fixo quando o usuario escolheu um; senao, o que esta em foco.
+        /// Indice invalido -- monitor desligado ou desconectado depois da escolha --
+        /// cai de volta para o foco, em vez de sumir num lugar que nao existe mais.
+        /// </summary>
+        private WF.Screen EscolherTela()
+        {
+            var telas = WF.Screen.AllScreens;
+            if (_monitor >= 0 && _monitor < telas.Length) return telas[_monitor];
+
+            try
+            {
+                var foco = Native.GetForegroundWindow();
+                if (foco != IntPtr.Zero) return WF.Screen.FromHandle(foco);
+            }
+            catch { }
+            return WF.Screen.PrimaryScreen;
         }
 
         private static Color CorDoAnel(BatteryState s)

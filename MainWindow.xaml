@@ -185,6 +185,23 @@
                             </Grid>
                         </Border>
 
+                        <Border x:Name="LinhaMonitor" Style="{StaticResource SettingRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Text="Monitor da sobreposição" Style="{StaticResource SubtitleText}" FontSize="14" />
+                                    <TextBlock Text="Prenda a um monitor para ela não seguir o clique."
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button x:Name="BtnOverlayMonitor" Grid.Column="1" Style="{StaticResource GhostButton}"
+                                        VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
                         <Border Style="{StaticResource SettingRow}">
                             <StackPanel>
                                 <Grid>
