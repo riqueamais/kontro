@@ -1,0 +1,32 @@
+<Window x:Class="Kontro.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Kontro"
+        Title="Kontro"
+        SizeToContent="WidthAndHeight"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        ShowActivated="False" Focusable="False" IsHitTestVisible="False"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <!-- compacto de proposito: e um medidor para o canto da tela, nao um painel -->
+    <Border x:Name="Painel" CornerRadius="{StaticResource RadiusField}"
+            Background="#D90B0E11"
+            BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+            Padding="10,7">
+        <Border.LayoutTransform>
+            <ScaleTransform x:Name="Escala" ScaleX="1" ScaleY="1" />
+        </Border.LayoutTransform>
+
+        <StackPanel Orientation="Horizontal">
+            <Grid Width="26" Height="26" VerticalAlignment="Center">
+                <local:RingControl x:Name="Ring" StrokeThickness="3"
+                                   TrackBrush="{StaticResource RingTrack}" />
+            </Grid>
+            <TextBlock x:Name="PercentText" Margin="9,0,2,0" VerticalAlignment="Center"
+                       FontFamily="{StaticResource FontMono}" FontSize="15"
+                       FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"
+                       Text="--" />
+        </StackPanel>
+    </Border>
+</Window>

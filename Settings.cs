@@ -5,6 +5,23 @@ using System.Text.Json.Serialization;
 
 namespace Kontro
 {
+    /// <summary>Quando a sobreposicao aparece na tela.</summary>
+    public enum OverlayMode
+    {
+        Desligada = 0,
+        /// <summary>So quando algo ocupa a tela inteira, que e quando o dado importa.</summary>
+        EmJogo = 1,
+        Sempre = 2
+    }
+
+    public enum OverlayCorner
+    {
+        SuperiorEsquerdo = 0,
+        SuperiorDireito = 1,
+        InferiorEsquerdo = 2,
+        InferiorDireito = 3
+    }
+
     public enum CloseAction
     {
         /// <summary>O X esconde a janela e o app segue vivo na bandeja.</summary>
@@ -38,6 +55,11 @@ namespace Kontro
 
         /// <summary>Aviso passageiro no topo da tela quando o controle conecta.</summary>
         public bool ConnectToastEnabled { get; set; } = true;
+
+        public OverlayMode OverlayMode { get; set; } = OverlayMode.EmJogo;
+        public OverlayCorner OverlayCorner { get; set; } = OverlayCorner.SuperiorDireito;
+        public double OverlayScale { get; set; } = 1.0;
+        public double OverlayOpacity { get; set; } = 0.9;
 
         public bool AutoCheckUpdates { get; set; } = true;
         public DateTime? LastUpdateCheck { get; set; }
@@ -82,6 +104,10 @@ namespace Kontro
             WarnThreshold = Math.Clamp(WarnThreshold, 5, 90);
             CriticalThreshold = Math.Clamp(CriticalThreshold, 1, 50);
             if (CriticalThreshold >= WarnThreshold) CriticalThreshold = Math.Max(1, WarnThreshold - 5);
+
+            // valores fora de faixa deixariam a sobreposicao ilegivel ou invisivel
+            OverlayScale = Math.Clamp(OverlayScale, 0.75, 1.6);
+            OverlayOpacity = Math.Clamp(OverlayOpacity, 0.35, 1.0);
             return this;
         }
     }

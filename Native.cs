@@ -49,6 +49,57 @@ namespace Kontro
             catch { }
         }
 
+        [DllImport("shell32.dll")]
+        private static extern int SHQueryUserNotificationState(out int estado);
+
+        /// <summary>Estados relatados pelo Windows sobre o que ocupa a tela.</summary>
+        internal enum EstadoDaTela
+        {
+            Desconhecido = 0,
+            NaoExisteSessao = 1,
+            TelaCheiaDirectX = 2,   // jogo em tela cheia exclusiva
+            JanelaOcupandoTudo = 3, // tela cheia em janela, o caso comum hoje
+            Apresentacao = 4,
+            AceitaNotificacoes = 5,
+            HorarioSilencioso = 6,
+            AppDaLojaEmTelaCheia = 7
+        }
+
+        internal static EstadoDaTela ConsultarTela()
+        {
+            try
+            {
+                if (SHQueryUserNotificationState(out int estado) == 0)
+                    return (EstadoDaTela)estado;
+            }
+            catch { }
+            return EstadoDaTela.Desconhecido;
+        }
+
+        /// <summary>
+        /// Ha algo ocupando a tela inteira, seja jogo ou apresentacao.
+        ///
+        /// Nao ha API para "esta jogando", e vasculhar nomes de processo seria uma lista
+        /// infinita e sempre desatualizada. O que da para saber com precisao e se algo
+        /// tomou a tela, que na pratica e quando o usuario quer o dado sobreposto.
+        /// </summary>
+        internal static bool EmTelaCheia()
+        {
+            var e = ConsultarTela();
+            return e == EstadoDaTela.TelaCheiaDirectX
+                || e == EstadoDaTela.JanelaOcupandoTudo
+                || e == EstadoDaTela.Apresentacao
+                || e == EstadoDaTela.AppDaLojaEmTelaCheia;
+        }
+
+        /// <summary>
+        /// Tela cheia exclusiva: nenhuma janela comum e desenhada por cima. Saber disso
+        /// permite explicar ao usuario por que a sobreposicao nao aparece, em vez de
+        /// deixa-lo achando que quebrou.
+        /// </summary>
+        internal static bool EmTelaCheiaExclusiva() =>
+            ConsultarTela() == EstadoDaTela.TelaCheiaDirectX;
+
         private const int DwmCaptionColor = 35;
         private const int DwmTextColor = 36;
         private const int DwmBorderColor = 34;

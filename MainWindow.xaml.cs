@@ -176,6 +176,33 @@ namespace Kontro
                 AtualizarRotulos();
             };
 
+            // O pacote de design nao traz estilo de lista suspensa, entao a escolha
+            // cicla no proprio botao -- mesmo padrao ja usado na acao do X.
+            BtnOverlayMode.Click += (_, _) =>
+            {
+                _settings.OverlayMode = _settings.OverlayMode switch
+                {
+                    OverlayMode.Desligada => OverlayMode.EmJogo,
+                    OverlayMode.EmJogo => OverlayMode.Sempre,
+                    _ => OverlayMode.Desligada
+                };
+                Gravar(() => { });
+                AtualizarRotulos();
+            };
+
+            BtnOverlayCorner.Click += (_, _) =>
+            {
+                _settings.OverlayCorner = _settings.OverlayCorner switch
+                {
+                    OverlayCorner.SuperiorEsquerdo => OverlayCorner.SuperiorDireito,
+                    OverlayCorner.SuperiorDireito => OverlayCorner.InferiorDireito,
+                    OverlayCorner.InferiorDireito => OverlayCorner.InferiorEsquerdo,
+                    _ => OverlayCorner.SuperiorEsquerdo
+                };
+                Gravar(() => { });
+                AtualizarRotulos();
+            };
+
             BtnCloseAction.Click += (_, _) =>
             {
                 _settings.CloseAction = _settings.CloseAction == CloseAction.MinimizeToTray
@@ -214,6 +241,21 @@ namespace Kontro
             BtnCloseAction.Content = _settings.CloseAction == CloseAction.MinimizeToTray
                 ? "Minimizar para a bandeja"
                 : "Fechar o app";
+
+            BtnOverlayMode.Content = _settings.OverlayMode switch
+            {
+                OverlayMode.Desligada => "Desligada",
+                OverlayMode.EmJogo => "Só em jogo",
+                _ => "Sempre visível"
+            };
+
+            BtnOverlayCorner.Content = _settings.OverlayCorner switch
+            {
+                OverlayCorner.SuperiorEsquerdo => "Superior esquerdo",
+                OverlayCorner.SuperiorDireito => "Superior direito",
+                OverlayCorner.InferiorDireito => "Inferior direito",
+                _ => "Inferior esquerdo"
+            };
         }
 
         private void Gravar(Action alterar)

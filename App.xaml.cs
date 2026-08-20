@@ -21,6 +21,8 @@ namespace Kontro
         private FlyoutWindow _flyout;
         private MainWindow _main;
         private ToastWindow _toast;
+        private OverlayWindow _overlay;
+        private bool _avisouTelaCheiaExclusiva;
         private WF.NotifyIcon _tray;
         private DispatcherTimer _timer;
         private DispatcherTimer _updateTimer;
@@ -75,6 +77,9 @@ namespace Kontro
             };
 
             _toast = new ToastWindow();
+
+            _overlay = new OverlayWindow();
+            _overlay.AplicarPreferencias(_settings);
 
             _main = new MainWindow(_settings, _history);
             _main.QuitRequested += Quit;
@@ -335,6 +340,8 @@ namespace Kontro
         {
             // limiares novos merecem uma nova chance de avisar
             _notified.Clear();
+            _overlay?.AplicarPreferencias(_settings);
+            if (_monitor != null) AtualizarSobreposicao(_monitor.Current);
         }
 
         // ---------- estado da bateria ----------
@@ -348,6 +355,7 @@ namespace Kontro
                 _main.Apply(s);
                 CheckThresholds(s);
                 AvisarConexao(s);
+                AtualizarSobreposicao(s);
             });
         }
 
@@ -368,6 +376,53 @@ namespace Kontro
             if ((DateTime.Now - _inicio) < TimeSpan.FromSeconds(6)) return;
 
             _toast?.Mostrar(s);
+        }
+
+        /// <summary>
+        /// Decide se a sobreposicao aparece agora, e onde.
+        ///
+        /// O modo "em jogo" se apoia no estado que o Windows relata sobre o que ocupa a
+        /// tela, em vez de tentar reconhecer jogos por nome de processo -- lista que
+        /// nunca estaria completa nem atualizada.
+        /// </summary>
+        private void AtualizarSobreposicao(BatteryState s)
+        {
+            if (_overlay == null || _settings == null) return;
+
+            bool ligada = _settings.OverlayMode != OverlayMode.Desligada;
+            bool temLeitura = s.Mode != LinkMode.Offline;
+            bool momentoCerto = _settings.OverlayMode == OverlayMode.Sempre || Native.EmTelaCheia();
+
+            if (ligada && temLeitura && momentoCerto)
+            {
+                _overlay.Aplicar(s);
+                if (!_overlay.IsVisible) _overlay.Show();
+                _overlay.Reposicionar();   // o jogo pode ter mudado de monitor
+                AvisarTelaCheiaExclusiva();
+            }
+            else if (_overlay.IsVisible)
+            {
+                _overlay.Hide();
+            }
+        }
+
+        /// <summary>
+        /// Em tela cheia exclusiva nenhuma janela comum e desenhada por cima. Sem
+        /// explicar isso, o usuario conclui que a sobreposicao esta quebrada. Avisamos
+        /// uma unica vez por sessao, com a saida pratica.
+        /// </summary>
+        private void AvisarTelaCheiaExclusiva()
+        {
+            if (_avisouTelaCheiaExclusiva) return;
+            if (!Native.EmTelaCheiaExclusiva()) return;
+
+            _avisouTelaCheiaExclusiva = true;
+            _tray?.ShowBalloonTip(
+                10000,
+                "A sobreposição não aparece neste jogo",
+                "Ele está em tela cheia exclusiva, onde o Windows não desenha outras janelas por cima. " +
+                "Troque para \"tela cheia em janela\" nas opções de vídeo do jogo.",
+                WF.ToolTipIcon.Info);
         }
 
         private void UpdateTray(BatteryState s)

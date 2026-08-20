@@ -152,6 +152,40 @@
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Text="Sobreposição na tela" Style="{StaticResource SubtitleText}" FontSize="14" />
+                                    <TextBlock Text="Medidor fixo num canto, como um contador de quadros."
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button x:Name="BtnOverlayMode" Grid.Column="1" Style="{StaticResource GhostButton}"
+                                        VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingRow}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                    <TextBlock Text="Canto da sobreposição" Style="{StaticResource SubtitleText}" FontSize="14" />
+                                    <TextBlock Text="Em qual canto do monitor em uso ela fica."
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Button x:Name="BtnOverlayCorner" Grid.Column="1" Style="{StaticResource GhostButton}"
+                                        VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingRow}">
                             <StackPanel>
                                 <Grid>
                                     <TextBlock Text="Aviso de bateria baixa" Style="{StaticResource SubtitleText}" FontSize="14" />
