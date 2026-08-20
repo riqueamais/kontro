@@ -286,6 +286,7 @@ namespace Kontro
                 SettingsChanged?.Invoke();
             }
             Hide();
+            SettingsChanged?.Invoke();
         }
 
         // ---------- atualizacoes ----------
@@ -330,9 +331,20 @@ namespace Kontro
             {
                 e.Cancel = true;
                 Hide();
+                SettingsChanged?.Invoke();
                 return;
             }
             QuitRequested?.Invoke();
+        }
+
+        /// <summary>
+        /// Esconder a janela muda a condicao da previa da sobreposicao, entao quem
+        /// observa as configuracoes precisa saber.
+        /// </summary>
+        protected override void OnDeactivated(EventArgs e)
+        {
+            base.OnDeactivated(e);
+            SettingsChanged?.Invoke();
         }
 
         public void ShowAndFocus()

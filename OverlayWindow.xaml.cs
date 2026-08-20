@@ -66,6 +66,11 @@ namespace Kontro
         /// </summary>
         public void Reposicionar()
         {
+            // Sem medida ainda -- janela escondida ou recem-criada -- ancorar pela
+            // direita ou por baixo colocaria a pilula quase toda fora da tela. O
+            // evento de tamanho chama este metodo de novo assim que houver medida.
+            if (ActualWidth <= 0 || ActualHeight <= 0) return;
+
             var tela = WF.Screen.PrimaryScreen;
             try
             {

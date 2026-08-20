@@ -114,6 +114,12 @@ namespace Kontro
                 await _monitor.PollAsync();
                 // mantem o "atualizado ha X" vivo enquanto o painel esta aberto
                 if (_flyout.IsVisible) _flyout.Apply(_monitor.Current);
+
+                // A visibilidade da sobreposicao depende do que ocupa a tela, e nao do
+                // estado da bateria. Reavaliar so quando a carga muda faria entrar e
+                // sair de um jogo nao ter efeito ate a proxima variacao de percentual,
+                // o que pode demorar muitos minutos.
+                AtualizarSobreposicao(_monitor.Current);
             };
             _timer.Start();
 
@@ -315,6 +321,7 @@ namespace Kontro
         {
             _flyout.Hide();
             _main.ShowAndFocus();
+            if (_monitor != null) AtualizarSobreposicao(_monitor.Current);
         }
 
         /// <summary>
@@ -391,9 +398,16 @@ namespace Kontro
 
             bool ligada = _settings.OverlayMode != OverlayMode.Desligada;
             bool temLeitura = s.Mode != LinkMode.Offline;
-            bool momentoCerto = _settings.OverlayMode == OverlayMode.Sempre || Native.EmTelaCheia();
+            bool emMomentoDeJogo = _settings.OverlayMode == OverlayMode.Sempre || Native.EmTelaCheia();
 
-            if (ligada && temLeitura && momentoCerto)
+            // Enquanto as configuracoes estao abertas a sobreposicao fica visivel de
+            // qualquer jeito, funcionando como previa. Sem isso, escolher o canto seria
+            // as cegas: ao clicar no botao a janela de configuracoes vira o primeiro
+            // plano, o app conclui que saiu do jogo e esconde justamente o que o usuario
+            // esta tentando posicionar.
+            bool ajustando = _main != null && _main.IsVisible;
+
+            if (ligada && (ajustando || (temLeitura && emMomentoDeJogo)))
             {
                 _overlay.Aplicar(s);
                 if (!_overlay.IsVisible) _overlay.Show();
