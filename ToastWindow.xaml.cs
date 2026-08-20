@@ -25,6 +25,9 @@ namespace Kontro
         private readonly DispatcherTimer _permanencia;
         private bool _saindo;
 
+        /// <summary>Comecou sem carga para mostrar e ainda espera a primeira leitura.</summary>
+        private bool _esperandoCarga;
+
         public ToastWindow()
         {
             InitializeComponent();
@@ -47,11 +50,22 @@ namespace Kontro
         public void Atualizar(BatteryState s)
         {
             if (!IsVisible || _saindo) return;
+
+            bool chegou = _esperandoCarga && !s.Stale && s.Preenchimento.HasValue;
             Aplicar(s);
+
+            // A carga chegando no ultimo segundo apareceria e sumiria junto. Reiniciar a
+            // permanencia da ao numero o mesmo tempo de leitura que ele teria se
+            // estivesse pronto desde o inicio.
+            if (!chegou) return;
+            _esperandoCarga = false;
+            _permanencia.Stop();
+            _permanencia.Start();
         }
 
         public void Mostrar(BatteryState s)
         {
+            _esperandoCarga = s.Stale || !s.Preenchimento.HasValue;
             Aplicar(s);
             Posicionar();
 
