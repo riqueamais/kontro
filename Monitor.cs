@@ -105,6 +105,13 @@ namespace Kontro
             /// a cada ciclo.
             /// </summary>
             public DateTime? Tentativa;
+
+            /// <summary>
+            /// Valor ainda nao confirmado, vindo da primeira leitura apos conectar.
+            /// Enquanto estiver assim ele nao entra no historico e conta como leitura
+            /// velha, para o app nao afirmar um numero que pode ser desmentido.
+            /// </summary>
+            public bool Provisorio;
         }
 
         private readonly History _history;
@@ -123,6 +130,19 @@ namespace Kontro
 
         /// <summary>Chaves vistas na ultima descoberta, ou seja, ligadas agora.</summary>
         private HashSet<string> _presentes = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>Leitura de conexao esperando confirmacao, e desde quando.</summary>
+        private (string Chave, int Percent, DateTime Quando)? _emObservacao;
+
+        /// <summary>
+        /// Quanto esperar antes de aceitar a primeira leitura de uma conexao.
+        ///
+        /// O controle responde a leitura inicial do GATT com um valor de espera -- 50%,
+        /// no Xbox Wireless Controller -- e so manda a medida real alguns segundos
+        /// depois, pelo Notify. Aceitar a primeira na hora sujava o historico e fazia o
+        /// aviso de conexao mostrar um numero que o resto do app contradizia em seguida.
+        /// </summary>
+        private static readonly TimeSpan EsperaDeConfirmacao = TimeSpan.FromSeconds(12);
 
         /// <summary>Espacamento entre leituras que exigem perguntar ao dispositivo.</summary>
         private static readonly TimeSpan IntervaloSemBluetooth = TimeSpan.FromSeconds(20);
@@ -212,11 +232,13 @@ namespace Kontro
                     var info = _known.Items.FirstOrDefault(i => i.Address == connected.Key);
                     if (info != null) { _active = info; _known.Touch(info.Address); }
                     await EnsureCharacteristicAsync(connected.Key);
+                    ConfirmarLeituraEmObservacao();
                     mode = LinkMode.Bluetooth;
                 }
                 else
                 {
                     DropGatt();
+                    _emObservacao = null;
                     bool wired = IsWired();
 
                     // Sem cabo e sem Bluetooth, o XInput ainda enxergar um controle so
@@ -355,7 +377,8 @@ namespace Kontro
             try
             {
                 var read = await ch.ReadValueAsync(BluetoothCacheMode.Uncached);
-                if (read.Status == GattCommunicationStatus.Success) Record(address, ReadByte(read.Value));
+                if (read.Status == GattCommunicationStatus.Success)
+                    Record(address, ReadByte(read.Value), provisorio: true);
             }
             catch { }
 
@@ -430,18 +453,59 @@ namespace Kontro
             }
         }
 
-        private void Record(ulong address, int percent)
+        private void Record(ulong address, int percent, bool provisorio = false)
         {
             if (percent < 0 || percent > 100) return;
             var info = _known.Items.FirstOrDefault(i => i.Address == address);
             string key = info?.Key ?? address.ToString("x12");
 
             var r = Get(key);
+
+            if (provisorio)
+            {
+                _emObservacao = (key, percent, DateTime.Now);
+
+                // Havendo leitura anterior confiavel, ela continua no ar: trocar por um
+                // valor que pode ser desmentido em segundos e o que fazia o numero
+                // piscar. Sem nada anterior, mostrar o provisorio ainda e melhor que um
+                // tracinho -- so que marcado, para o app nao afirmar o que nao sabe.
+                if (r.Precisao == Precisao.Exata && r.Percent.HasValue) return;
+
+                r.Percent = percent;
+                r.Nivel = null;
+                r.Precisao = Precisao.Exata;
+                r.At = DateTime.Now;
+                r.Provisorio = true;
+                return;
+            }
+
+            _emObservacao = null;
             r.Percent = percent;
             r.Nivel = null;
             r.Precisao = Precisao.Exata;
             r.At = DateTime.Now;
+            r.Provisorio = false;
             _history.Add(key, percent, r.At.Value);
+        }
+
+        /// <summary>
+        /// Aceita a leitura de conexao que ninguem desmentiu dentro da janela de espera.
+        /// Sem isto, controle que nao usa Notify nunca teria carga registrada.
+        /// </summary>
+        private void ConfirmarLeituraEmObservacao()
+        {
+            if (_emObservacao == null) return;
+            var (chave, percent, quando) = _emObservacao.Value;
+            if ((DateTime.Now - quando) < EsperaDeConfirmacao) return;
+
+            _emObservacao = null;
+            var r = Get(chave);
+            r.Percent = percent;
+            r.Nivel = null;
+            r.Precisao = Precisao.Exata;
+            r.At = DateTime.Now;
+            r.Provisorio = false;
+            _history.Add(chave, percent, r.At.Value);
         }
 
         private void DropGatt()
@@ -462,7 +526,7 @@ namespace Kontro
             var r = Get(key);
 
             // leitura recente por qualquer via conta como ao vivo, nao so o GATT
-            bool live = r.At.HasValue &&
+            bool live = r.At.HasValue && !r.Provisorio &&
                         (mode == LinkMode.Bluetooth ||
                          (DateTime.Now - r.At.Value) < IntervaloSemBluetooth * 2);
 
