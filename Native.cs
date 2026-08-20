@@ -15,6 +15,40 @@ namespace Kontro
         private const int DwmUseImmersiveDarkMode = 20;
         private const int DwmUseImmersiveDarkModeLegacy = 19; // builds do Windows 10 anteriores a 20H1
 
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int GetWindowLong(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern int SetWindowLong(IntPtr hwnd, int index, int novoEstilo);
+
+        [DllImport("user32.dll")]
+        internal static extern IntPtr GetForegroundWindow();
+
+        private const int GwlExStyle = -20;
+        private const int WsExTransparent = 0x00000020;  // o mouse atravessa a janela
+        private const int WsExLayered = 0x00080000;      // exigido pelo transparente
+        private const int WsExNoActivate = 0x08000000;   // nunca recebe foco
+        private const int WsExToolWindow = 0x00000080;   // fora do Alt+Tab
+
+        /// <summary>
+        /// Deixa a janela puramente visual: o clique passa direto para o que estiver
+        /// atras, ela nunca rouba o foco e nao aparece no Alt+Tab.
+        ///
+        /// Sem isso, um aviso sobreposto durante o jogo tiraria o foco da partida no
+        /// pior momento possivel, e um clique perdido pousaria nela em vez do jogo.
+        /// </summary>
+        internal static void MakeClickThrough(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero) return;
+            try
+            {
+                int estilo = GetWindowLong(hwnd, GwlExStyle);
+                SetWindowLong(hwnd, GwlExStyle,
+                    estilo | WsExTransparent | WsExLayered | WsExNoActivate | WsExToolWindow);
+            }
+            catch { }
+        }
+
         private const int DwmCaptionColor = 35;
         private const int DwmTextColor = 36;
         private const int DwmBorderColor = 34;

@@ -1,0 +1,44 @@
+<Window x:Class="Kontro.ToastWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Kontro"
+        Title="Kontro"
+        Width="352" Height="108"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        ShowActivated="False" Focusable="False" IsHitTestVisible="False"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+
+    <!-- a folga acomoda a sombra; o painel visivel comeca 16px para dentro -->
+    <Border Margin="16" CornerRadius="{StaticResource RadiusWindow}"
+            Background="{StaticResource Ink}"
+            BorderBrush="{StaticResource Stroke}" BorderThickness="1"
+            Effect="{StaticResource FlyoutShadow}">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Deslize" Y="-12" />
+        </Border.RenderTransform>
+
+        <Grid Margin="16,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0" Width="44" Height="44" VerticalAlignment="Center">
+                <local:RingControl x:Name="Ring" StrokeThickness="4"
+                                   TrackBrush="{StaticResource RingTrack}" />
+                <Viewbox MaxWidth="28" MaxHeight="18" Stretch="Uniform"
+                         HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock x:Name="PercentText" Style="{StaticResource DisplayText}" Text="--" />
+                </Viewbox>
+            </Grid>
+
+            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                <TextBlock x:Name="DeviceText" Style="{StaticResource SubtitleText}"
+                           Text="Controle" TextTrimming="CharacterEllipsis" />
+                <TextBlock x:Name="StateText" Style="{StaticResource CaptionText}"
+                           Margin="0,3,0,0" Text="" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

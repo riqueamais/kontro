@@ -20,6 +20,7 @@ namespace Kontro
         private BatteryMonitor _monitor;
         private FlyoutWindow _flyout;
         private MainWindow _main;
+        private ToastWindow _toast;
         private WF.NotifyIcon _tray;
         private DispatcherTimer _timer;
         private DispatcherTimer _updateTimer;
@@ -29,6 +30,8 @@ namespace Kontro
         // limiares ja avisados nesta carga; zerados quando a bateria sobe (carga nova)
         private readonly HashSet<int> _notified = new();
         private int _lastPercentSeen = -1;
+        private LinkMode _modoAnterior = LinkMode.Offline;
+        private DateTime _inicio = DateTime.Now;
         private string _pendingUpdateVersion;
 
         protected override void OnStartup(StartupEventArgs e)
@@ -70,6 +73,8 @@ namespace Kontro
                 await _monitor.PollAsync();
                 _flyout.Apply(_monitor.Current);
             };
+
+            _toast = new ToastWindow();
 
             _main = new MainWindow(_settings, _history);
             _main.QuitRequested += Quit;
@@ -163,6 +168,27 @@ namespace Kontro
                     if (saida != null) System.IO.File.WriteAllText(saida, texto);
                     Dispatcher.Invoke(Shutdown);
                 });
+                return true;
+            }
+
+            // mostra o aviso com um estado inventado, para conferir o desenho sem
+            // depender de ligar e desligar o controle
+            int toastIndex = Array.IndexOf(args, "--toast-demo");
+            if (toastIndex >= 0)
+            {
+                int pct = toastIndex + 1 < args.Length && int.TryParse(args[toastIndex + 1], out var v) ? v : 72;
+                var janela = new ToastWindow();
+                janela.Mostrar(new BatteryState
+                {
+                    Mode = LinkMode.Bluetooth,
+                    Percent = pct,
+                    ReadAt = DateTime.Now,
+                    DeviceName = "Xbox Wireless Controller",
+                    Key = "demo"
+                });
+                var relogio = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
+                relogio.Tick += (_, _) => Shutdown();
+                relogio.Start();
                 return true;
             }
 
@@ -321,7 +347,27 @@ namespace Kontro
                 _flyout.Apply(s);
                 _main.Apply(s);
                 CheckThresholds(s);
+                AvisarConexao(s);
             });
+        }
+
+        /// <summary>
+        /// Mostra o aviso quando o controle sai de desconectado para conectado.
+        ///
+        /// Os primeiros segundos sao ignorados de proposito: ao abrir o app o estado
+        /// parte de desconectado e logo encontra o controle, o que dispararia um aviso
+        /// em toda inicializacao sem nada ter acontecido de fato.
+        /// </summary>
+        private void AvisarConexao(BatteryState s)
+        {
+            var anterior = _modoAnterior;
+            _modoAnterior = s.Mode;
+
+            if (_settings == null || !_settings.ConnectToastEnabled) return;
+            if (anterior != LinkMode.Offline || s.Mode == LinkMode.Offline) return;
+            if ((DateTime.Now - _inicio) < TimeSpan.FromSeconds(6)) return;
+
+            _toast?.Mostrar(s);
         }
 
         private void UpdateTray(BatteryState s)

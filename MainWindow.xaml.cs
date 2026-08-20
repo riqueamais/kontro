@@ -130,6 +130,7 @@ namespace Kontro
             SwStartup.IsChecked = _settings.StartWithWindows;
             SwStartMinimized.IsChecked = _settings.StartMinimized;
             SwNotify.IsChecked = _settings.NotificationsEnabled;
+            SwConnectToast.IsChecked = _settings.ConnectToastEnabled;
             SwAutoUpdate.IsChecked = _settings.AutoCheckUpdates;
 
             SlWarn.Value = _settings.WarnThreshold;
@@ -149,6 +150,9 @@ namespace Kontro
 
             SwStartMinimized.Checked += (_, _) => Gravar(() => _settings.StartMinimized = true);
             SwStartMinimized.Unchecked += (_, _) => Gravar(() => _settings.StartMinimized = false);
+
+            SwConnectToast.Checked += (_, _) => Gravar(() => _settings.ConnectToastEnabled = true);
+            SwConnectToast.Unchecked += (_, _) => Gravar(() => _settings.ConnectToastEnabled = false);
 
             SwNotify.Checked += (_, _) => Gravar(() => _settings.NotificationsEnabled = true);
             SwNotify.Unchecked += (_, _) => Gravar(() => _settings.NotificationsEnabled = false);

@@ -70,6 +70,7 @@ Sinalizadores úteis durante o desenvolvimento:
 | `--diagnose <txt>` | Despeja o que a descoberta enxerga: HID por usage, Bluetooth pareado, resultado |
 | `--show` | Abre o painel já na inicialização |
 | `--check-update [arquivo] [--apply]` | Consulta as releases e, com `--apply`, baixa e instala |
+| `--toast-demo [pct]` | Mostra o aviso de conexão com um estado inventado |
 
 ## Publicando uma versão
 

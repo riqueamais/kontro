@@ -36,6 +36,9 @@ namespace Kontro
         public int WarnThreshold { get; set; } = 20;
         public int CriticalThreshold { get; set; } = 10;
 
+        /// <summary>Aviso passageiro no topo da tela quando o controle conecta.</summary>
+        public bool ConnectToastEnabled { get; set; } = true;
+
         public bool AutoCheckUpdates { get; set; } = true;
         public DateTime? LastUpdateCheck { get; set; }
         /// <summary>Versao que o usuario mandou ignorar, para nao insistir no aviso.</summary>
