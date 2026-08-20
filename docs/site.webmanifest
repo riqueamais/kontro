@@ -1,0 +1,28 @@
+{
+  "name": "Kontro",
+  "short_name": "Kontro",
+  "description": "Aplicativo gratuito e de código aberto para Windows que mostra a bateria do controle Xbox em tempo real na bandeja do sistema, lendo pelo Bluetooth.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0B0E11",
+  "theme_color": "#0B0E11",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
