@@ -10,8 +10,12 @@ namespace Kontro
     {
         private static readonly CultureInfo Br = CultureInfo.GetCultureInfo("pt-BR");
 
-        /// <summary>Folga entre o painel e o canto da bandeja.</summary>
-        private const double Folga = 12;
+        /// <summary>Respiro entre o painel e o canto da tela.</summary>
+        private const double Respiro = 12;
+
+        // folgas da janela que acomodam a sombra, iguais as margens do XAML
+        private const double FolgaDireita = 20;
+        private const double FolgaInferior = 44;
 
         /// <summary>Faixas de cor do anel, as mesmas que estao gravadas nos icones.</summary>
         private const int AmbarAbaixoDe = 60;
@@ -19,6 +23,7 @@ namespace Kontro
 
         private readonly History _history;
         private BatteryState _state;
+        private bool _saindo;
 
         public event Action SettingsRequested;
         public event Action RefreshRequested;
@@ -33,7 +38,7 @@ namespace Kontro
 
             SettingsButton.Click += (_, _) => { Hide(); SettingsRequested?.Invoke(); };
             RefreshButton.Click += (_, _) => RefreshRequested?.Invoke();
-            Deactivated += (_, _) => { if (!Pinned) Hide(); };
+            Deactivated += (_, _) => { if (!Pinned) Esconder(); };
         }
 
         // ---------- apresentacao ----------
@@ -145,24 +150,58 @@ namespace Kontro
             if (_state != null) Apply(_state);
 
             var area = SystemParameters.WorkArea;
-            // a borda visivel comeca 16px dentro da janela, por causa da sombra
-            Left = area.Right - Width + 16 - Folga;
-            Top = area.Bottom - Height + 16 - Folga;
+            // A borda visivel do painel nao coincide com a da janela: as folgas que
+            // acomodam a sombra ficam entre as duas. Ancorar pela janela deixaria o
+            // painel longe do canto, com um vao do tamanho da folga.
+            Left = area.Right - Width + FolgaDireita - Respiro;
+            Top = area.Bottom - Height + FolgaInferior - Respiro;
 
             Show();
             Activate();
 
-            Opacity = 0;
+            Animar(entrando: true);
+        }
+
+        /// <summary>
+        /// Sobe deslizando e aparecendo, no tempo de abertura do sistema de design.
+        /// Sair e mais rapido que entrar: esperar uma saida lenta incomoda, esperar
+        /// uma entrada lenta nao.
+        /// </summary>
+        private void Animar(bool entrando)
+        {
+            var duracao = TimeSpan.FromMilliseconds(entrando ? 240 : 120);
+            var suave = new CubicEase { EasingMode = entrando ? EasingMode.EaseOut : EasingMode.EaseIn };
+
+            if (entrando)
+            {
+                Opacity = 0;
+                Deslize.Y = 16;
+            }
+
             BeginAnimation(OpacityProperty,
-                new DoubleAnimation(1, TimeSpan.FromMilliseconds(240))
-                {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                });
+                new DoubleAnimation(entrando ? 1 : 0, duracao) { EasingFunction = suave });
+            Deslize.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(entrando ? 0 : 10, duracao) { EasingFunction = suave });
+        }
+
+        private void Esconder()
+        {
+            if (!IsVisible || _saindo) return;
+            _saindo = true;
+
+            var saida = new DoubleAnimation(0, TimeSpan.FromMilliseconds(120))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+            };
+            saida.Completed += (_, _) => { Hide(); _saindo = false; };
+            Deslize.BeginAnimation(TranslateTransform.YProperty,
+                new DoubleAnimation(10, TimeSpan.FromMilliseconds(120)));
+            BeginAnimation(OpacityProperty, saida);
         }
 
         public void Toggle()
         {
-            if (IsVisible) Hide();
+            if (IsVisible) Esconder();
             else ShowNearTray();
         }
     }

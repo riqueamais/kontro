@@ -3,16 +3,26 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Kontro"
         Title="Kontro"
-        Width="352" Height="252"
+        Width="368" Height="286"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
 
-    <!-- a janela e maior que o painel de proposito: a folga acomoda a sombra -->
-    <Border Margin="16" CornerRadius="{StaticResource RadiusWindow}"
+    <!--
+        As folgas nao sao decorativas: a sombra tem desfoque 32 e desce 18, entao
+        precisa de cerca de 34px de espaco abaixo do painel e 16 nas laterais para
+        se dissipar. Com folga menor que isso ela bate no limite da janela e corta
+        num quadrado. Por isso a margem inferior e bem maior que a superior.
+    -->
+    <Border x:Name="Painel" Margin="20,8,20,44"
+            CornerRadius="{StaticResource RadiusWindow}"
             Background="{StaticResource Ink}"
             BorderBrush="{StaticResource Stroke}" BorderThickness="1"
-            Effect="{StaticResource FlyoutShadow}">
+            Effect="{StaticResource FlyoutShadow}"
+            RenderTransformOrigin="0.5,1">
+        <Border.RenderTransform>
+            <TranslateTransform x:Name="Deslize" Y="16" />
+        </Border.RenderTransform>
 
         <Grid Margin="16">
             <Grid.RowDefinitions>
