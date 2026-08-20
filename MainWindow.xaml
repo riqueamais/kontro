@@ -73,61 +73,81 @@
                     <StackPanel>
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,56,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Iniciar com o Windows" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Sobe junto com o sistema e já começa a monitorar."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <CheckBox x:Name="SwStartup" Style="{StaticResource ToggleSwitch}"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <CheckBox Grid.Column="1" x:Name="SwStartup" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,56,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Iniciar minimizado" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Abre direto na bandeja, sem mostrar esta janela."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <CheckBox x:Name="SwStartMinimized" Style="{StaticResource ToggleSwitch}"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <CheckBox Grid.Column="1" x:Name="SwStartMinimized" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,180,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Ao clicar no X" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Decide se o app continua vivo em segundo plano."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <Button x:Name="BtnCloseAction" Style="{StaticResource GhostButton}"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" x:Name="BtnCloseAction" Style="{StaticResource GhostButton}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,56,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Avisar com bateria baixa" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Só no Bluetooth, que é onde existe percentual real."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <CheckBox x:Name="SwNotify" Style="{StaticResource ToggleSwitch}"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <CheckBox Grid.Column="1" x:Name="SwNotify" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,56,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Avisar ao conectar" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Mostra a carga no topo da tela quando o controle liga."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <CheckBox x:Name="SwConnectToast" Style="{StaticResource ToggleSwitch}"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <CheckBox Grid.Column="1" x:Name="SwConnectToast" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
@@ -163,25 +183,32 @@
                     <StackPanel>
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,56,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock Text="Procurar automaticamente" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock Text="Consulta as releases uma vez por dia e avisa se houver versão nova."
-                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
+                                               Style="{StaticResource CaptionText}" Margin="0,2,0,0"
+                                               TextWrapping="Wrap" />
                                 </StackPanel>
-                                <CheckBox x:Name="SwAutoUpdate" Style="{StaticResource ToggleSwitch}"
-                                          HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <CheckBox Grid.Column="1" x:Name="SwAutoUpdate" Style="{StaticResource ToggleSwitch}" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
 
                         <Border Style="{StaticResource SettingRow}">
                             <Grid>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,140,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                     <TextBlock x:Name="VersionText" Style="{StaticResource SubtitleText}" FontSize="14" />
                                     <TextBlock x:Name="UpdateStatus" Style="{StaticResource CaptionText}" Margin="0,2,0,0" />
                                 </StackPanel>
-                                <Button x:Name="BtnCheckUpdate" Style="{StaticResource GhostButton}"
-                                        Content="Procurar agora"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center" />
+                                <Button Grid.Column="1" x:Name="BtnCheckUpdate" Style="{StaticResource GhostButton}"
+                                        Content="Procurar agora" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
                     </StackPanel>
