@@ -454,6 +454,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   var BASE = 'https://riqueamais.github.io/kontro/';
   var TITULO = 'Kontro · bateria do controle Xbox na bandeja do Windows';
   var DESCRICAO = 'Aplicativo gratuito e de código aberto para Windows que mostra a bateria do controle Xbox em tempo real na bandeja do sistema, lendo pelo Bluetooth.';
+  var LD = '{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Kontro","description":"Aplicativo gratuito e de código aberto para Windows que mostra a bateria do controle Xbox em tempo real na bandeja do sistema, lendo pelo Bluetooth.","url":"https://riqueamais.github.io/kontro/","downloadUrl":"https://github.com/riqueamais/kontro/releases/latest","softwareVersion":"1.1.1","applicationCategory":"UtilitiesApplication","operatingSystem":"Windows 10, Windows 11","inLanguage":"pt-BR","license":"https://github.com/riqueamais/kontro/blob/main/LICENSE","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"BRL"},"author":{"@type":"Person","name":"riqueamais","url":"https://github.com/riqueamais"},"image":"https://riqueamais.github.io/kontro/banner.png","screenshot":"https://riqueamais.github.io/kontro/banner.png"}';
   var ALT = 'Kontro: o icone de anel mostrando a carga do controle na bandeja do Windows';
 
   var metas = [
@@ -540,7 +541,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         var s = document.createElement('script');
         s.id = 'kontro-ld';
         s.type = 'application/ld+json';
-        s.textContent = document.getElementById('kontro-ld-fonte').textContent;
+        s.textContent = LD;
         document.head.appendChild(s);
       }
       if (!document.getElementById('kontro-responsivo')) {
