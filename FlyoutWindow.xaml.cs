@@ -34,6 +34,9 @@ namespace Kontro
         public FlyoutWindow(History history)
         {
             InitializeComponent();
+            // O icone do app tem os analogicos recortados; o recurso do XAML e so o
+            // corpo. Usar a mesma geometria da bandeja mantem a marca igual em todo lugar.
+            Glifo.Data = ControllerGeometry.PadWithHollowSticks();
             _history = history;
 
             SettingsButton.Click += (_, _) => { Hide(); SettingsRequested?.Invoke(); };
@@ -51,6 +54,9 @@ namespace Kontro
             var pincel = new SolidColorBrush(cor);
             pincel.Freeze();
             Ring.RingBrush = pincel;
+
+            Ring.Carregando = s.Girando;
+            Glifo.Visibility = s.Girando ? Visibility.Visible : Visibility.Collapsed;
 
             AplicarLeitura(s);
             AnimarAnel(s);
@@ -130,6 +136,9 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
+            // na energia a cor nao fala de carga, fala de estar carregando
+            if (s.Girando) return ControllerGeometry.Teal;
+
             int? nivel = s.Mode == LinkMode.Offline ? null : s.Preenchimento;
             if (nivel == null) return ControllerGeometry.Gray;
             if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;
@@ -140,8 +149,10 @@ namespace Kontro
         /// <summary>O anel nunca salta entre percentuais: a troca leva 180ms.</summary>
         private void AnimarAnel(BatteryState s)
         {
-            // no cabo o anel fica cheio e cinza, dizendo "estou ligado, sem numero"
-            double alvo = s.Preenchimento ?? (s.Mode == LinkMode.Cable ? 100 : 0);
+            // girando, o valor nao e desenhado: quem manda no anel e a animacao
+            if (s.Girando) return;
+
+            double alvo = s.Preenchimento ?? 0;
             Ring.BeginAnimation(RingControl.ValueProperty,
                 new DoubleAnimation(alvo, TimeSpan.FromMilliseconds(180))
                 {

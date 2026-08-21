@@ -46,6 +46,12 @@
                              HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock x:Name="PercentText" Style="{StaticResource DisplayText}" Text="--" />
                     </Viewbox>
+                    <!-- ocupa o miolo quando nao ha numero: anel vazio parece defeito,
+                     o controle diz de quem e a carga que esta sendo esperada -->
+                    <Path x:Name="Glifo" Width="38" Height="38" Stretch="Uniform"
+                      Fill="{StaticResource TextSecondary}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Visibility="Collapsed" />
                 </Grid>
 
                 <StackPanel Grid.Column="1" Margin="16,0,0,0" VerticalAlignment="Center">

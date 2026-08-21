@@ -34,6 +34,15 @@ namespace Kontro
         private int _lastPercentSeen = -1;
         private LinkMode _modoAnterior = LinkMode.Offline;
 
+        /// <summary>
+        /// De quanto em quanto tempo procurar versao nova.
+        ///
+        /// Eram vinte e quatro horas, o que somado ao relogio de seis significava saber
+        /// de uma release quase um dia depois dela sair. A consulta e uma requisicao
+        /// pequena a API do GitHub, entao esse custo nao justificava a espera.
+        /// </summary>
+        private static readonly TimeSpan JanelaDeChecagem = TimeSpan.FromHours(3);
+
         /// <summary>Conexao que ainda espera uma leitura para virar aviso.</summary>
         private DateTime? _conexaoAAvisar;
 
@@ -144,11 +153,70 @@ namespace Kontro
             };
             _timer.Start();
 
-            _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(6) };
+            // O intervalo do relogio e curto de proposito: quem manda no ritmo e a
+            // janela abaixo. Assim a checagem cai perto da hora certa em vez de escorregar
+            // meio ciclo, e uma maquina que fica dias ligada nao passa o dia sem olhar.
+            _updateTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(30) };
             _updateTimer.Tick += async (_, _) => await MaybeCheckUpdatesAsync();
             _updateTimer.Start();
 
             _ = StartupSequenceAsync(Array.Exists(e.Args, a => a == "--show"));
+        }
+
+        /// <summary>
+        /// Estados inventados para conferir o desenho de cada aviso sem depender de
+        /// ligar, desligar e plugar o controle a cada ajuste.
+        /// </summary>
+        private static (BatteryState, AvisoDeLigacao) CenarioDeAviso(string nome)
+        {
+            const string dispositivo = "Controle sem fio";
+
+            switch (nome)
+            {
+                case "cabo":
+                    return (new BatteryState
+                    {
+                        Mode = LinkMode.Cable,
+                        Charging = true,
+                        ReadAt = DateTime.Now,
+                        DeviceName = dispositivo,
+                        Key = "demo"
+                    }, AvisoDeLigacao.TrocouDeVia);
+
+                case "saiu":
+                    return (new BatteryState
+                    {
+                        Mode = LinkMode.Offline,
+                        Percent = 68,
+                        Precisao = Precisao.Exata,
+                        Stale = true,
+                        ReadAt = DateTime.Now.AddMinutes(-3),
+                        DeviceName = dispositivo,
+                        Key = "demo"
+                    }, AvisoDeLigacao.Desconectou);
+
+                case "degrau":
+                    return (new BatteryState
+                    {
+                        Mode = LinkMode.Wireless,
+                        Nivel = 2,
+                        Precisao = Precisao.Aproximada,
+                        ReadAt = DateTime.Now,
+                        DeviceName = "Controle por dongle",
+                        Key = "demo"
+                    }, AvisoDeLigacao.Conectou);
+
+                default:
+                    return (new BatteryState
+                    {
+                        Mode = LinkMode.Bluetooth,
+                        Percent = int.TryParse(nome, out var v) ? v : 72,
+                        Precisao = Precisao.Exata,
+                        ReadAt = DateTime.Now,
+                        DeviceName = dispositivo,
+                        Key = "demo"
+                    }, AvisoDeLigacao.Conectou);
+            }
         }
 
         /// <summary>Modos utilitarios que nao sobem a interface. Retorna true se tratou.</summary>
@@ -208,17 +276,10 @@ namespace Kontro
             int toastIndex = Array.IndexOf(args, "--toast-demo");
             if (toastIndex >= 0)
             {
-                int pct = toastIndex + 1 < args.Length && int.TryParse(args[toastIndex + 1], out var v) ? v : 72;
+                string cenario = toastIndex + 1 < args.Length ? args[toastIndex + 1] : "72";
                 var janela = new ToastWindow();
-                janela.Mostrar(new BatteryState
-                {
-                    Mode = LinkMode.Bluetooth,
-                    Percent = pct,
-                    Precisao = Precisao.Exata,
-                    ReadAt = DateTime.Now,
-                    DeviceName = "Controle sem fio",
-                    Key = "demo"
-                });
+                var (estado, assunto) = CenarioDeAviso(cenario);
+                janela.Mostrar(estado, assunto);
                 var relogio = new DispatcherTimer { Interval = TimeSpan.FromSeconds(9) };
                 relogio.Tick += (_, _) => Shutdown();
                 relogio.Start();
@@ -238,6 +299,7 @@ namespace Kontro
             }
 
             int makeIndex = Array.IndexOf(args, "--make-icon");
+
             if (makeIndex >= 0 && makeIndex + 1 < args.Length)
             {
                 string ico = args[makeIndex + 1];
@@ -413,16 +475,38 @@ namespace Kontro
         {
             var anterior = _modoAnterior;
             _modoAnterior = s.Mode;
+            if (anterior == s.Mode) return;
 
-            if (s.Mode == LinkMode.Offline) { _conexaoAAvisar = null; return; }
             if (_settings == null || !_settings.ConnectToastEnabled) return;
-            if (anterior != LinkMode.Offline) return;
-            if ((DateTime.Now - _inicio) < TimeSpan.FromSeconds(6)) return;
 
-            // Conectar e um evento; ter a carga e outro, alguns segundos depois. O aviso
-            // fica marcado aqui e sai quando o numero existe -- assim ele nasce pronto,
-            // em vez de aparecer dizendo que esta lendo.
-            _conexaoAAvisar = DateTime.Now;
+            // Os primeiros segundos sao ignorados de proposito: ao abrir, o app parte de
+            // desconectado e logo encontra o controle, o que viraria um aviso em toda
+            // inicializacao sem nada ter acontecido.
+            if ((DateTime.Now - _inicio) < TimeSpan.FromSeconds(6))
+            {
+                _conexaoAAvisar = null;
+                return;
+            }
+
+            if (s.Mode == LinkMode.Offline)
+            {
+                // nao ha leitura a esperar: o controle acabou de sair
+                _conexaoAAvisar = null;
+                _toast?.Mostrar(s, AvisoDeLigacao.Desconectou);
+                return;
+            }
+
+            if (anterior == LinkMode.Offline)
+            {
+                // Conectar e um evento; ter a carga e outro, alguns segundos depois. O
+                // aviso fica marcado aqui e sai quando o numero existe -- assim ele nasce
+                // pronto, em vez de aparecer dizendo que esta lendo.
+                _conexaoAAvisar = DateTime.Now;
+                return;
+            }
+
+            // seguia ligado e trocou de via: cabo para sem fio, ou o contrario
+            _toast?.Mostrar(s, AvisoDeLigacao.TrocouDeVia);
         }
 
         /// <summary>Solta o aviso marcado quando a carga chega, ou quando a espera acaba.</summary>
@@ -555,7 +639,7 @@ namespace Kontro
         {
             if (_settings == null || !_settings.AutoCheckUpdates) return;
             if (_settings.LastUpdateCheck.HasValue &&
-                (DateTime.Now - _settings.LastUpdateCheck.Value) < TimeSpan.FromHours(24)) return;
+                (DateTime.Now - _settings.LastUpdateCheck.Value) < JanelaDeChecagem) return;
 
             try
             {

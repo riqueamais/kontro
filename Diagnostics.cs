@@ -91,6 +91,7 @@ namespace Kontro
                     : "HID";
                 sb.AppendLine($"   {c.Name}   [{c.PrettyAddress ?? via}]");
                 sb.AppendLine($"      chave={c.Key}   via={via}");
+                if (!string.IsNullOrEmpty(c.ContainerId)) sb.AppendLine($"      container={c.ContainerId}");
                 if (!string.IsNullOrEmpty(c.HidId)) sb.AppendLine($"      hid={c.HidId}");
             }
 

@@ -18,6 +18,9 @@ namespace Kontro
         private DialogWindow()
         {
             InitializeComponent();
+            // O icone do app tem os analogicos recortados; o recurso do XAML e so o
+            // corpo. Usar a mesma geometria da bandeja mantem a marca igual em todo lugar.
+            Glifo.Data = ControllerGeometry.PadWithHollowSticks();
 
             // sem barra de titulo, arrastar so funciona se a propria janela ouvir
             Painel.MouseLeftButtonDown += (_, e) =>

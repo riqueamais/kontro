@@ -71,6 +71,12 @@ namespace Kontro
         };
 
         /// <summary>
+        /// No cabo e sem percentual: nao ha numero para mostrar, mas ha o que dizer --
+        /// esta na energia. O anel gira em vez de ficar vazio.
+        /// </summary>
+        public bool Girando => Mode == LinkMode.Cable && Preenchimento == null;
+
+        /// <summary>
         /// Controle ligado do qual nao se conseguiu carga alguma. Acontece com controle
         /// que so existe para o XInput e nao reporta bateria: dizer isso e mais util que
         /// mostrar um tracinho e deixar o usuario achando que o app travou.
@@ -144,13 +150,24 @@ namespace Kontro
         /// </summary>
         private DateTime? _conectadoDesde;
 
+        /// <summary>Desde quando o controle esta ligado desta forma, seja qual for a via.</summary>
+        private DateTime _viaDesde = DateTime.Now;
+        private LinkMode _viaAnterior = LinkMode.Offline;
+
+        private void MarcarVia(LinkMode modo)
+        {
+            if (_viaAnterior == modo) return;
+            _viaAnterior = modo;
+            _viaDesde = DateTime.Now;
+        }
+
         /// <summary>
         /// Quanto esperar antes de aceitar a primeira leitura de uma conexao.
         ///
-        /// O controle responde a leitura inicial do GATT com um valor de espera -- 50%,
-        /// no Xbox Wireless Controller -- e so manda a medida real alguns segundos
-        /// depois, pelo Notify. Aceitar a primeira na hora sujava o historico e fazia o
-        /// aviso de conexao mostrar um numero que o resto do app contradizia em seguida.
+        /// Ha controle que responde a leitura inicial do GATT com um valor de espera --
+        /// 50%, num caso medido aqui -- e so manda a medida real alguns segundos depois,
+        /// pelo Notify. Aceitar a primeira na hora sujava o historico e fazia o aviso de
+        /// conexao mostrar um numero que o resto do app contradizia em seguida.
         /// </summary>
         private static readonly TimeSpan EsperaDeConfirmacao = TimeSpan.FromSeconds(12);
 
@@ -244,6 +261,7 @@ namespace Kontro
                     await EnsureCharacteristicAsync(connected.Key);
                     ConfirmarLeituraEmObservacao();
                     mode = LinkMode.Bluetooth;
+                    MarcarVia(mode);
                 }
                 else
                 {
@@ -257,6 +275,7 @@ namespace Kontro
                     mode = wired ? LinkMode.Cable
                          : Native.AnyControllerPresent() ? LinkMode.Wireless
                          : LinkMode.Offline;
+                    MarcarVia(mode);
 
                     // quem esta na tomada agora vem antes de quem so foi visto um dia
                     var best = _known.Items
@@ -432,13 +451,15 @@ namespace Kontro
             r.Tentativa = DateTime.Now;
 
             // da via mais precisa para a menos: percentual do proprio HID, percentual
-            // que o Windows guarda, degrau do slot certo do XInput, degrau de qualquer
-            // slot, e por fim adivinhar pelo nome do dispositivo
+            // que o Windows guarda para aquele no, degrau do slot certo do XInput, degrau
+            // de qualquer slot e, por fim, a carga publicada em outro no do mesmo aparelho
             var leitura = await BatteryReaders.LerHidAsync(info.HidId);
-            if (!leitura.Tem) leitura = await BatteryReaders.LerPropriedadeDoWindowsAsync(info.InstanceId);
+            if (!leitura.Tem)
+                leitura = await BatteryReaders.LerPropriedadeDoWindowsAsync(info.InstanceId, _viaDesde);
             if (!leitura.Tem && info.XInputSlot >= 0) leitura = BatteryReaders.LerXInputDoSlot(info.XInputSlot);
             if (!leitura.Tem) leitura = BatteryReaders.LerXInput();
-            if (!leitura.Tem) leitura = await BatteryReaders.ProcurarCargaDeControleAsync();
+            if (!leitura.Tem)
+                leitura = await BatteryReaders.LerPorContainerAsync(info.ContainerId, _viaDesde);
 
             if (!leitura.Tem) return;
 

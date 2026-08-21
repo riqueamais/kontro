@@ -55,10 +55,10 @@ namespace Kontro
             pincel.Freeze();
             Ring.RingBrush = pincel;
 
-            // sem leitura no cabo o anel cheio em cinza ao menos diz "ligado"
-            if (s.Mode == LinkMode.Cable && s.Preenchimento == null)
+            Ring.Carregando = s.Girando;
+            if (s.Girando)
             {
-                Ring.Value = 100;
+                // o giro ja diz "na energia"; o texto so precisa nomear a via
                 PercentText.Text = "cabo";
                 return;
             }
@@ -119,6 +119,8 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
+            if (s.Girando) return ControllerGeometry.Teal;
+
             int? nivel = s.Preenchimento;
             if (nivel == null) return ControllerGeometry.Gray;
             if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;

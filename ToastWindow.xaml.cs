@@ -8,6 +8,15 @@ using WF = System.Windows.Forms;
 
 namespace Kontro
 {
+    /// <summary>Do que este aviso trata.</summary>
+    public enum AvisoDeLigacao
+    {
+        Conectou,
+        Desconectou,
+        /// <summary>Estava sem fio e passou para o cabo, ou o contrario.</summary>
+        TrocouDeVia
+    }
+
     /// <summary>
     /// Aviso passageiro no topo da tela quando o controle conecta.
     ///
@@ -32,9 +41,14 @@ namespace Kontro
         /// <summary>Comecou sem carga para mostrar e ainda espera a primeira leitura.</summary>
         private bool _esperandoCarga;
 
+        private AvisoDeLigacao _assunto = AvisoDeLigacao.Conectou;
+
         public ToastWindow()
         {
             InitializeComponent();
+            // O icone do app tem os analogicos recortados; o recurso do XAML e so o
+            // corpo. Usar a mesma geometria da bandeja mantem a marca igual em todo lugar.
+            Glifo.Data = ControllerGeometry.PadWithHollowSticks();
 
             SourceInitialized += (_, _) =>
                 Native.MakeClickThrough(new WindowInteropHelper(this).Handle);
@@ -67,9 +81,13 @@ namespace Kontro
             _permanencia.Start();
         }
 
-        public void Mostrar(BatteryState s)
+        public void Mostrar(BatteryState s, AvisoDeLigacao assunto = AvisoDeLigacao.Conectou)
         {
-            _esperandoCarga = s.Stale || !s.Preenchimento.HasValue;
+            _assunto = assunto;
+
+            // desconectado nao tem leitura para esperar: o assunto ja acabou
+            _esperandoCarga = assunto != AvisoDeLigacao.Desconectou
+                              && (s.Stale || !s.Preenchimento.HasValue);
             Aplicar(s);
             Posicionar();
 
@@ -99,11 +117,28 @@ namespace Kontro
             pincel.Freeze();
             Ring.RingBrush = pincel;
 
+            Ring.Carregando = s.Girando;
+            Glifo.Visibility = s.Girando ? Visibility.Visible : Visibility.Collapsed;
+
+            if (_assunto == AvisoDeLigacao.Desconectou)
+            {
+                // A ultima carga conhecida vale como referencia -- "desligou com 68%" e
+                // uma informacao util -- desde que fique claro que e memoria, nao medida.
+                PercentText.Visibility = Visibility.Collapsed;
+                StateText.Text = s.Preenchimento.HasValue
+                    ? "desconectado · " + s.TextoDaCarga + " na última leitura"
+                    : "desconectado";
+                Ring.Value = s.Preenchimento ?? 0;
+                return;
+            }
+
             if (s.Mode == LinkMode.Cable)
             {
                 PercentText.Visibility = Visibility.Collapsed;
-                StateText.Text = s.Charging ? "conectado · carregando" : "conectado pelo cabo";
-                Ring.Value = 100;
+                StateText.Text = _assunto == AvisoDeLigacao.TrocouDeVia
+                    ? (s.Charging ? "agora no cabo · carregando" : "agora no cabo")
+                    : (s.Charging ? "conectado · carregando" : "conectado pelo cabo");
+                if (!s.Girando) Ring.Value = s.Preenchimento ?? 100;
             }
             else if (s.Stale)
             {
@@ -120,10 +155,11 @@ namespace Kontro
                 // viram texto embaixo, onde ha espaco para uma frase
                 PercentText.Visibility = s.TemNumero ? Visibility.Visible : Visibility.Collapsed;
                 PercentText.Text = s.TextoDaCarga;
+                string abertura = _assunto == AvisoDeLigacao.TrocouDeVia ? "agora" : "conectado";
                 StateText.Text =
-                    s.TemNumero ? "conectado · " + s.TextoDaLigacao
+                    s.TemNumero ? abertura + " · " + s.TextoDaLigacao
                     : s.Preenchimento.HasValue ? s.TextoDaCarga + " · " + s.TextoDaLigacao
-                    : "conectado · " + s.TextoDaLigacao + " · sem leitura de bateria";
+                    : abertura + " · " + s.TextoDaLigacao + " · sem leitura de bateria";
                 Ring.Value = s.Preenchimento ?? 0;
             }
         }
@@ -177,6 +213,7 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
+            if (s.Girando) return ControllerGeometry.Teal;
             if (s.Mode == LinkMode.Cable || s.Stale || !s.Preenchimento.HasValue)
                 return ControllerGeometry.Gray;
             if (s.Preenchimento < VermelhoAbaixoDe) return ControllerGeometry.Red;

@@ -26,7 +26,6 @@
                 <Grid Width="34" Height="34" VerticalAlignment="Center" Margin="0,0,12,0">
                     <Ellipse Stroke="{StaticResource StrokeStrong}" StrokeThickness="2" />
                     <Path x:Name="Glifo" Width="17" Height="17" Stretch="Uniform"
-                          Data="{StaticResource ControllerPad}"
                           Fill="{StaticResource TextSecondary}"
                           HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>

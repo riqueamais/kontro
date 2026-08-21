@@ -37,7 +37,9 @@ namespace Kontro
         private const ushort PaginaControlesGenericos = 0x0006;
         private const ushort UsageCargaDaBateria = 0x0020;
         private const string ChavePnpNivel = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2";
+        private const string ChavePnpMomento = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 7";
         private const string ChavePnpInstancia = "System.Devices.DeviceInstanceId";
+        private const string ChavePnpContainer = "System.Devices.ContainerId";
 
         /// <summary>
         /// Le a carga pelo proprio HID, que e por onde boa parte dos controles de dongle
@@ -103,13 +105,20 @@ namespace Kontro
         /// <summary>
         /// Carga que o Windows mantem para o dispositivo. Funciona para varios
         /// perifericos ligados por dongle, nao so Bluetooth, desde que o driver informe.
+        ///
+        /// O parametro <paramref name="desde"/> descarta valor anterior a ligacao atual.
+        /// Isso importa no cabo: o Windows guarda a ultima carga que o controle informou
+        /// por Bluetooth e continua devolvendo esse numero depois de plugado, quando o
+        /// controle ja trocou de protocolo e nao mede mais nada. Sem a data, uma carga
+        /// da sessao passada se passaria por leitura do cabo.
         /// </summary>
-        internal static async Task<Leitura> LerPropriedadeDoWindowsAsync(string idInstancia)
+        internal static async Task<Leitura> LerPropriedadeDoWindowsAsync(
+            string idInstancia, DateTime? desde = null)
         {
             if (string.IsNullOrEmpty(idInstancia)) return Leitura.Vazia;
             try
             {
-                var props = new[] { ChavePnpNivel, ChavePnpInstancia };
+                var props = new[] { ChavePnpNivel, ChavePnpMomento, ChavePnpInstancia };
                 var nos = await DeviceInformation.FindAllAsync("", props, DeviceInformationKind.Device);
                 foreach (var no in nos)
                 {
@@ -117,6 +126,14 @@ namespace Kontro
                     if (!no.Properties.TryGetValue(ChavePnpInstancia, out var id)) continue;
                     if (id is not string texto) continue;
                     if (texto.IndexOf(idInstancia, StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    // Data anterior a ligacao atual significa carga de outra sessao.
+                    // Quando o driver nao carimba data nenhuma, o valor passa: descartar
+                    // por falta de carimbo tiraria do ar fontes que funcionam.
+                    if (desde.HasValue
+                        && no.Properties.TryGetValue(ChavePnpMomento, out var momento)
+                        && momento is DateTimeOffset quando
+                        && quando.LocalDateTime < desde.Value) continue;
 
                     int pct = Convert.ToInt32(bruto);
                     if (pct is >= 0 and <= 100) return new Leitura(pct, Precisao.Exata);
@@ -152,42 +169,32 @@ namespace Kontro
         }
 
         /// <summary>
-        /// Ultimo recurso para controle que nao e HID: procurar, entre os dispositivos
-        /// cuja carga o Windows conhece, algum que se pareca com controle pelo nome.
+        /// Carga por container, ou seja, pelo aparelho fisico.
         ///
-        /// E frouxo de proposito. Sem id de instancia -- que um controle so-XInput nao
-        /// nos da -- nao ha como casar com precisao, entao isto so entra depois que toda
-        /// via direta falhou, e ainda assim mede o nome antes de acreditar.
+        /// Um controle aparece no Windows como varios nos: a interface que o app abriu, o
+        /// no do dispositivo, o do adaptador. A carga costuma viver em um deles, e nem
+        /// sempre naquele cujo id o app conhece. O container e o que amarra todos ao mesmo
+        /// aparelho, entao procurar por ele encontra a carga sem depender de qual no a
+        /// publica -- e sem precisar reconhecer fabricante nenhum, que seria uma lista
+        /// eternamente incompleta.
         /// </summary>
-        internal static async Task<Leitura> ProcurarCargaDeControleAsync()
+        internal static async Task<Leitura> LerPorContainerAsync(string container, DateTime? desde = null)
         {
-            string[] pistas =
-            {
-                "control", "gamepad", "joystick", "xbox", "gamesir",
-                "dualsense", "dualshock", "wireless receiver"
-            };
+            if (string.IsNullOrWhiteSpace(container)) return Leitura.Vazia;
             try
             {
-                var props = new[] { ChavePnpNivel, ChavePnpInstancia };
+                var props = new[] { ChavePnpNivel, ChavePnpMomento, ChavePnpContainer };
                 var nos = await DeviceInformation.FindAllAsync("", props, DeviceInformationKind.Device);
                 foreach (var no in nos)
                 {
                     if (!no.Properties.TryGetValue(ChavePnpNivel, out var bruto) || bruto == null) continue;
+                    if (!no.Properties.TryGetValue(ChavePnpContainer, out var c)) continue;
+                    if (!MesmoContainer(c, container)) continue;
 
-                    // Dispositivo Bluetooth fica de fora, e essa e a trava que impede o
-                    // erro pior possivel aqui: o Windows guarda a ultima carga de um
-                    // controle pareado mesmo desligado, e sem esta linha um controle de
-                    // dongle mudo herdaria a porcentagem de outro controle da casa.
-                    no.Properties.TryGetValue(ChavePnpInstancia, out var id);
-                    var instancia = (id as string ?? string.Empty).ToUpperInvariant();
-                    if (instancia.StartsWith("BTHLE", StringComparison.Ordinal)
-                        || instancia.StartsWith("BTHENUM", StringComparison.Ordinal)) continue;
-
-                    var nome = (no.Name ?? string.Empty).ToLowerInvariant();
-                    bool parece = false;
-                    foreach (var pista in pistas)
-                        if (nome.Contains(pista)) { parece = true; break; }
-                    if (!parece) continue;
+                    if (desde.HasValue
+                        && no.Properties.TryGetValue(ChavePnpMomento, out var momento)
+                        && momento is DateTimeOffset quando
+                        && quando.LocalDateTime < desde.Value) continue;
 
                     int pct = Convert.ToInt32(bruto);
                     if (pct is >= 0 and <= 100) return new Leitura(pct, Precisao.Exata);
@@ -195,6 +202,19 @@ namespace Kontro
             }
             catch { }
             return Leitura.Vazia;
+        }
+
+        /// <summary>O container tanto vem como Guid quanto como texto, conforme a consulta.</summary>
+        private static bool MesmoContainer(object valor, string alvo)
+        {
+            string texto = valor switch
+            {
+                null => null,
+                Guid g => g.ToString("B"),
+                _ => valor.ToString()
+            };
+            return !string.IsNullOrEmpty(texto)
+                && string.Equals(texto, alvo, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>Texto para uma leitura aproximada, que nao tem numero para mostrar.</summary>

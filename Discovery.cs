@@ -31,6 +31,13 @@ namespace Kontro
         public int XInputSlot { get; set; } = -1;
 
         /// <summary>
+        /// Container do aparelho fisico. E o que amarra as varias interfaces do mesmo
+        /// controle -- HID, XUSB, no do dispositivo -- e por isso serve para achar a
+        /// carga mesmo quando ela nao esta no no que o app abriu.
+        /// </summary>
+        public string ContainerId { get; set; }
+
+        /// <summary>
         /// Identidade estavel do controle. Com Bluetooth e o endereco; sem ele, o
         /// proprio id da interface, que ja carrega fabricante, produto e uma parte
         /// especifica daquela conexao.
@@ -113,6 +120,7 @@ namespace Kontro
                     Name = nome,
                     HidId = g.IdHid,
                     InstanceId = g.IdInstancia,
+                    ContainerId = g.Container,
                     LastSeen = DateTime.Now
                 });
                 containersHid.Add(g.Container);
@@ -151,20 +159,20 @@ namespace Kontro
 
             var xusb = await DispositivosXusbAsync();
 
-            List<(string Nome, string Instancia)> somente;
+            List<(string Nome, string Instancia, string Container)> somente;
             if (xusb.Count == 0)
             {
                 // Sem lista de XUSB nao ha container para comparar. Ainda assim, se o
                 // XInput ve controle e o HID nao viu nenhum, nao existe com o que
                 // confundir e os slots sao todos de controles invisiveis ao HID.
                 if (encontrados.Count > 0) return;
-                somente = slots.Select(_ => ((string)null, (string)null)).ToList();
+                somente = slots.Select(_ => ((string)null, (string)null, (string)null)).ToList();
             }
             else
             {
                 somente = xusb
                     .Where(x => string.IsNullOrEmpty(x.Container) || !containersHid.Contains(x.Container))
-                    .Select(x => (x.Nome, x.Instancia))
+                    .Select(x => (x.Nome, x.Instancia, x.Container))
                     .ToList();
             }
             if (somente.Count == 0 || somente.Count > slots.Count) return;
@@ -181,6 +189,7 @@ namespace Kontro
                     Address = 0,
                     XInputSlot = meus[i],
                     InstanceId = somente[i].Instancia,
+                    ContainerId = somente[i].Container,
                     Name = EscolherNome(somente[i].Nome, reserva, meus[i]),
                     LastSeen = DateTime.Now
                 });
@@ -366,6 +375,7 @@ namespace Kontro
                     existing.HidId = d.HidId;
                     existing.InstanceId = d.InstanceId;
                     existing.XInputSlot = d.XInputSlot;
+                    existing.ContainerId = d.ContainerId;
                     existing.LastSeen = d.LastSeen;
                 }
             }

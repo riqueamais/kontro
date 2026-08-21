@@ -32,6 +32,10 @@ namespace Kontro
         public MainWindow(Settings settings, History history)
         {
             InitializeComponent();
+            // O icone do app tem os analogicos recortados; o recurso do XAML e so o
+            // corpo. Usar a mesma geometria da bandeja mantem a marca igual em todo lugar.
+            Glifo.Data = ControllerGeometry.PadWithHollowSticks();
+
             _settings = settings;
             _history = history;
 
@@ -57,6 +61,9 @@ namespace Kontro
             pincel.Freeze();
             Ring.RingBrush = pincel;
 
+            Ring.Carregando = s.Girando;
+            Glifo.Visibility = s.Girando ? Visibility.Visible : Visibility.Collapsed;
+
             if (s.Mode == LinkMode.Cable && s.Preenchimento == null)
             {
                 PercentText.Visibility = Visibility.Collapsed;
@@ -77,12 +84,13 @@ namespace Kontro
                         : Autonomia(s);
             }
 
-            Ring.BeginAnimation(RingControl.ValueProperty,
-                new DoubleAnimation(s.Preenchimento ?? (s.Mode == LinkMode.Cable ? 100 : 0),
-                                    TimeSpan.FromMilliseconds(180))
-                {
-                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-                });
+            // girando, quem manda no anel e a animacao continua, nao o valor
+            if (!s.Girando)
+                Ring.BeginAnimation(RingControl.ValueProperty,
+                    new DoubleAnimation(s.Preenchimento ?? 0, TimeSpan.FromMilliseconds(180))
+                    {
+                        EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                    });
 
             UpdatedText.Text = s.ReadAt.HasValue
                 ? (s.Stale ? "lido às " : "atualizado às ") + s.ReadAt.Value.ToString("HH:mm", Br)
@@ -128,6 +136,8 @@ namespace Kontro
 
         private static Color CorDoAnel(BatteryState s)
         {
+            if (s.Girando) return ControllerGeometry.Teal;
+
             int? nivel = s.Mode == LinkMode.Offline ? null : s.Preenchimento;
             if (nivel == null) return ControllerGeometry.Gray;
             if (nivel < VermelhoAbaixoDe) return ControllerGeometry.Red;

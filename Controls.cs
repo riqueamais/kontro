@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 
 namespace Kontro
 {
@@ -26,6 +27,51 @@ namespace Kontro
         public static readonly DependencyProperty StrokeThicknessProperty = DependencyProperty.Register(
             nameof(StrokeThickness), typeof(double), typeof(RingControl),
             new FrameworkPropertyMetadata(12.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        /// <summary>
+        /// Giro continuo no lugar da carga.
+        ///
+        /// No cabo o controle troca de protocolo e para de informar percentual. Deixar o
+        /// anel vazio parecia defeito; o giro diz o que de fato se sabe -- esta ligado na
+        /// energia -- sem inventar um numero que ninguem mediu.
+        /// </summary>
+        public static readonly DependencyProperty CarregandoProperty = DependencyProperty.Register(
+            nameof(Carregando), typeof(bool), typeof(RingControl),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender,
+                (d, _) => ((RingControl)d).AtualizarGiro()));
+
+        private static readonly DependencyProperty AnguloProperty = DependencyProperty.Register(
+            nameof(Angulo), typeof(double), typeof(RingControl),
+            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+        /// <summary>Quanto do circulo o arco que gira ocupa.</summary>
+        private const double ArcoDoGiro = 96.0;
+
+        public bool Carregando { get => (bool)GetValue(CarregandoProperty); set => SetValue(CarregandoProperty, value); }
+        private double Angulo { get => (double)GetValue(AnguloProperty); set => SetValue(AnguloProperty, value); }
+
+        public RingControl()
+        {
+            // Animacao sem fim custa quadro a quadro para sempre. Um app que vive na
+            // bandeja nao pode ficar girando um anel que ninguem esta vendo.
+            IsVisibleChanged += (_, _) => AtualizarGiro();
+        }
+
+        private void AtualizarGiro()
+        {
+            if (Carregando && IsVisible)
+            {
+                BeginAnimation(AnguloProperty, new DoubleAnimation(0, 360, TimeSpan.FromSeconds(1.7))
+                {
+                    RepeatBehavior = RepeatBehavior.Forever
+                });
+            }
+            else
+            {
+                BeginAnimation(AnguloProperty, null);
+                Angulo = 0;
+            }
+        }
 
         public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
         public Brush RingBrush { get => (Brush)GetValue(RingBrushProperty); set => SetValue(RingBrushProperty, value); }
@@ -51,26 +97,37 @@ namespace Kontro
             var trackPen = new Pen(TrackBrush, th) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
             dc.DrawEllipse(null, trackPen, center, r, r);
 
-            double v = Math.Clamp(Value, 0, 100);
-            if (v <= 0.01) return;
-
-            var pen = new Pen(RingBrush, th) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
-
-            if (v >= 99.99)
+            if (Carregando)
             {
-                dc.DrawEllipse(null, pen, center, r, r);
+                DesenharArco(dc, center, r, th, Angulo - 90, ArcoDoGiro);
                 return;
             }
 
-            double sweep = 360.0 * v / 100.0;
-            var start = PointOn(center, r, -90);
-            var end = PointOn(center, r, -90 + sweep);
+            double v = Math.Clamp(Value, 0, 100);
+            if (v <= 0.01) return;
+
+            if (v >= 99.99)
+            {
+                var cheio = new Pen(RingBrush, th) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+                dc.DrawEllipse(null, cheio, center, r, r);
+                return;
+            }
+
+            DesenharArco(dc, center, r, th, -90, 360.0 * v / 100.0);
+        }
+
+        private void DesenharArco(DrawingContext dc, Point center, double r, double th,
+                                  double inicio, double varredura)
+        {
+            var pen = new Pen(RingBrush, th) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            var start = PointOn(center, r, inicio);
+            var end = PointOn(center, r, inicio + varredura);
 
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
                 ctx.BeginFigure(start, false, false);
-                ctx.ArcTo(end, new Size(r, r), 0, sweep > 180, SweepDirection.Clockwise, true, false);
+                ctx.ArcTo(end, new Size(r, r), 0, varredura > 180, SweepDirection.Clockwise, true, false);
             }
             geo.Freeze();
             dc.DrawGeometry(null, pen, geo);
