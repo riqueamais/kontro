@@ -17,6 +17,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # a anotacao da tag e a nota da release: sem o historico e sem as tags
+          # o checkout traz so o commit, e a mensagem nao viria junto
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -73,9 +77,22 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $arquivos = (Get-ChildItem Releases -File).FullName
-          gh release create "${{ github.ref_name }}" $arquivos `
-            --title "Kontro ${{ github.ref_name }}" `
-            --generate-notes
+          # A anotacao da tag e onde a release foi escrita para gente ler. Quando
+          # existir, ela manda; sem ela, a lista de commits do GitHub ao menos diz
+          # o que mudou.
+          # o git devolve linha a linha; juntar evita depender de como o PowerShell
+          # converteria esse array em texto mais adiante
+          $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
+          if ([string]::IsNullOrWhiteSpace($notas)) {
+            gh release create "${{ github.ref_name }}" $arquivos `
+              --title "Kontro ${{ github.ref_name }}" `
+              --generate-notes
+          } else {
+            $notas | Out-File -FilePath notas.md -Encoding utf8
+            gh release create "${{ github.ref_name }}" $arquivos `
+              --title "Kontro ${{ github.ref_name }}" `
+              --notes-file notas.md
+          }
 
       - name: Guardar o instalador como artefato
         uses: actions/upload-artifact@v4
