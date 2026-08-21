@@ -135,6 +135,16 @@ namespace Kontro
         private (string Chave, int Percent, DateTime Quando)? _emObservacao;
 
         /// <summary>
+        /// Quando o vinculo GATT atual comecou.
+        ///
+        /// Estar no Bluetooth nao significa ter leitura recente: a carga que o app tem no
+        /// instante da conexao e a da sessao anterior, e podem ser horas atras. Sem esta
+        /// marca, ela se passava por leitura ao vivo e o aviso de conexao mostrava um
+        /// numero de ontem com cara de agora.
+        /// </summary>
+        private DateTime? _conectadoDesde;
+
+        /// <summary>
         /// Quanto esperar antes de aceitar a primeira leitura de uma conexao.
         ///
         /// O controle responde a leitura inicial do GATT com um valor de espera -- 50%,
@@ -355,6 +365,7 @@ namespace Kontro
         {
             if (_char != null && _gattAddress == address) return;
             if (_char != null) DropGatt();
+            _conectadoDesde = DateTime.Now;
             if (!_devices.TryGetValue(address, out var dev)) return;
 
             GattDeviceServicesResult svc;
@@ -510,6 +521,7 @@ namespace Kontro
 
         private void DropGatt()
         {
+            _conectadoDesde = null;
             try { if (_char != null) _char.ValueChanged -= OnValueChanged; } catch { }
             _char = null;
             _gattAddress = 0;
@@ -525,8 +537,13 @@ namespace Kontro
             string key = info?.Key ?? "wired";
             var r = Get(key);
 
-            // leitura recente por qualquer via conta como ao vivo, nao so o GATT
-            bool live = r.At.HasValue && !r.Provisorio &&
+            // No Bluetooth vale a leitura feita depois que este vinculo comecou; nas
+            // outras vias, a que couber na janela de releitura. Em nenhuma delas vale
+            // uma leitura ainda em observacao.
+            bool doVinculo = mode != LinkMode.Bluetooth
+                || (_conectadoDesde.HasValue && r.At.HasValue && r.At.Value >= _conectadoDesde.Value);
+
+            bool live = r.At.HasValue && !r.Provisorio && doVinculo &&
                         (mode == LinkMode.Bluetooth ||
                          (DateTime.Now - r.At.Value) < IntervaloSemBluetooth * 2);
 
