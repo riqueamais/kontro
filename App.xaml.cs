@@ -33,6 +33,18 @@ namespace Kontro
         private readonly HashSet<int> _notified = new();
         private int _lastPercentSeen = -1;
         private LinkMode _modoAnterior = LinkMode.Offline;
+
+        /// <summary>Conexao que ainda espera uma leitura para virar aviso.</summary>
+        private DateTime? _conexaoAAvisar;
+
+        /// <summary>
+        /// Quanto esperar pela carga antes de avisar assim mesmo.
+        ///
+        /// A leitura real chega alguns segundos depois da conexao, e o aviso fica muito
+        /// melhor com o numero pronto. Mas ha controle que nunca informa carga: passado
+        /// este tempo, avisar sem numero e melhor que nao avisar.
+        /// </summary>
+        private static readonly TimeSpan EsperaDoAviso = TimeSpan.FromSeconds(10);
         private DateTime _inicio = DateTime.Now;
         private string _pendingUpdateVersion;
 
@@ -125,6 +137,10 @@ namespace Kontro
                 // sair de um jogo nao ter efeito ate a proxima variacao de percentual,
                 // o que pode demorar muitos minutos.
                 AtualizarSobreposicao(_monitor.Current);
+
+                // controle que nunca informa carga nao gera mudanca de estado nenhuma:
+                // sem passar por aqui, o aviso marcado ficaria esperando para sempre
+                TalvezAvisar(_monitor.Current);
             };
             _timer.Start();
 
@@ -198,6 +214,7 @@ namespace Kontro
                 {
                     Mode = LinkMode.Bluetooth,
                     Percent = pct,
+                    Precisao = Precisao.Exata,
                     ReadAt = DateTime.Now,
                     DeviceName = "Controle sem fio",
                     Key = "demo"
@@ -379,6 +396,7 @@ namespace Kontro
                 _main.Apply(s);
                 CheckThresholds(s);
                 AvisarConexao(s);
+                TalvezAvisar(s);
                 _toast?.Atualizar(s);
                 AtualizarSobreposicao(s);
             });
@@ -396,11 +414,29 @@ namespace Kontro
             var anterior = _modoAnterior;
             _modoAnterior = s.Mode;
 
+            if (s.Mode == LinkMode.Offline) { _conexaoAAvisar = null; return; }
             if (_settings == null || !_settings.ConnectToastEnabled) return;
-            if (anterior != LinkMode.Offline || s.Mode == LinkMode.Offline) return;
+            if (anterior != LinkMode.Offline) return;
             if ((DateTime.Now - _inicio) < TimeSpan.FromSeconds(6)) return;
 
-            _toast?.Mostrar(s);
+            // Conectar e um evento; ter a carga e outro, alguns segundos depois. O aviso
+            // fica marcado aqui e sai quando o numero existe -- assim ele nasce pronto,
+            // em vez de aparecer dizendo que esta lendo.
+            _conexaoAAvisar = DateTime.Now;
+        }
+
+        /// <summary>Solta o aviso marcado quando a carga chega, ou quando a espera acaba.</summary>
+        private void TalvezAvisar(BatteryState s)
+        {
+            if (_conexaoAAvisar == null || _toast == null) return;
+            if (s.Mode == LinkMode.Offline) { _conexaoAAvisar = null; return; }
+
+            bool temCarga = !s.Stale && s.Preenchimento.HasValue;
+            bool cansou = (DateTime.Now - _conexaoAAvisar.Value) > EsperaDoAviso;
+            if (!temCarga && !cansou) return;
+
+            _conexaoAAvisar = null;
+            _toast.Mostrar(s);
         }
 
         /// <summary>

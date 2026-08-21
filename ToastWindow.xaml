@@ -3,14 +3,20 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Kontro"
         Title="Kontro"
-        Width="352" Height="108"
+        Width="360" Height="144"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
         ShowActivated="False" Focusable="False" IsHitTestVisible="False"
         UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
 
-    <!-- a folga acomoda a sombra; o painel visivel comeca 16px para dentro -->
-    <Border Margin="16" CornerRadius="{StaticResource RadiusWindow}"
+    <!--
+        As folgas nao sao decorativas: a sombra tem desfoque 32 e desce 18, entao
+        precisa de cerca de 34px abaixo do painel e 16 nas laterais para se dissipar.
+        Com folga menor ela bate no limite da janela e corta num quadrado. Em cima
+        sobra pouca sombra (a direcao e para baixo), mas a folga precisa acomodar os
+        12px que o painel sobe no comeco da animacao.
+    -->
+    <Border Margin="20,24,20,44" CornerRadius="{StaticResource RadiusWindow}"
             Background="{StaticResource Ink}"
             BorderBrush="{StaticResource Stroke}" BorderThickness="1"
             Effect="{StaticResource FlyoutShadow}">

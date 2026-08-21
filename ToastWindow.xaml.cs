@@ -22,6 +22,10 @@ namespace Kontro
         /// <summary>Distancia do topo da area util, seguindo a escala de espaco do design.</summary>
         private const double MargemDoTopo = 24;
 
+        // folgas da janela que acomodam a sombra, iguais as margens do XAML
+        private const double FolgaLateral = 20;
+        private const double FolgaSuperior = 24;
+
         private readonly DispatcherTimer _permanencia;
         private bool _saindo;
 
@@ -119,7 +123,7 @@ namespace Kontro
                 StateText.Text =
                     s.TemNumero ? "conectado · " + s.TextoDaLigacao
                     : s.Preenchimento.HasValue ? s.TextoDaCarga + " · " + s.TextoDaLigacao
-                    : "conectado " + s.TextoDaLigacao + " · lendo a carga";
+                    : "conectado · " + s.TextoDaLigacao + " · sem leitura de bateria";
                 Ring.Value = s.Preenchimento ?? 0;
             }
         }
@@ -149,8 +153,12 @@ namespace Kontro
             double esquerda = area.Left / escalaX;
             double topo = area.Top / escalaY;
 
-            Left = esquerda + (largura - Width) / 2;
-            Top = topo + MargemDoTopo - 16;   // 16 e a folga da sombra
+            // A borda visivel do painel nao coincide com a da janela: a folga da sombra
+            // fica entre as duas. Ancorar pela janela deixaria o aviso mais baixo e
+            // fora do centro por todo o tamanho dessa folga.
+            double larguraVisivel = Width - FolgaLateral * 2;
+            Left = esquerda + (largura - larguraVisivel) / 2 - FolgaLateral;
+            Top = topo + MargemDoTopo - FolgaSuperior;
         }
 
         private void Esconder()
