@@ -16,7 +16,8 @@ namespace Kontro
 
         public static readonly DependencyProperty RingBrushProperty = DependencyProperty.Register(
             nameof(RingBrush), typeof(Brush), typeof(RingControl),
-            new FrameworkPropertyMetadata(Brushes.LimeGreen, FrameworkPropertyMetadataOptions.AffectsRender));
+            new FrameworkPropertyMetadata(Brushes.LimeGreen, FrameworkPropertyMetadataOptions.AffectsRender,
+                (d, _) => ((RingControl)d).RepintarGiro()));
 
         public static readonly DependencyProperty TrackBrushProperty = DependencyProperty.Register(
             nameof(TrackBrush), typeof(Brush), typeof(RingControl),
@@ -40,37 +41,93 @@ namespace Kontro
             new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender,
                 (d, _) => ((RingControl)d).AtualizarGiro()));
 
-        private static readonly DependencyProperty AnguloProperty = DependencyProperty.Register(
-            nameof(Angulo), typeof(double), typeof(RingControl),
-            new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
-
         /// <summary>Quanto do circulo o arco que gira ocupa.</summary>
         private const double ArcoDoGiro = 96.0;
 
         public bool Carregando { get => (bool)GetValue(CarregandoProperty); set => SetValue(CarregandoProperty, value); }
-        private double Angulo { get => (double)GetValue(AnguloProperty); set => SetValue(AnguloProperty, value); }
+
+        // O arco que gira vive num visual proprio, e nao no OnRender.
+        //
+        // A diferenca nao e de estilo: animar uma propriedade marcada AffectsRender
+        // obriga o WPF a refazer o desenho inteiro a cada quadro, para sempre. Medido,
+        // isso custava um quinto de um nucleo o tempo todo. Rodando um visual filho por
+        // transformacao, a composicao acontece fora da thread de interface e o custo
+        // por quadro praticamente some.
+        private readonly DrawingVisual _giro = new();
+        private readonly RotateTransform _rotacao = new(0);
+        private bool _giroDesenhado;
+
+        protected override int VisualChildrenCount => 1;
+        protected override Visual GetVisualChild(int index) => _giro;
 
         public RingControl()
         {
-            // Animacao sem fim custa quadro a quadro para sempre. Um app que vive na
-            // bandeja nao pode ficar girando um anel que ninguem esta vendo.
+            _giro.Transform = _rotacao;
+            AddVisualChild(_giro);
+
+            // Animacao sem fim custa para sempre. Um app que vive na bandeja nao pode
+            // ficar girando um anel que ninguem esta vendo.
             IsVisibleChanged += (_, _) => AtualizarGiro();
+        }
+
+        /// <summary>A cor mudou: o arco ja desenhado precisa ser refeito com ela.</summary>
+        private void RepintarGiro()
+        {
+            if (Carregando && IsVisible) DesenharGiro();
         }
 
         private void AtualizarGiro()
         {
-            if (Carregando && IsVisible)
+            bool girar = Carregando && IsVisible;
+            _giro.Opacity = girar ? 1 : 0;
+
+            if (!girar)
             {
-                BeginAnimation(AnguloProperty, new DoubleAnimation(0, 360, TimeSpan.FromSeconds(1.7))
+                _rotacao.BeginAnimation(RotateTransform.AngleProperty, null);
+                _rotacao.Angle = 0;
+                return;
+            }
+
+            DesenharGiro();
+
+            // A sobreposicao usa transparencia, e janela transparente no WPF nao tem
+            // composicao por hardware: cada quadro e redesenhado por software na thread
+            // de interface. A sessenta quadros por segundo isso custa caro para sempre.
+            // Vinte bastam para o giro parecer continuo, e o giro mais lento disfarca a
+            // diferenca -- sao poucos graus por quadro de qualquer jeito.
+            var giro = new DoubleAnimation(0, 360, TimeSpan.FromSeconds(2.2))
+            {
+                RepeatBehavior = RepeatBehavior.Forever
+            };
+            Timeline.SetDesiredFrameRate(giro, 20);
+            _rotacao.BeginAnimation(RotateTransform.AngleProperty, giro);
+        }
+
+        /// <summary>Redesenha o arco do giro. So precisa acontecer quando algo muda.</summary>
+        private void DesenharGiro()
+        {
+            double lado = Math.Min(ActualWidth, ActualHeight);
+            if (lado <= 0) { _giroDesenhado = false; return; }
+
+            double th = StrokeThickness;
+            double r = (lado - th) / 2.0;
+            if (r <= 0) { _giroDesenhado = false; return; }
+
+            var centro = new Point(ActualWidth / 2.0, ActualHeight / 2.0);
+            _rotacao.CenterX = centro.X;
+            _rotacao.CenterY = centro.Y;
+
+            using (var dc = _giro.RenderOpen())
+            {
+                var pen = new Pen(RingBrush, th)
                 {
-                    RepeatBehavior = RepeatBehavior.Forever
-                });
+                    StartLineCap = PenLineCap.Round,
+                    EndLineCap = PenLineCap.Round
+                };
+                pen.Freeze();
+                DesenharArco(dc, pen, centro, r, -90, ArcoDoGiro);
             }
-            else
-            {
-                BeginAnimation(AnguloProperty, null);
-                Angulo = 0;
-            }
+            _giroDesenhado = true;
         }
 
         public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
@@ -82,6 +139,12 @@ namespace Kontro
         {
             double a = angleDeg * Math.PI / 180.0;
             return new Point(c.X + r * Math.Cos(a), c.Y + r * Math.Sin(a));
+        }
+
+        protected override void OnRenderSizeChanged(SizeChangedInfo info)
+        {
+            base.OnRenderSizeChanged(info);
+            if (Carregando) DesenharGiro();
         }
 
         protected override void OnRender(DrawingContext dc)
@@ -99,7 +162,8 @@ namespace Kontro
 
             if (Carregando)
             {
-                DesenharArco(dc, center, r, th, Angulo - 90, ArcoDoGiro);
+                // o arco fica no visual filho; aqui so o trilho e desenhado
+                if (!_giroDesenhado) DesenharGiro();
                 return;
             }
 
@@ -120,6 +184,13 @@ namespace Kontro
                                   double inicio, double varredura)
         {
             var pen = new Pen(RingBrush, th) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            pen.Freeze();
+            DesenharArco(dc, pen, center, r, inicio, varredura);
+        }
+
+        private static void DesenharArco(DrawingContext dc, Pen pen, Point center, double r,
+                                         double inicio, double varredura)
+        {
             var start = PointOn(center, r, inicio);
             var end = PointOn(center, r, inicio + varredura);
 
