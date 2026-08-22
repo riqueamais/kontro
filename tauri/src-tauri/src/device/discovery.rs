@@ -7,6 +7,7 @@
 use windows::core::{Result, HSTRING};
 use windows::Devices::Enumeration::DeviceInformation;
 use windows::Devices::HumanInterfaceDevice::HidDevice;
+use windows_collections::IIterable;
 
 use super::{hid, pnp, xinput};
 
@@ -168,9 +169,9 @@ fn por_uso(uso: u16) -> Result<Vec<GamepadHid>> {
     let props: Vec<HSTRING> = chaves.iter().map(|c| HSTRING::from(*c)).collect();
     let achados = DeviceInformation::FindAllAsyncAqsFilterAndAdditionalProperties(
         &seletor,
-        &windows::Foundation::Collections::IIterable::<HSTRING>::from(props),
+        &IIterable::<HSTRING>::from(props),
     )?
-    .get()?;
+    .join()?;
 
     let mut saida = Vec::new();
     for info in achados {
@@ -276,9 +277,9 @@ fn dispositivos_xusb() -> Vec<(String, String, String)> {
         let props: Vec<HSTRING> = chaves.iter().map(|c| HSTRING::from(*c)).collect();
         let achados = DeviceInformation::FindAllAsyncAqsFilterAndAdditionalProperties(
             &seletor,
-            &windows::Foundation::Collections::IIterable::<HSTRING>::from(props),
+            &IIterable::<HSTRING>::from(props),
         )?
-        .get()?;
+        .join()?;
 
         let mut saida = Vec::new();
         for info in achados {

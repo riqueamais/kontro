@@ -8,8 +8,8 @@
 
 use windows::core::{IInspectable, Interface, Result, HSTRING};
 use windows::Devices::Enumeration::{DeviceInformation, DeviceInformationKind};
-use windows::Foundation::Collections::IIterable;
 use windows::Foundation::{IPropertyValue, PropertyType};
+use windows_collections::{IIterable, IMapView};
 
 pub const CHAVE_NIVEL: &str = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 2";
 pub const CHAVE_MOMENTO: &str = "{104EA319-6EE2-4701-BD47-8DDBF425BBE5} 7";
@@ -45,7 +45,7 @@ pub fn nos_com_bateria() -> Vec<NoDeBateria> {
             &propriedades(&chaves)?,
             DeviceInformationKind::Device,
         )?
-        .get()?;
+        .join()?;
 
         let mut saida = Vec::new();
         for info in achados {
@@ -117,7 +117,7 @@ fn recente(no: &NoDeBateria, desde: Option<i64>) -> bool {
 // --------------------------------------------------------------- leitura de valores
 
 fn valor(
-    props: &windows::Foundation::Collections::IMapView<HSTRING, IInspectable>,
+    props: &IMapView<HSTRING, IInspectable>,
     chave: &str,
 ) -> Option<IInspectable> {
     let chave = HSTRING::from(chave);

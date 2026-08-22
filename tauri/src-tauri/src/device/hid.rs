@@ -44,7 +44,7 @@ pub fn ler(id_hid: &str) -> Leitura {
 fn abrir(id_hid: &str) -> Result<HidDevice> {
     // Devolver nulo aqui e normal, nao erro: acontece quando outro processo detem
     // acesso exclusivo ao controle.
-    HidDevice::FromIdAsync(&HSTRING::from(id_hid), FileAccessMode::Read)?.get()
+    HidDevice::FromIdAsync(&HSTRING::from(id_hid), FileAccessMode::Read)?.join()
 }
 
 fn por_recurso(dispositivo: &HidDevice) -> Option<Leitura> {
@@ -58,7 +58,7 @@ fn por_recurso(dispositivo: &HidDevice) -> Option<Leitura> {
 
     for descricao in descricoes {
         let id = descricao.ReportId().ok()?;
-        let Ok(relatorio) = dispositivo.GetFeatureReportByIdAsync(id).and_then(|op| op.get()) else {
+        let Ok(relatorio) = dispositivo.GetFeatureReportByIdAsync(id).and_then(|op| op.join()) else {
             continue;
         };
         let Ok(controle) =
@@ -69,7 +69,7 @@ fn por_recurso(dispositivo: &HidDevice) -> Option<Leitura> {
         let valor = controle.Value().ok()?;
         let minimo = descricao.LogicalMinimum().ok()?;
         let maximo = descricao.LogicalMaximum().ok()?;
-        if let Some(l) = escalar(valor, minimo, maximo) {
+        if let Some(l) = escalar(valor, minimo.into(), maximo.into()) {
             return Some(l);
         }
     }
@@ -96,21 +96,21 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
     // barato aqui, e travar o monitor por causa de um controle parado seria pior.
     std::thread::spawn(move || {
         crate::device::iniciar_apartamento();
-        let _ = envio.send(operacao.get());
+        let _ = envio.send(operacao.join());
     });
 
     let relatorio = recebimento.recv_timeout(Duration::from_secs(2)).ok()?.ok()?;
     let controle = relatorio
         .GetNumericControl(PAGINA_CONTROLES_GENERICOS, USO_CARGA_DA_BATERIA)
         .ok()?;
-    escalar(controle.Value().ok()?, minimo, maximo)
+    escalar(controle.Value().ok()?, minimo.into(), maximo.into())
 }
 
 /// Converte pela escala que o dispositivo declarou.
 ///
 /// Faixa que comeca abaixo de zero nao e bateria -- e eixo, gatilho ou chapeu. Aceitar
 /// isso daria 50% para um analogico centrado.
-fn escalar(valor: i32, minimo: i32, maximo: i32) -> Option<Leitura> {
+fn escalar(valor: i64, minimo: i64, maximo: i64) -> Option<Leitura> {
     if maximo <= minimo || minimo < 0 {
         return None;
     }

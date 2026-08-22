@@ -23,12 +23,18 @@ resvg = "0.45"
 tiny-skia = "0.11"
 usvg = "0.45"
 
+# As colecoes e a espera de operacao assincrona do WinRT moram em crates proprias.
+# A crate `windows` as usa por dentro, entao as versoes precisam bater com as dela.
+windows-collections = "0.3"
+windows-future = "0.3"
+
 [dependencies.windows]
 version = "0.62"
 features = [
   "Foundation",
   "Foundation_Collections",
   "Devices_Bluetooth",
+  "Devices_Power",
   "Gaming_Input",
   "System_Power",
   "Devices_Bluetooth_GenericAttributeProfile",

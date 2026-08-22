@@ -47,7 +47,8 @@ impl Drop for VinculoGatt {
 /// O controle esta conectado agora?
 pub fn conectado(endereco: u64) -> bool {
     (|| -> Result<bool> {
-        let dev = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?.get()?;
+        let dev = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
+        .join()?;
         Ok(dev.ConnectionStatus()?
             == windows::Devices::Bluetooth::BluetoothConnectionStatus::Connected)
     })()
@@ -61,13 +62,14 @@ pub fn conectado(endereco: u64) -> bool {
 /// 50%, num caso medido -- e so manda a medida real segundos depois, pelo Notify. Quem
 /// decide o que fazer com isso e o monitor.
 pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Option<i32>)> {
-    let dispositivo = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?.get()?;
+    let dispositivo = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
+        .join()?;
 
     let servicos = dispositivo
         .GetGattServicesForUuidWithCacheModeAsync(GattServiceUuids::Battery()?, BluetoothCacheMode::Uncached)?
-        .get()?;
+        .join()?;
     if servicos.Status()? != GattCommunicationStatus::Success {
-        return Err(windows::core::Error::from_win32());
+        return Err(crate::device::sem_resposta());
     }
     let servico = servicos.Services()?.GetAt(0)?;
 
@@ -76,9 +78,9 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
             GattCharacteristicUuids::BatteryLevel()?,
             BluetoothCacheMode::Uncached,
         )?
-        .get()?;
+        .join()?;
     if caracteristicas.Status()? != GattCommunicationStatus::Success {
-        return Err(windows::core::Error::from_win32());
+        return Err(crate::device::sem_resposta());
     }
     let caracteristica = caracteristicas.Characteristics()?.GetAt(0)?;
 
@@ -103,7 +105,7 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
         .WriteClientCharacteristicConfigurationDescriptorAsync(
             GattClientCharacteristicConfigurationDescriptorValue::Notify,
         )?
-        .get();
+        .join();
 
     Ok((
         VinculoGatt { endereco, _dispositivo: dispositivo, caracteristica, inscricao },
@@ -114,12 +116,12 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
 fn ler(caracteristica: &GattCharacteristic) -> Result<i32> {
     let resultado = caracteristica
         .ReadValueWithCacheModeAsync(BluetoothCacheMode::Uncached)?
-        .get()?;
+        .join()?;
     if resultado.Status()? != GattCommunicationStatus::Success {
-        return Err(windows::core::Error::from_win32());
+        return Err(crate::device::sem_resposta());
     }
     let buffer = resultado.Value()?;
-    primeiro_byte(&buffer).ok_or_else(windows::core::Error::from_win32)
+    primeiro_byte(&buffer).ok_or_else(crate::device::sem_resposta)
 }
 
 /// A carga do Battery Service e um unico byte de 0 a 100.
@@ -138,12 +140,14 @@ pub fn pareados() -> Vec<(u64, String)> {
 
     (|| -> Result<Vec<(u64, String)>> {
         let seletor = BluetoothLEDevice::GetDeviceSelectorFromPairingState(true)?;
-        let achados = DeviceInformation::FindAllAsyncAqsFilter(&seletor)?.get()?;
+        let achados = DeviceInformation::FindAllAsyncAqsFilter(&seletor)?
+        .join()?;
 
         let mut saida = Vec::new();
         for info in achados {
             let id = info.Id()?;
-            if let Ok(dev) = BluetoothLEDevice::FromIdAsync(&id)?.get() {
+            if let Ok(dev) = BluetoothLEDevice::FromIdAsync(&id)?
+        .join() {
                 let nome = dev.Name().map(|n| n.to_string()).unwrap_or_default();
                 if let Ok(endereco) = dev.BluetoothAddress() {
                     if !nome.trim().is_empty() {

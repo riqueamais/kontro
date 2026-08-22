@@ -6,7 +6,7 @@
 
 use windows::Win32::UI::Input::XboxController::{
     XInputGetBatteryInformation, XInputGetCapabilities, BATTERY_DEVTYPE_GAMEPAD,
-    XINPUT_BATTERY_INFORMATION, XINPUT_CAPABILITIES,
+    XINPUT_BATTERY_INFORMATION, XINPUT_CAPABILITIES, XINPUT_FLAG,
 };
 
 pub const TIPO_DESCONECTADO: u8 = 0;
@@ -18,7 +18,7 @@ const SUCESSO: u32 = 0;
 
 fn conectado(slot: u32) -> bool {
     let mut caps = XINPUT_CAPABILITIES::default();
-    unsafe { XInputGetCapabilities(slot, 0, &mut caps) == SUCESSO }
+    unsafe { XInputGetCapabilities(slot, XINPUT_FLAG(0), &mut caps) == SUCESSO }
 }
 
 fn bateria(slot: u32) -> Option<(u8, u8)> {
