@@ -1,0 +1,58 @@
+* { box-sizing: border-box; }
+
+html,
+body,
+#raiz {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  /* As janelas sem moldura sao transparentes: o fundo e desenhado pelo painel de
+     dentro, nao pelo body. Pintar aqui deixaria um retangulo opaco por baixo da
+     sombra e dos cantos arredondados. */
+  background: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-text);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+/* a janela de configuracoes e a unica comum, e essa tem fundo proprio */
+body[data-janela="principal"] {
+  background: var(--ink);
+  overflow-y: auto;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* O giro do anel vale para todas as janelas: e o mesmo gesto em toda parte. */
+@keyframes kontro-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}
