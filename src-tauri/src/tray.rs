@@ -22,16 +22,30 @@ pub fn desenhar(estado: &BatteryState, tamanho: u32, tema_claro: bool) -> Option
     rasterizar(&svg, tamanho)
 }
 
-fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
+fn montar_svg(estado: &BatteryState, _tema_claro: bool) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
     let grossura = g::ANEL_LARGURA;
 
-    // No tema claro da barra o controle precisa ser escuro, senao ele some no proprio
-    // fundo. E o trilho e sempre o glifo a 22%, nao um branco fixo: com o branco, numa
-    // barra clara o anel de fundo desaparecia.
-    let cor_glifo = if tema_claro { g::GLIFO_NO_CLARO } else { "#FFFFFF" };
+    // O icone tem disco de fundo, como o icone do app.
+    //
+    // O sistema de design pede a marca sem fundo na bandeja, com o argumento de que a
+    // barra e o fundo. Na barra do Windows 11 isso nao se sustenta: todos os vizinhos
+    // sao icones solidos, e um anel fino e transparente no meio deles some -- ainda mais
+    // com a barra translucida deixando o papel de parede atravessar.
+    //
+    // O fundo tambem resolve o tema de um jeito que a transparencia nao resolvia: sobre
+    // disco escuro o controle e sempre branco, seja a barra clara ou escura, e para de
+    // depender de acertar qual tema o usuario esta usando.
+    let cor_glifo = "#FFFFFF";
+
+    let fundo = format!(
+        r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="{}"/><circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="8"/>"##,
+        g::FUNDO_RAIO,
+        g::FUNDO,
+        g::FUNDO_RAIO - 4.0
+    );
 
     let trilho = format!(
         r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="0.22" stroke-width="{grossura}"/>"##
@@ -49,18 +63,8 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
     };
 
     let miolo = match (estado.mode, estado.preenchimento) {
-        // Desconectado nao desenha anel nenhum -- nem o trilho. Um anel de fundo ali
-        // sugere uma medida que nao existe; o controle apagado e riscado diz o que
-        // realmente se sabe, que e nada.
-        // Desconectado mantem o trilho e o controle, com o risco por cima.
-        //
-        // O texto do sistema de design diz "sem anel", mas o PNG de referencia e a tira
-        // da propria pagina do produto mostram o anel -- e e ele que da identidade. Sem
-        // o circulo sobra um tracinho diagonal que nao lembra a marca em nada.
-        //
-        // A opacidade tambem sobe: os 45% pedidos somem em 16 pixels sobre barra
-        // translucida. Setenta mantem a leitura de "apagado" e deixa o controle se
-        // reconhecer.
+        // Desconectado: o controle apagado com o risco por cima. O trilho fica, porque e
+        // ele que mantem a silhueta circular da marca.
         (LinkMode::Offline, _) => format!(
             r##"{trilho}{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
             desenhar_glifo(0.7)
@@ -94,7 +98,7 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
     };
 
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{miolo}</svg>"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{fundo}{miolo}</svg>"##
     )
 }
 

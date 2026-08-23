@@ -17,6 +17,10 @@ pub const STICK_DIR: (f32, f32) = (382.7, 228.0);
 /// Centro vertical do proprio desenho do controle, para posiciona-lo sem chute.
 pub const PAD_CENTRO_Y: f32 = 288.0;
 
+/// Disco de fundo do icone, o mesmo do icone do app.
+pub const FUNDO_RAIO: f32 = 252.0;
+pub const FUNDO: &str = "#0F1318";
+
 pub const ANEL_RAIO: f32 = 194.0;
 pub const ANEL_LARGURA: f32 = 56.0;
 pub const PAD_ESCALA_BANDEJA: f32 = 0.5;
