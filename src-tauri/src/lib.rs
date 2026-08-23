@@ -4,6 +4,7 @@
 //! recebe e o estado ja pronto. Isso mantem os objetos do WinRT presos a um unico
 //! apartamento e evita que a leitura trave o desenho.
 
+mod atualizacao;
 mod autostart;
 mod device;
 mod diagnostico;
@@ -24,6 +25,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use tauri::menu::{Menu, MenuItem};
+use tauri_plugin_notification::NotificationExt;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -36,6 +38,8 @@ pub struct Compartilhado {
     estado: Mutex<BatteryState>,
     serie: Mutex<Vec<Amostra>>,
     config: Mutex<Settings>,
+    /// Versao nova encontrada, para a janela de configuracoes mostrar.
+    novidade: Mutex<Option<atualizacao::Novidade>>,
 }
 
 /// Pedidos que a interface faz ao ciclo de leitura.
@@ -100,6 +104,7 @@ pub fn executar() {
         )),
         serie: Mutex::new(Vec::new()),
         config: Mutex::new(config),
+        novidade: Mutex::new(None),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
@@ -115,6 +120,8 @@ pub fn executar() {
             configuracoes,
             salvar_configuracoes,
             ler_agora,
+            versao_disponivel,
+            procurar_atualizacao,
             mostrar_janela,
             esconder_janela
         ])
@@ -171,6 +178,7 @@ fn iniciar_ciclo(
         let mut monitor = monitor::Monitor::novo();
         let mut ultimo_icone = String::new();
         let mut orquestrador = orquestra::Orquestrador::novo();
+        let mut proxima_checagem = tempo::agora();
 
         loop {
             match pedidos.try_recv() {
@@ -191,6 +199,14 @@ fn iniciar_ciclo(
 
                 let _ = app.emit("kontro://estado", &estado);
                 atualizar_bandeja(&app, &estado, &mut ultimo_icone);
+            }
+
+            if tempo::agora() >= proxima_checagem {
+                proxima_checagem = tempo::agora() + atualizacao::JANELA_MS;
+                let liberado = compartilhado.config.lock().unwrap().auto_check_updates;
+                if liberado {
+                    avisar_versao_nova(&app);
+                }
             }
 
             // Fora do `if`: a visibilidade da sobreposicao depende do que ocupa a tela,
@@ -279,6 +295,32 @@ fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String
     }
 }
 
+/// Avisa que saiu versao nova, pela notificacao do sistema.
+///
+/// A consulta vai numa thread propria: a rede pode demorar, e o ciclo de leitura nao
+/// pode ficar parado esperando o GitHub responder.
+fn avisar_versao_nova(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        let Some(novidade) = atualizacao::procurar() else { return };
+
+        // A notificacao do sistema fica na Central de Acoes para ser lida depois. O
+        // balao antigo do Windows piscava e sumia, o que para um aviso que pede uma
+        // acao do usuario e o mesmo que nao avisar.
+        let _ = app
+            .notification()
+            .builder()
+            .title(format!("Kontro {} disponivel", novidade.versao))
+            .body("Abra a pagina da release para baixar o instalador.")
+            .show();
+
+        // o estado precisa de nome proprio: encadear a chamada descartaria o
+        // emprestimo antes do cadeado ser usado
+        let compartilhado = app.state::<Arc<Compartilhado>>();
+        *compartilhado.novidade.lock().unwrap() = Some(novidade);
+    });
+}
+
 // ------------------------------------------------------------------ comandos
 
 #[tauri::command]
@@ -324,6 +366,34 @@ fn salvar_configuracoes(
 #[tauri::command]
 fn ler_agora(envio: tauri::State<mpsc::Sender<Pedido>>) {
     let _ = envio.send(Pedido::LerAgora);
+}
+
+#[derive(serde::Serialize)]
+struct VersaoNova {
+    versao: String,
+    pagina: String,
+    atual: String,
+}
+
+#[tauri::command]
+fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<VersaoNova> {
+    compartilhado.novidade.lock().unwrap().clone().map(|n| VersaoNova {
+        versao: n.versao,
+        pagina: n.pagina,
+        atual: env!("CARGO_PKG_VERSION").to_string(),
+    })
+}
+
+/// Procura agora, sem esperar a proxima janela. Devolve o que achou.
+#[tauri::command]
+fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<VersaoNova> {
+    let achado = atualizacao::procurar();
+    *compartilhado.novidade.lock().unwrap() = achado.clone();
+    achado.map(|n| VersaoNova {
+        versao: n.versao,
+        pagina: n.pagina,
+        atual: env!("CARGO_PKG_VERSION").to_string(),
+    })
 }
 
 #[tauri::command]

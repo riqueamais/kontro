@@ -16,6 +16,7 @@ pub fn escrever(caminho: &str) -> std::io::Result<()> {
     let _ = writeln!(t, "{}", "=".repeat(60));
     let _ = writeln!(t);
 
+    secao_versao(&mut t);
     secao_xinput(&mut t);
     secao_bluetooth(&mut t);
     secao_pnp(&mut t);
@@ -23,6 +24,26 @@ pub fn escrever(caminho: &str) -> std::io::Result<()> {
     secao_descoberta(&mut t);
 
     std::fs::write(caminho, t)
+}
+
+/// A consulta de versao entra aqui porque e onde ela e verificavel.
+///
+/// O executavel e do subsistema grafico e nao tem console: imprimir na tela nao chega a
+/// lugar nenhum. Num arquivo, o resultado sobrevive -- e de quebra vem junto quando
+/// alguem manda o diagnostico.
+fn secao_versao(t: &mut String) {
+    let _ = writeln!(t, "=== Versao ===");
+    let _ = writeln!(t, "   instalada: {}", env!("CARGO_PKG_VERSION"));
+    match crate::atualizacao::procurar() {
+        Some(n) => {
+            let _ = writeln!(t, "   publicada: {}  (mais nova)", n.versao);
+            let _ = writeln!(t, "   {}", n.pagina);
+        }
+        None => {
+            let _ = writeln!(t, "   publicada: nenhuma mais nova, ou sem rede");
+        }
+    }
+    let _ = writeln!(t);
 }
 
 fn secao_xinput(t: &mut String) {

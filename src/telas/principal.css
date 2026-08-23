@@ -126,3 +126,20 @@
   transform: translateX(18px);
   background: var(--ink);
 }
+
+/* So o botao que leva a uma versao nova ganha cor. Um aviso que se confunde com o
+   resto da lista nao e aviso. */
+.ciclo.destaque {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.ciclo.destaque:hover {
+  background: var(--accent-green);
+  color: var(--ink);
+}
+
+.ciclo:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open as abrirNoNavegador } from "@tauri-apps/plugin-shell";
 import { useEffect, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
@@ -45,13 +46,33 @@ const MODOS: Record<OverlayMode, string> = {
   Sempre: "Sempre visível",
 };
 
+interface VersaoNova {
+  versao: string;
+  pagina: string;
+  atual: string;
+}
+
 export function Principal() {
   const estado = useEstado();
   const [cfg, setCfg] = useState<Config | null>(null);
+  const [nova, setNova] = useState<VersaoNova | null>(null);
+  const [procurando, setProcurando] = useState(false);
 
   useEffect(() => {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
+    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
   }, []);
+
+  const procurar = async () => {
+    setProcurando(true);
+    try {
+      setNova(await invoke<VersaoNova | null>("procurar_atualizacao"));
+    } catch {
+      // sem rede nao ha o que dizer alem de "nao deu"
+    } finally {
+      setProcurando(false);
+    }
+  };
 
   if (!cfg || !estado) return null;
 
@@ -181,6 +202,38 @@ export function Principal() {
         >
           {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
         </button>
+      </Linha>
+
+      <h2>Versão</h2>
+      <Linha
+        titulo={nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações"}
+        descricao={
+          nova
+            ? `Você está na ${nova.atual}. O download é pela página da release.`
+            : procurando
+              ? "Consultando o repositório..."
+              : "O app avisa sozinho a cada três horas quando sai versão nova."
+        }
+      >
+        {nova ? (
+          <button className="ciclo destaque" onClick={() => void abrirNoNavegador(nova.pagina)}>
+            Abrir a página
+          </button>
+        ) : (
+          <button className="ciclo" disabled={procurando} onClick={() => void procurar()}>
+            {procurando ? "Procurando..." : "Procurar"}
+          </button>
+        )}
+      </Linha>
+
+      <Linha
+        titulo="Avisar sobre versões novas"
+        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
+      >
+        <Chave
+          ligado={cfg.AutoCheckUpdates}
+          aoTrocar={(v) => gravar({ AutoCheckUpdates: v })}
+        />
       </Linha>
     </div>
   );
