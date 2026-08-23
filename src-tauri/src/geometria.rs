@@ -30,7 +30,6 @@ pub const VERDE: &str = "#5FE083";
 pub const AMBAR: &str = "#F2C14E";
 pub const VERMELHO: &str = "#F2564E";
 pub const CINZA: &str = "#8D979F";
-pub const GLIFO_NO_CLARO: &str = "#1B1F24";
 
 /// Cor do anel para um percentual, pelos limiares que o usuario configurou.
 pub fn cor_do_nivel(percent: i32, vermelho_abaixo: i32, ambar_abaixo: i32) -> &'static str {

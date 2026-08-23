@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -11,6 +11,7 @@ import "./painel.css";
 export function Painel() {
   const estado = useEstado();
   const [serie, setSerie] = useState<Amostra[]>([]);
+  const painel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
@@ -41,6 +42,28 @@ export function Painel() {
     };
   }, []);
 
+  // O painel pede a altura de que precisa depois de desenhado. Fixar isso na criacao
+  // da janela significa refazer a conta toda vez que o conteudo muda -- e quando a
+  // conta erra, os botoes aparecem cortados na borda.
+  useEffect(() => {
+    const alvo = painel.current;
+    if (!alvo) return;
+
+    const medir = () => {
+      const estilo = getComputedStyle(alvo);
+      const folga =
+        parseFloat(estilo.marginTop || "0") + parseFloat(estilo.marginBottom || "0");
+      void invoke("ajustar_altura_do_painel", {
+        altura: Math.ceil(alvo.offsetHeight + folga),
+      });
+    };
+
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(alvo);
+    return () => observador.disconnect();
+  }, [estado, serie.length]);
+
   if (!estado) return null;
 
   const rodape = estado.readAt
@@ -48,7 +71,7 @@ export function Painel() {
     : "sem leitura ainda";
 
   return (
-    <div className="painel">
+    <div className="painel" ref={painel}>
       <button
         className="fechar"
         aria-label="Fechar"

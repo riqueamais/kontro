@@ -15,14 +15,13 @@ const AMBAR_ABAIXO: i32 = 60;
 
 /// Desenha o icone para o estado atual.
 ///
-/// `tema_claro` diz se a barra de tarefas esta clara: no claro o controle precisa ser
-/// escuro, senao ele some no proprio fundo.
-pub fn desenhar(estado: &BatteryState, tamanho: u32, tema_claro: bool) -> Option<Image<'static>> {
-    let svg = montar_svg(estado, tema_claro);
-    rasterizar(&svg, tamanho)
+/// Nao recebe mais o tema da barra: desde que o icone ganhou disco de fundo, o controle
+/// e sempre branco e o desenho vale igual na barra clara e na escura.
+pub fn desenhar(estado: &BatteryState, tamanho: u32) -> Option<Image<'static>> {
+    rasterizar(&montar_svg(estado), tamanho)
 }
 
-fn montar_svg(estado: &BatteryState, _tema_claro: bool) -> String {
+fn montar_svg(estado: &BatteryState) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
@@ -107,7 +106,7 @@ fn montar_svg(estado: &BatteryState, _tema_claro: bool) -> String {
 /// Um icone de dezesseis pixels e pequeno demais para julgar na tela. Ampliado sobre o
 /// fundo real da barra de tarefas da para ver o que importa: se o anel sumiu, se o
 /// controle esta torto, se o contraste morreu.
-pub fn salvar_previa(caminho: &str, tamanho: u32, tema_claro: bool) -> Option<()> {
+pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<()> {
     let exemplos: [(Option<i32>, LinkMode); 5] = [
         (None, LinkMode::Offline),
         (Some(100), LinkMode::Bluetooth),
@@ -123,7 +122,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, tema_claro: bool) -> Option<()
     // O icone e transparente e vive sobre a barra de tarefas. Julgar num fundo branco
     // esconde justamente o que o usuario ve: branco sobre branco some, e translucido
     // sobre escuro tambem.
-    tira.fill(if tema_claro {
+    tira.fill(if fundo_claro {
         tiny_skia::Color::from_rgba8(0xF3, 0xF3, 0xF3, 255)
     } else {
         tiny_skia::Color::from_rgba8(0x20, 0x20, 0x20, 255)
@@ -156,7 +155,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, tema_claro: bool) -> Option<()
             None,
         );
 
-        let svg = montar_svg(&estado, tema_claro);
+        let svg = montar_svg(&estado);
         let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
 
         let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;
@@ -205,24 +204,5 @@ pub fn tamanho_do_icone() -> u32 {
         16
     } else {
         medido as u32
-    }
-}
-
-/// A barra de tarefas esta no tema claro?
-pub fn barra_clara() -> bool {
-    // A chave e por usuario e muda ao vivo quando ele troca o tema; ler na hora e mais
-    // barato e mais correto do que cachear e tentar descobrir quando invalidar.
-    let saida = std::process::Command::new("reg")
-        .args([
-            "query",
-            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
-            "/v",
-            "SystemUsesLightTheme",
-        ])
-        .output();
-
-    match saida {
-        Ok(s) => String::from_utf8_lossy(&s.stdout).contains("0x1"),
-        Err(_) => false,
     }
 }

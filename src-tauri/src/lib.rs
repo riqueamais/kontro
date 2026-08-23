@@ -74,8 +74,10 @@ pub fn executar() {
             .get(i + 2)
             .and_then(|t| t.parse().ok())
             .unwrap_or_else(tray::tamanho_do_icone);
-        let claro = argumentos.iter().any(|a| a == "--claro");
-        match tray::salvar_previa(&destino, tamanho, claro) {
+        // `--claro` agora escolhe so o fundo da previa: e sobre barra clara que o
+        // contraste do icone e mais dificil de sustentar.
+        let fundo_claro = argumentos.iter().any(|a| a == "--claro");
+        match tray::salvar_previa(&destino, tamanho, fundo_claro) {
             Some(()) => println!("previa de {tamanho}px salva em {destino}"),
             None => eprintln!("nao consegui desenhar a previa"),
         }
@@ -138,7 +140,8 @@ pub fn executar() {
             versao_disponivel,
             procurar_atualizacao,
             mostrar_janela,
-            esconder_janela
+            esconder_janela,
+            ajustar_altura_do_painel
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -289,17 +292,16 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
 /// O ciclo roda a cada dois segundos; rasterizar de novo um icone identico seria
 /// trabalho jogado fora num app que passa o dia parado.
 fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String) {
-    let claro = tray::barra_clara();
     let tamanho = tray::tamanho_do_icone();
 
     // o tamanho entra na assinatura porque trocar a escala da tela muda o desenho
-    let assinatura = format!("{:?}|{:?}|{claro}|{tamanho}", estado.mode, estado.preenchimento);
+    let assinatura = format!("{:?}|{:?}|{tamanho}", estado.mode, estado.preenchimento);
     if assinatura == *ultimo {
         return;
     }
     *ultimo = assinatura;
 
-    let Some(icone) = tray::desenhar(estado, tamanho, claro) else { return };
+    let Some(icone) = tray::desenhar(estado, tamanho) else { return };
     if let Some(bandeja) = app.tray_by_id("kontro") {
         let _ = bandeja.set_icon(Some(icone));
         let dica = format!(
@@ -416,6 +418,21 @@ fn mostrar_janela(app: AppHandle, rotulo: String) {
     if let Some(j) = app.get_webview_window(&rotulo) {
         let _ = j.show();
     }
+}
+
+/// O painel diz de quanto espaco precisa, e a janela obedece.
+///
+/// Fixar a altura na criacao significa acertar na regua toda vez que o conteudo muda --
+/// e quando erra, o usuario ve os botoes cortados na borda. Quem sabe a altura e o
+/// proprio painel, depois de desenhado.
+#[tauri::command]
+fn ajustar_altura_do_painel(app: AppHandle, altura: f64) {
+    let Some(janela) = app.get_webview_window(janelas::PAINEL) else { return };
+
+    // limites frouxos, so para uma medida absurda nao virar uma janela absurda
+    let altura = altura.clamp(200.0, 900.0);
+    let _ = janela.set_size(tauri::LogicalSize::new(janelas::LARGURA_DO_PAINEL, altura));
+    janelas::posicionar_painel(&app);
 }
 
 #[tauri::command]

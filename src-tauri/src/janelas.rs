@@ -9,6 +9,9 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, Webvie
 
 use crate::settings::{OverlayCorner, Settings};
 
+/// Largura do painel da bandeja. A altura quem decide e o proprio conteudo.
+pub const LARGURA_DO_PAINEL: f64 = 368.0;
+
 pub const PRINCIPAL: &str = "principal";
 pub const PAINEL: &str = "painel";
 pub const SOBREPOSICAO: &str = "sobreposicao";
@@ -66,7 +69,9 @@ fn escurecer_barra_de_titulo(janela: &WebviewWindow) {
 fn criar_painel(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     WebviewWindowBuilder::new(app, PAINEL, WebviewUrl::App("index.html?janela=painel".into()))
         .title("Kontro")
-        .inner_size(368.0, 286.0)
+        // Altura inicial apenas: o painel se mede depois de desenhado e pede a altura
+        // exata de que precisa.
+        .inner_size(LARGURA_DO_PAINEL, 360.0)
         .decorations(false)
         .transparent(true)
         .shadow(false)
