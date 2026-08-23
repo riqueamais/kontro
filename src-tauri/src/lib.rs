@@ -68,6 +68,7 @@ pub fn executar() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
         .manage(compartilhado.clone())
         .manage(envio.clone())
         .invoke_handler(tauri::generate_handler![

@@ -27,6 +27,7 @@ usvg = "0.45"
 # A crate `windows` as usa por dentro, entao as versoes precisam bater com as dela.
 windows-collections = "0.3"
 windows-future = "0.3"
+tauri-plugin-notification = "2.0.0-rc.5"
 
 [dependencies.windows]
 version = "0.62"

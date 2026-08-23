@@ -6,6 +6,7 @@
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 
 use crate::janelas;
 use crate::model::{BatteryState, LinkMode};
@@ -39,6 +40,9 @@ pub struct Orquestrador {
     modo_anterior: LinkMode,
     /// Conexao que ainda espera uma leitura para virar aviso.
     conexao_a_avisar: Option<i64>,
+    /// Limiares ja avisados nesta carga, para nao repetir a cada leitura.
+    avisados: Vec<i32>,
+    ultimo_percentual: Option<i32>,
 }
 
 impl Orquestrador {
@@ -47,6 +51,8 @@ impl Orquestrador {
             aberto_em: tempo::agora(),
             modo_anterior: LinkMode::Offline,
             conexao_a_avisar: None,
+            avisados: Vec::new(),
+            ultimo_percentual: None,
         }
     }
 
@@ -60,6 +66,7 @@ impl Orquestrador {
         self.sobreposicao(app, estado, cfg);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
+        self.limiares(app, estado, cfg);
     }
 
     // ------------------------------------------------------------ sobreposicao
@@ -146,6 +153,54 @@ impl Orquestrador {
 
         self.conexao_a_avisar = None;
         mostrar_aviso(app, estado, AvisoDeLigacao::Conectou);
+    }
+}
+
+impl Orquestrador {
+    /// Avisa quando a carga cruza os limiares que o usuario escolheu.
+    ///
+    /// Limiar em porcentagem so faz sentido com leitura exata: com os quatro degraus do
+    /// XInput nao da para dizer se passou de vinte por cento. Melhor calar do que
+    /// inventar o momento do aviso.
+    fn limiares(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
+        if !cfg.notifications_enabled || estado.mode == LinkMode::Offline {
+            return;
+        }
+        let Some(pct) = estado.percent.filter(|_| estado.tem_numero) else { return };
+
+        // subiu de forma relevante: carga nova, pode avisar de novo mais tarde
+        if let Some(anterior) = self.ultimo_percentual {
+            if pct - anterior > 5 {
+                self.avisados.clear();
+            }
+        }
+        self.ultimo_percentual = Some(pct);
+
+        let nome = if estado.device_name.trim().is_empty() {
+            "O controle"
+        } else {
+            estado.device_name.as_str()
+        };
+
+        for limite in [cfg.critical_threshold, cfg.warn_threshold] {
+            if pct > limite || self.avisados.contains(&limite) {
+                continue;
+            }
+            self.avisados.push(limite);
+
+            let corpo = format!("{nome} está com {pct}% de carga.");
+            let titulo = if limite == cfg.critical_threshold {
+                "Carga crítica"
+            } else {
+                "Carga baixa"
+            };
+
+            // A notificacao do sistema e a certa aqui, e nao a caixa do proprio app: ela
+            // fica na Central de Acoes para ser lida depois. O aviso do app e para o que
+            // acontece na hora e nao precisa sobreviver.
+            let _ = app.notification().builder().title(titulo).body(corpo).show();
+            break;
+        }
     }
 }
 
