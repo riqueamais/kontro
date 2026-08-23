@@ -1,7 +1,0 @@
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Kontro.exe
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Kontro.dll
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Kontro.deps.json
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Kontro.runtimeconfig.json
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Microsoft.Windows.SDK.NET.dll
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\WinRT.Runtime.dll
-C:\Users\rique\AppData\Local\Temp\claude\C--Users-rique-desktop\120f9a90-71ad-4f1c-9f7b-ed4c088ecca2\scratchpad\pub-fd\Velopack.dll

@@ -1,7 +1,0 @@
-C:\Users\rique\desktop\Kontro\publish\Kontro.exe
-C:\Users\rique\desktop\Kontro\publish\Kontro.dll
-C:\Users\rique\desktop\Kontro\publish\Kontro.deps.json
-C:\Users\rique\desktop\Kontro\publish\Kontro.runtimeconfig.json
-C:\Users\rique\desktop\Kontro\publish\Microsoft.Windows.SDK.NET.dll
-C:\Users\rique\desktop\Kontro\publish\WinRT.Runtime.dll
-C:\Users\rique\desktop\Kontro\publish\Velopack.dll
