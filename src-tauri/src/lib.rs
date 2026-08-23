@@ -111,6 +111,18 @@ pub fn executar() {
     let (envio, recebimento) = mpsc::channel::<Pedido>();
 
     tauri::Builder::default()
+        // Precisa vir antes dos outros: quando ja ha uma instancia rodando, este plugin
+        // encerra a nova imediatamente, e nada mais chega a subir.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            // Abrir o app de novo com ele ja aberto significa "quero ver o Kontro" --
+            // entao a segunda tentativa traz a janela de configuracoes para a frente em
+            // vez de morrer em silencio.
+            if let Some(janela) = app.get_webview_window(janelas::PRINCIPAL) {
+                let _ = janela.unminimize();
+                let _ = janela.show();
+                let _ = janela.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())

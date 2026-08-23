@@ -104,6 +104,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Cada passo roda num shell proprio: variavel definida la atras nao chega
+          # aqui. Foi assim que o manifesto saiu com a versao nula e o app recusou a
+          # atualizacao dizendo "invalid type: null".
+          $v = "${{ steps.ver.outputs.version }}"
+
           $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi, *.sig).FullName
 
           # O manifesto que o app consulta. O endereco fixo `latest/download/latest.json`
@@ -122,6 +127,13 @@ jobs:
             }
           }
           $manifesto | ConvertTo-Json -Depth 10 | Set-Content latest.json -Encoding utf8
+
+          $conferido = Get-Content latest.json -Raw | ConvertFrom-Json
+          if (-not $conferido.version -or -not $conferido.platforms.'windows-x86_64'.signature) {
+            Write-Error "O manifesto saiu incompleto -- o app recusaria a atualizacao."
+            exit 1
+          }
+
           $arquivos += (Resolve-Path latest.json).Path
 
           # A anotacao da tag e onde a release foi escrita para gente ler. Quando

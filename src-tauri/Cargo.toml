@@ -31,6 +31,7 @@ tauri-plugin-notification = "2.0.0-rc.5"
 ureq = { version = "3.2.1", features = ["json"] }
 tauri-plugin-updater = "2.0.0-rc.4"
 tauri-plugin-process = "2.0.0-rc.1"
+tauri-plugin-single-instance = "2.0.0-rc.5"
 
 [dependencies.windows]
 version = "0.62"

@@ -52,9 +52,18 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
         // Desconectado nao desenha anel nenhum -- nem o trilho. Um anel de fundo ali
         // sugere uma medida que nao existe; o controle apagado e riscado diz o que
         // realmente se sabe, que e nada.
+        // Desconectado mantem o trilho e o controle, com o risco por cima.
+        //
+        // O texto do sistema de design diz "sem anel", mas o PNG de referencia e a tira
+        // da propria pagina do produto mostram o anel -- e e ele que da identidade. Sem
+        // o circulo sobra um tracinho diagonal que nao lembra a marca em nada.
+        //
+        // A opacidade tambem sobe: os 45% pedidos somem em 16 pixels sobre barra
+        // translucida. Setenta mantem a leitura de "apagado" e deixa o controle se
+        // reconhecer.
         (LinkMode::Offline, _) => format!(
-            r##"{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
-            desenhar_glifo(0.45)
+            r##"{trilho}{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
+            desenhar_glifo(0.7)
         ),
 
         // No cabo o anel fica inteiro e neutro: "estou plugado e nao tenho numero".
