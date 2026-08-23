@@ -4,6 +4,7 @@
 //! recebe e o estado ja pronto. Isso mantem os objetos do WinRT presos a um unico
 //! apartamento e evita que a leitura trave o desenho.
 
+mod autostart;
 mod device;
 mod diagnostico;
 mod geometria;
@@ -63,7 +64,12 @@ pub fn executar() {
         return;
     }
 
-    let config = Settings::carregar();
+    let mut config = Settings::carregar();
+
+    // O usuario pode ter tirado o app da inicializacao pelo Gerenciador de Tarefas. O
+    // registro e a verdade; o arquivo so guarda a preferencia.
+    config.start_with_windows = autostart::ligado();
+
     let compartilhado = Arc::new(Compartilhado {
         estado: Mutex::new(model::BatteryState::montar(
             model::LinkMode::Offline,
@@ -107,10 +113,12 @@ pub fn executar() {
             // o atalho do menu e para conferir a interface sem ter de mexer na
             // configuracao do usuario so para ver uma tela.
             let pedido_explicito = std::env::args().any(|a| a == "--show");
-            let abrir_direto = pedido_explicito || {
-                let cfg = compartilhado.config.lock().unwrap();
-                !cfg.start_minimized || !cfg.first_run_done
-            };
+            let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
+            let abrir_direto = pedido_explicito
+                || (!subiu_com_o_sistema && {
+                    let cfg = compartilhado.config.lock().unwrap();
+                    !cfg.start_minimized || !cfg.first_run_done
+                });
             if abrir_direto {
                 if let Some(j) = handle.get_webview_window(janelas::PRINCIPAL) {
                     let _ = j.show();
@@ -280,6 +288,20 @@ fn salvar_configuracoes(
     compartilhado: tauri::State<Arc<Compartilhado>>,
     novas: Settings,
 ) {
+    let mut novas = novas;
+
+    // Guardar a preferencia nao basta: quem faz o app subir com o sistema e a chave do
+    // registro. Se a escrita falhar, a configuracao volta a dizer a verdade em vez de
+    // prometer o que nao vai acontecer.
+    {
+        let anterior = compartilhado.config.lock().unwrap().start_with_windows;
+        if novas.start_with_windows != anterior
+            && !autostart::definir(novas.start_with_windows)
+        {
+            novas.start_with_windows = autostart::ligado();
+        }
+    }
+
     novas.salvar();
     janelas::posicionar_sobreposicao(&app, &novas);
     *compartilhado.config.lock().unwrap() = novas;

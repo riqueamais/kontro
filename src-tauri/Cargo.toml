@@ -45,6 +45,7 @@ features = [
   "Storage_Streams",
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
+  "Win32_System_Registry",
   "Win32_System_WinRT",
   "Win32_UI_Input_XboxController",
   "Win32_UI_Shell",
