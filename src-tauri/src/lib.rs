@@ -152,6 +152,18 @@ pub fn executar() {
             // o atalho do menu e para conferir a interface sem ter de mexer na
             // configuracao do usuario so para ver uma tela.
             let pedido_explicito = std::env::args().any(|a| a == "--show");
+
+            // Abre o painel da bandeja direto. Ele so aparece por clique no icone, o que
+            // torna impossivel conferir o desenho sem a mao no mouse.
+            if std::env::args().any(|a| a == "--painel") {
+                if let Some(painel) = handle.get_webview_window(janelas::PAINEL) {
+                    janelas::posicionar_painel(&handle);
+                    let _ = painel.show();
+                    // sem foco ele se esconde sozinho no mesmo instante, que e o
+                    // comportamento correto e o que torna a conferencia impossivel
+                    let _ = painel.set_focus();
+                }
+            }
             let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
             let abrir_direto = pedido_explicito
                 || (!subiu_com_o_sistema && {

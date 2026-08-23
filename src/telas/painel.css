@@ -1,7 +1,13 @@
 .painel {
   position: relative;
-  /* folga para a sombra se dissipar sem cortar num quadrado */
-  margin: 8px 20px 44px;
+  /*
+    A folga existe para a sombra se dissipar. Ela precisa ser maior que o alcance da
+    sombra em cada lado, senao o desfoque bate no limite da janela e corta numa reta.
+    Com desfoque 32 e queda 18, o alcance e de 16 nas laterais e no topo, e 34 embaixo.
+    Os valores abaixo dao margem sobre isso -- errar para mais so custa pixel
+    transparente, errar para menos aparece.
+  */
+  margin: 24px 32px 56px;
   padding: var(--space-4);
   border-radius: var(--radius-window);
   background: var(--ink);

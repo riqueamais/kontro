@@ -10,7 +10,18 @@ use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, Webvie
 use crate::settings::{OverlayCorner, Settings};
 
 /// Largura do painel da bandeja. A altura quem decide e o proprio conteudo.
-pub const LARGURA_DO_PAINEL: f64 = 368.0;
+///
+/// Inclui as folgas laterais que a sombra ocupa: o painel visivel tem 328, e o resto e
+/// espaco transparente para o desfoque se dissipar sem bater no limite da janela.
+pub const LARGURA_DO_PAINEL: f64 = 392.0;
+
+/// Folga transparente em volta do painel, igual as margens do CSS.
+const FOLGA_LATERAL_DO_PAINEL: f64 = 32.0;
+const FOLGA_INFERIOR_DO_PAINEL: f64 = 56.0;
+
+/// O mesmo para o aviso.
+const FOLGA_LATERAL_DO_AVISO: f64 = 32.0;
+const FOLGA_SUPERIOR_DO_AVISO: f64 = 28.0;
 
 pub const PRINCIPAL: &str = "principal";
 pub const PAINEL: &str = "painel";
@@ -110,7 +121,7 @@ fn criar_aviso(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let janela =
         WebviewWindowBuilder::new(app, AVISO, WebviewUrl::App("index.html?janela=aviso".into()))
             .title("Kontro")
-            .inner_size(360.0, 144.0)
+            .inner_size(384.0, 180.0)
             .decorations(false)
             .transparent(true)
             .shadow(false)
@@ -186,8 +197,11 @@ pub fn posicionar_aviso(app: &AppHandle) {
     let Ok(tam_janela) = janela.outer_size() else { return };
     let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
 
+    // centralizar a janela centraliza o cartao junto, porque as folgas laterais sao
+    // iguais; o topo precisa descontar a folga para o cartao ficar onde se pediu
+    let _ = FOLGA_LATERAL_DO_AVISO;
     let x = posicao.x + (tamanho.width - tam_janela.width) / 2.0;
-    let y = posicao.y + MARGEM_AVISO_TOPO;
+    let y = posicao.y + MARGEM_AVISO_TOPO - FOLGA_SUPERIOR_DO_AVISO;
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }
 
@@ -207,9 +221,10 @@ pub fn posicionar_painel(app: &AppHandle) {
     let Ok(tam_janela) = janela.outer_size() else { return };
     let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
 
-    // a barra de tarefas nao entra em available_monitors, entao o respiro de baixo e
-    // maior de proposito
-    let x = posicao.x + tamanho.width - tam_janela.width - 12.0;
-    let y = posicao.y + tamanho.height - tam_janela.height - 60.0;
+    // Ancorar pela janela deixaria o painel longe do canto: entre a borda da janela e a
+    // borda visivel ha a folga da sombra. O respiro de baixo tambem e maior de proposito,
+    // porque a barra de tarefas nao entra no que o sistema chama de area disponivel.
+    let x = posicao.x + tamanho.width - tam_janela.width + FOLGA_LATERAL_DO_PAINEL - 12.0;
+    let y = posicao.y + tamanho.height - tam_janela.height + FOLGA_INFERIOR_DO_PAINEL - 56.0;
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }

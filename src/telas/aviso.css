@@ -1,7 +1,8 @@
 .aviso {
-  /* As folgas nao sao decorativas: a sombra desce, entao precisa de mais espaco
-     embaixo do que em cima para se dissipar sem cortar num quadrado. */
-  padding: 24px 20px 44px;
+  /* A sombra desce, entao precisa de mais espaco embaixo do que em cima. As laterais
+     tambem contam: com desfoque 32 ela alcanca 16 de cada lado, e a folga tem de ser
+     maior que isso ou o desfoque corta numa reta. */
+  padding: 28px 32px 56px;
 }
 
 .cartao {
