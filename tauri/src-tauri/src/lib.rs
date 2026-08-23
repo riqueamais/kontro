@@ -82,7 +82,11 @@ pub fn executar() {
             janelas::criar_todas(&handle)?;
             montar_bandeja(&handle)?;
 
-            let abrir_direto = {
+            // `--show` abre a janela mesmo com "iniciar minimizado" ligado. Serve para
+            // o atalho do menu e para conferir a interface sem ter de mexer na
+            // configuracao do usuario so para ver uma tela.
+            let pedido_explicito = std::env::args().any(|a| a == "--show");
+            let abrir_direto = pedido_explicito || {
                 let cfg = compartilhado.config.lock().unwrap();
                 !cfg.start_minimized || !cfg.first_run_done
             };
@@ -153,7 +157,7 @@ fn iniciar_ciclo(
 }
 
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
-    let abrir = MenuItem::with_id(app, "abrir", "Configuracoes", true, None::<&str>)?;
+    let abrir = MenuItem::with_id(app, "abrir", "Configurações", true, None::<&str>)?;
     let atualizar = MenuItem::with_id(app, "atualizar", "Atualizar agora", true, None::<&str>)?;
     let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&abrir, &atualizar, &sair])?;

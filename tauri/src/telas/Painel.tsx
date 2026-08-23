@@ -31,7 +31,7 @@ export function Painel() {
   if (!estado) return null;
 
   const rodape = estado.readAt
-    ? `${estado.stale ? "lido" : "atualizado"} as ${new Date(estado.readAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+    ? `${estado.stale ? "lido" : "atualizado"} às ${new Date(estado.readAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
     : "sem leitura ainda";
 
   return (
@@ -64,7 +64,7 @@ export function Painel() {
 
       <div className="acoes">
         <button onClick={() => invoke("mostrar_janela", { rotulo: "principal" })}>
-          Configuracoes
+          Configurações
         </button>
         <button onClick={() => invoke("ler_agora")}>Atualizar</button>
       </div>
@@ -75,9 +75,9 @@ export function Painel() {
 function detalhe(estado: Estado) {
   if (estado.mode === "Offline") return estado.deviceName;
   if (estado.conectadoSemCarga)
-    return `conectado ${estado.textoDaLigacao} - nao informa bateria`;
+    return `conectado ${estado.textoDaLigacao} - não informa bateria`;
   if (estado.precisao === "Aproximada")
-    return `${estado.textoDaCarga} - sem percentual neste controle`;
+    return `${estado.textoDaCarga} · sem percentual neste controle`;
   return estado.textoDaLigacao;
 }
 
@@ -111,9 +111,9 @@ function Historico({ serie, cor }: { serie: Amostra[]; cor: string }) {
     <div className="historico">
       <div className="faixa">
         <span>
-          {min}% - {max}%
+          {min}% – {max}%
         </span>
-        <span>ultimas 24 h</span>
+        <span>últimas 24 h</span>
       </div>
       <svg width="100%" height={altura} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none">
         <polyline points={pontos} fill="none" stroke={cor} strokeWidth="1.5" strokeLinejoin="round" />

@@ -41,8 +41,8 @@ const CANTOS: Record<OverlayCorner, string> = {
 
 const MODOS: Record<OverlayMode, string> = {
   Desligada: "Desligada",
-  EmJogo: "So em jogo",
-  Sempre: "Sempre visivel",
+  EmJogo: "Só em jogo",
+  Sempre: "Sempre visível",
 };
 
 export function Principal() {
@@ -93,18 +93,18 @@ export function Principal() {
             {estado.mode === "Offline"
               ? "Desconectado"
               : estado.conectadoSemCarga
-                ? `Conectado ${estado.textoDaLigacao} - este controle nao informa a bateria`
+                ? `Conectado ${estado.textoDaLigacao} · este controle não informa a bateria`
                 : estado.precisao === "Aproximada"
-                  ? `${estado.textoDaCarga} - este controle nao informa percentual`
+                  ? `${estado.textoDaCarga} · este controle não informa percentual`
                   : `Conectado - ${estado.textoDaLigacao}`}
           </div>
         </div>
       </section>
 
-      <h2>Inicializacao</h2>
+      <h2>Inicialização</h2>
       <Linha
         titulo="Iniciar com o Windows"
-        descricao="Sobe junto com o sistema e ja comeca a monitorar."
+        descricao="Sobe junto com o sistema e já começa a monitorar."
       >
         <Chave
           ligado={cfg.StartWithWindows}
@@ -114,7 +114,7 @@ export function Principal() {
       <Linha titulo="Iniciar minimizado" descricao="Abre direto na bandeja, sem mostrar esta janela.">
         <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
       </Linha>
-      <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode so esconder o app.">
+      <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
         <button
           className="ciclo"
           onClick={() =>
@@ -126,7 +126,7 @@ export function Principal() {
       </Linha>
 
       <h2>Avisos</h2>
-      <Linha titulo="Avisar carga baixa" descricao="Notificacao ao cruzar os limiares abaixo.">
+      <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
         <Chave
           ligado={cfg.NotificationsEnabled}
           aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
@@ -139,7 +139,7 @@ export function Principal() {
         />
       </Linha>
 
-      <h2>Sobreposicao</h2>
+      <h2>Sobreposição</h2>
       <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
         <button
           className="ciclo"
@@ -152,7 +152,7 @@ export function Principal() {
           {MODOS[cfg.OverlayMode]}
         </button>
       </Linha>
-      <Linha titulo="Canto" descricao="Onde a pilula fica ancorada.">
+      <Linha titulo="Canto" descricao="Onde a pílula fica ancorada.">
         <button
           className="ciclo"
           onClick={() =>
@@ -171,7 +171,7 @@ export function Principal() {
       </Linha>
       <Linha
         titulo="Monitor"
-        descricao="Fixa a pilula numa tela em vez de deixar que ela siga o foco."
+        descricao="Fixa a pílula numa tela em vez de deixar que ela siga o foco."
       >
         <button
           className="ciclo"

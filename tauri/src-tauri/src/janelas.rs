@@ -27,13 +27,40 @@ pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    WebviewWindowBuilder::new(app, PRINCIPAL, WebviewUrl::App("index.html?janela=principal".into()))
-        .title("Kontro")
-        .inner_size(480.0, 720.0)
-        .resizable(false)
-        .visible(false)
-        .center()
-        .build()
+    let janela =
+        WebviewWindowBuilder::new(app, PRINCIPAL, WebviewUrl::App("index.html?janela=principal".into()))
+            .title("Kontro")
+            .inner_size(480.0, 720.0)
+            .resizable(false)
+            .visible(false)
+            .center()
+            .build()?;
+
+    escurecer_barra_de_titulo(&janela);
+    Ok(janela)
+}
+
+/// Pinta a barra de titulo de escuro.
+///
+/// E a unica janela do app com moldura do sistema. Sem isto ela ganha uma faixa clara
+/// em cima do conteudo escuro -- o tipo de detalhe que denuncia na hora que o app foi
+/// feito as pressas.
+fn escurecer_barra_de_titulo(janela: &WebviewWindow) {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_USE_IMMERSIVE_DARK_MODE};
+
+    let Ok(bruto) = janela.hwnd() else { return };
+    let alvo = HWND(bruto.0 as *mut core::ffi::c_void);
+    let ligado: i32 = 1;
+
+    unsafe {
+        let _ = DwmSetWindowAttribute(
+            alvo,
+            DWMWA_USE_IMMERSIVE_DARK_MODE,
+            &ligado as *const i32 as *const core::ffi::c_void,
+            core::mem::size_of::<i32>() as u32,
+        );
+    }
 }
 
 fn criar_painel(app: &AppHandle) -> tauri::Result<WebviewWindow> {

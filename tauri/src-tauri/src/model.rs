@@ -56,7 +56,7 @@ pub fn descrever_nivel(nivel: i32) -> &'static str {
     match nivel {
         0 => "quase acabando",
         1 => "carga baixa",
-        2 => "carga media",
+        2 => "carga média",
         _ => "carga cheia",
     }
 }

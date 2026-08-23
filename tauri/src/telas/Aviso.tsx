@@ -36,9 +36,9 @@ export function Aviso() {
           <div className="linha">
             {estado.mode === "Offline"
               ? estado.preenchimento !== null
-                ? `desconectado - ${estado.textoDaCarga} na ultima leitura`
+                ? `desconectado · ${estado.textoDaCarga} na última leitura`
                 : "desconectado"
-              : `conectado - ${estado.textoDaLigacao}`}
+              : `conectado · ${estado.textoDaLigacao}`}
           </div>
         </div>
       </div>

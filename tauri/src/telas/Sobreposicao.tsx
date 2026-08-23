@@ -16,7 +16,7 @@ export function Sobreposicao() {
   const texto = estado.girando
     ? "cabo"
     : estado.precisao === "Aproximada" && estado.nivel !== null
-      ? ["baixa", "baixa", "media", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)]
+      ? ["baixa", "baixa", "média", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)]
       : estado.textoDaCarga;
 
   return (
