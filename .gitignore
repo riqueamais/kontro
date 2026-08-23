@@ -1,9 +1,11 @@
-bin/
-obj/
+# dependencias e saidas de build
+node_modules/
 dist/
-publish/
-Releases/
-.vs/
-*.user
-*.suo
-*.cache
+src-tauri/target/
+
+# o Tauri gera estes a partir da configuracao
+src-tauri/gen/schemas/
+
+# lixo do sistema
+Thumbs.db
+desktop.ini

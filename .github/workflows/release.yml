@@ -1,7 +1,7 @@
 name: release
 
-# A tag e a fonte da versao: empurrar v1.2.3 gera a release 1.2.3.
-# Assim o numero nunca fica duplicado entre o csproj e o repositorio.
+# A tag e a fonte da versao: empurrar v2.1.0 gera a release 2.1.0. Assim o numero nunca
+# fica duplicado entre o Cargo.toml, o tauri.conf.json e o repositorio.
 on:
   push:
     tags:
@@ -22,9 +22,16 @@ jobs:
           # o checkout traz so o commit, e a mensagem nao viria junto
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: "8.0.x"
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
 
       - name: Versao a partir da tag
         id: ver
@@ -32,56 +39,48 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $v = $tag -replace '^v', ''
-          if ($v -notmatch '^\d+\.\d+\.\d+') {
+          if ($v -notmatch '^\d+\.\d+\.\d+$') {
             Write-Error "Tag '$tag' nao esta no formato vX.Y.Z"
             exit 1
           }
           "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "versao: $v"
 
-      - name: Publicar
+      - name: Carimbar a versao no projeto
         shell: pwsh
         run: |
-          dotnet publish Kontro.csproj `
-            -c Release `
-            -o publish `
-            -p:Version=${{ steps.ver.outputs.version }} `
-            -p:FileVersion=${{ steps.ver.outputs.version }}.0 `
-            -p:InformationalVersion=${{ steps.ver.outputs.version }}
+          $v = "${{ steps.ver.outputs.version }}"
 
-      - name: Instalar o empacotador
-        shell: pwsh
-        run: dotnet tool install --global vpk
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.version = $v
+          $conf | ConvertTo-Json -Depth 20 | Set-Content src-tauri/tauri.conf.json -Encoding utf8
 
-      - name: Gerar o instalador
-        shell: pwsh
-        run: |
-          vpk pack `
-            --packId Kontro `
-            --packVersion ${{ steps.ver.outputs.version }} `
-            --packDir publish `
-            --mainExe Kontro.exe `
-            --packTitle Kontro `
-            --packAuthors riqueamais `
-            --icon setup.ico `
-            --splashImage Assets/branding/installer/splash.png `
-            --framework net8-x64-desktop
+          # so a primeira ocorrencia: a linha de versao do pacote vem antes das
+          # dependencias, e trocar todas quebraria as versoes delas
+          $cargo = Get-Content src-tauri/Cargo.toml -Raw
+          $cargo = [regex]::Replace($cargo, '(?m)^version = ".*?"$', "version = ""$v""", 1)
+          Set-Content src-tauri/Cargo.toml $cargo -Encoding utf8
 
-      - name: Conferir o que foi gerado
+      - name: Instalar dependencias do front
+        run: npm ci
+
+      - name: Empacotar
+        run: npx tauri build
+
+      - name: Listar o que saiu
         shell: pwsh
-        run: Get-ChildItem Releases | Select-Object Name, Length | Format-Table -AutoSize
+        run: Get-ChildItem src-tauri/target/release/bundle -Recurse -File | Select-Object Name, Length | Format-Table -AutoSize
 
       - name: Publicar a release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $arquivos = (Get-ChildItem Releases -File).FullName
+          $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi).FullName
+
           # A anotacao da tag e onde a release foi escrita para gente ler. Quando
           # existir, ela manda; sem ela, a lista de commits do GitHub ao menos diz
           # o que mudou.
-          # o git devolve linha a linha; juntar evita depender de como o PowerShell
-          # converteria esse array em texto mais adiante
           $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
           if ([string]::IsNullOrWhiteSpace($notas)) {
             gh release create "${{ github.ref_name }}" $arquivos `
@@ -98,4 +97,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: kontro-${{ steps.ver.outputs.version }}
-          path: Releases/
+          path: src-tauri/target/release/bundle/
