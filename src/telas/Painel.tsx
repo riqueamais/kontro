@@ -16,15 +16,28 @@ export function Painel() {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
   }, [estado?.key, estado?.percent]);
 
-  // O painel some ao perder o foco: ele e um relance, nao uma janela para deixar
-  // aberta. Ficar preso na tela seria mais atrapalho que informacao.
+  // O painel e um relance, nao uma janela para deixar aberta. Ele some de tres jeitos,
+  // e sao tres de proposito: o foco nem sempre chega a uma janela sem moldura, e um
+  // painel que fica preso na tela e pior que um painel que fecha demais.
   useEffect(() => {
     const janela = getCurrentWindow();
+    const fechar = () => void janela.hide();
+
     const parar = janela.onFocusChanged(({ payload: temFoco }) => {
-      if (!temFoco) void janela.hide();
+      if (!temFoco) fechar();
     });
+
+    const aoPerderJanela = () => fechar();
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (e.key === "Escape") fechar();
+    };
+    window.addEventListener("blur", aoPerderJanela);
+    window.addEventListener("keydown", aoTeclar);
+
     return () => {
       void parar.then((f) => f());
+      window.removeEventListener("blur", aoPerderJanela);
+      window.removeEventListener("keydown", aoTeclar);
     };
   }, []);
 
@@ -36,6 +49,22 @@ export function Painel() {
 
   return (
     <div className="painel">
+      <button
+        className="fechar"
+        aria-label="Fechar"
+        title="Fechar (Esc)"
+        onClick={() => void getCurrentWindow().hide()}
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+          <path
+            d="M1 1 L9 9 M9 1 L1 9"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+
       <div className="topo">
         <Anel
           valor={estado.preenchimento}

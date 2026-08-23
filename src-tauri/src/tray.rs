@@ -25,50 +25,144 @@ pub fn desenhar(estado: &BatteryState, tamanho: u32, tema_claro: bool) -> Option
 fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
+    let raio = g::ANEL_RAIO;
+    let grossura = g::ANEL_LARGURA;
 
+    // No tema claro da barra o controle precisa ser escuro, senao ele some no proprio
+    // fundo. Nos demais estados a cor vem do que o anel esta dizendo.
     let cor_glifo = if tema_claro { g::GLIFO_NO_CLARO } else { "#FFFFFF" };
 
-    // Desconectado nao desenha anel nenhum: um anel cinza cheio diria "medi e deu zero",
-    // que e diferente de "nao ha o que medir".
-    let (cor_anel, preenchimento) = match (estado.mode, estado.preenchimento) {
-        (LinkMode::Offline, _) => (g::CINZA, None),
-        (LinkMode::Cable, None) => (g::TEAL, Some(100)),
-        (_, Some(p)) => (g::cor_do_nivel(p, VERMELHO_ABAIXO, AMBAR_ABAIXO), Some(p)),
-        (_, None) => (g::CINZA, None),
-    };
-
+    // O trilho e sempre branco translucido, e nao um tom da cor do estado. Tingi-lo
+    // fazia o anel de fundo quase sumir quando a cor era escura -- que e justamente o
+    // caso do desconectado, o estado em que so o trilho existe.
     let trilho = format!(
-        r#"<circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{cor_anel}" stroke-opacity="0.22" stroke-width="{}"/>"#,
-        g::ANEL_RAIO,
-        g::ANEL_LARGURA
+        r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="{grossura}"/>"##
     );
 
-    let anel = match preenchimento {
-        Some(p) if p >= 100 => format!(
-            r#"<circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{cor_anel}" stroke-width="{}"/>"#,
-            g::ANEL_RAIO,
-            g::ANEL_LARGURA
-        ),
-        Some(p) if p > 0 => format!(
-            r#"<path d="{}" fill="none" stroke="{cor_anel}" stroke-width="{}" stroke-linecap="round"/>"#,
-            g::arco(360.0 * p as f32 / 100.0),
-            g::ANEL_LARGURA
-        ),
-        _ => String::new(),
+    let desenhar_glifo = |opacidade: f32| {
+        format!(
+            r##"<g opacity="{opacidade}" transform="translate({centro},{}) scale({}) translate({},{})"><path d="{}" fill="{cor_glifo}" fill-rule="evenodd"/></g>"##,
+            g::PAD_CENTRO_Y_BANDEJA,
+            g::PAD_ESCALA_BANDEJA,
+            -centro,
+            -g::PAD_CENTRO_Y,
+            g::pad_com_sticks_vazados()
+        )
     };
 
-    let glifo = format!(
-        r#"<g transform="translate({centro},{}) scale({}) translate({},{})"><path d="{}" fill="{cor_glifo}" fill-rule="evenodd"/></g>"#,
-        g::PAD_CENTRO_Y_BANDEJA,
-        g::PAD_ESCALA_BANDEJA,
-        -centro,
-        -g::PAD_CENTRO_Y,
-        g::pad_com_sticks_vazados()
-    );
+    let miolo = match (estado.mode, estado.preenchimento) {
+        // Desconectado nao desenha carga: o controle apaga e ganha um risco. Um anel
+        // cinza cheio diria "medi e deu zero", que e diferente de "nao ha o que medir".
+        (LinkMode::Offline, _) => format!(
+            r##"{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
+            desenhar_glifo(0.45)
+        ),
+
+        // No cabo tambem nao ha percentual, mas ha ligacao: anel cheio e neutro.
+        (LinkMode::Cable, None) => format!(
+            r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-opacity="0.9" stroke-width="{grossura}"/>{}"##,
+            g::CINZA,
+            desenhar_glifo(1.0)
+        ),
+
+        (_, Some(p)) => {
+            let cor = g::cor_do_nivel(p, VERMELHO_ABAIXO, AMBAR_ABAIXO);
+            let arco = if p >= 100 {
+                format!(
+                    r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor}" stroke-width="{grossura}"/>"##
+                )
+            } else if p > 0 {
+                format!(
+                    r##"<path d="{}" fill="none" stroke="{cor}" stroke-width="{grossura}" stroke-linecap="round"/>"##,
+                    g::arco(360.0 * p as f32 / 100.0)
+                )
+            } else {
+                String::new()
+            };
+            format!("{arco}{}", desenhar_glifo(1.0))
+        }
+
+        (_, None) => desenhar_glifo(1.0),
+    };
 
     format!(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{trilho}{anel}{glifo}</svg>"#
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{trilho}{miolo}</svg>"##
     )
+}
+
+/// Salva em disco exatamente o que a bandeja receberia.
+///
+/// Um icone de dezesseis pixels e pequeno demais para julgar na tela. Ampliado sobre o
+/// fundo real da barra de tarefas da para ver o que importa: se o anel sumiu, se o
+/// controle esta torto, se o contraste morreu.
+pub fn salvar_previa(caminho: &str, tamanho: u32, tema_claro: bool) -> Option<()> {
+    let exemplos: [(Option<i32>, LinkMode); 5] = [
+        (None, LinkMode::Offline),
+        (Some(100), LinkMode::Bluetooth),
+        (Some(55), LinkMode::Bluetooth),
+        (Some(12), LinkMode::Bluetooth),
+        (None, LinkMode::Cable),
+    ];
+
+    let escala = 8u32;
+    let largura = tamanho * escala * exemplos.len() as u32;
+    let mut tira = tiny_skia::Pixmap::new(largura, tamanho * escala)?;
+
+    // O icone e transparente e vive sobre a barra de tarefas. Julgar num fundo branco
+    // esconde justamente o que o usuario ve: branco sobre branco some, e translucido
+    // sobre escuro tambem.
+    tira.fill(if tema_claro {
+        tiny_skia::Color::from_rgba8(0xF3, 0xF3, 0xF3, 255)
+    } else {
+        tiny_skia::Color::from_rgba8(0x20, 0x20, 0x20, 255)
+    });
+
+    // Nearest de proposito: interpolar suavizaria os pixels e esconderia exatamente o
+    // defeito que se quer enxergar.
+    let pintura = tiny_skia::PixmapPaint {
+        quality: tiny_skia::FilterQuality::Nearest,
+        ..Default::default()
+    };
+
+    for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
+        let estado = crate::model::BatteryState::montar(
+            *modo,
+            *preenchimento,
+            if preenchimento.is_some() {
+                crate::model::Precisao::Exata
+            } else {
+                crate::model::Precisao::Nenhuma
+            },
+            None,
+            None,
+            false,
+            false,
+            "demo".into(),
+            None,
+            "demo".into(),
+            1,
+        );
+
+        let svg = montar_svg(&estado, tema_claro);
+        let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
+
+        let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;
+        let e = tamanho as f32 / g::CAIXA;
+        resvg::render(&arvore, tiny_skia::Transform::from_scale(e, e), &mut um.as_mut());
+
+        // o deslocamento passa pela mesma escala do desenho, entao ele vai em pixels
+        // do icone e nao da tira
+        tira.draw_pixmap(
+            (i as u32 * tamanho) as i32,
+            0,
+            um.as_ref(),
+            &pintura,
+            tiny_skia::Transform::from_scale(escala as f32, escala as f32),
+            None,
+        );
+    }
+
+    tira.save_png(caminho).ok()
 }
 
 fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {

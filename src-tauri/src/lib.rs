@@ -64,6 +64,20 @@ pub fn executar() {
         return;
     }
 
+    if let Some(i) = argumentos.iter().position(|a| a == "--icon-preview") {
+        let destino = argumentos.get(i + 1).cloned().unwrap_or_else(|| "icone.png".into());
+        let tamanho = argumentos
+            .get(i + 2)
+            .and_then(|t| t.parse().ok())
+            .unwrap_or_else(tray::tamanho_do_icone);
+        let claro = argumentos.iter().any(|a| a == "--claro");
+        match tray::salvar_previa(&destino, tamanho, claro) {
+            Some(()) => println!("previa de {tamanho}px salva em {destino}"),
+            None => eprintln!("nao consegui desenhar a previa"),
+        }
+        return;
+    }
+
     let mut config = Settings::carregar();
 
     // O usuario pode ter tirado o app da inicializacao pelo Gerenciador de Tarefas. O
