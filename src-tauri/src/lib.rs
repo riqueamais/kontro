@@ -101,6 +101,7 @@ pub fn executar() {
             None,
             "wired".to_string(),
             0,
+            None,
         )),
         serie: Mutex::new(Vec::new()),
         config: Mutex::new(config),

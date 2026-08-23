@@ -61,6 +61,23 @@ pub fn descrever_nivel(nivel: i32) -> &'static str {
     }
 }
 
+/// Texto da autonomia a partir dos minutos estimados.
+///
+/// Hora e minuto separados porque "4 h 20 min" se le num relance e "260 min" nao.
+pub fn descrever_autonomia(minutos: i64) -> String {
+    if minutos >= 60 {
+        let h = minutos / 60;
+        let m = minutos % 60;
+        if m > 0 {
+            format!("~{h} h {m} min de jogo")
+        } else {
+            format!("~{h} h de jogo")
+        }
+    } else {
+        format!("~{} min de jogo", minutos.max(1))
+    }
+}
+
 /// Quanto do anel preencher quando so ha degrau, e nao percentual.
 pub fn preenchimento_do_nivel(nivel: i32) -> i32 {
     match nivel {
@@ -102,6 +119,9 @@ pub struct BatteryState {
     pub conectado_sem_carga: bool,
     /// No cabo e sem percentual: o anel gira em vez de ficar vazio.
     pub girando: bool,
+
+    /// Quanto tempo de jogo ainda cabe, em texto. Nulo quando nao ha o que estimar.
+    pub autonomia: Option<String>,
 }
 
 impl BatteryState {
@@ -117,6 +137,7 @@ impl BatteryState {
         address: Option<String>,
         key: String,
         known_count: usize,
+        autonomia: Option<String>,
     ) -> Self {
         let preenchimento = match precisao {
             Precisao::Exata => percent,
@@ -166,6 +187,7 @@ impl BatteryState {
             tem_numero,
             conectado_sem_carga,
             girando,
+            autonomia,
         }
     }
 

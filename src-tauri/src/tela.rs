@@ -18,13 +18,10 @@ pub fn em_tela_cheia() -> bool {
         || estado == QUNS_PRESENTATION_MODE
 }
 
-/// Tela cheia exclusiva: nenhuma janela comum e desenhada por cima.
-///
-/// Saber disso permite explicar ao usuario por que a sobreposicao nao aparece, em vez de
-/// deixa-lo achando que quebrou.
-pub fn em_tela_cheia_exclusiva() -> bool {
-    consultar() == Some(QUNS_RUNNING_D3D_FULL_SCREEN)
-}
+// Nao ha funcao para "tela cheia exclusiva" aqui de proposito. O estado que o Windows
+// relata nao distingue jogo em tela cheia exclusiva de janela sem moldura ocupando a
+// tela: ambos chegam como o mesmo valor. Avisar o usuario com base nisso erraria na
+// metade dos casos, e um aviso que erra e pior que a duvida.
 
 fn consultar() -> Option<QUERY_USER_NOTIFICATION_STATE> {
     unsafe { SHQueryUserNotificationState().ok() }

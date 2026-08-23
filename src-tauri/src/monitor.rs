@@ -120,12 +120,6 @@ impl Monitor {
         }
     }
 
-    pub fn estado(&self) -> BatteryState {
-        self.ultimo
-            .clone()
-            .unwrap_or_else(|| self.montar(LinkMode::Offline))
-    }
-
     /// Um giro do ciclo. Devolve o estado quando ele mudou o bastante para redesenhar.
     pub fn ciclo(&mut self) -> Option<BatteryState> {
         let agora = tempo::agora();
@@ -389,9 +383,31 @@ impl Monitor {
                 .map(|c| c.nome.clone())
                 .unwrap_or_else(|| "Nenhum controle pareado".to_string()),
             self.ativo.as_ref().and_then(|c| c.endereco_bonito()),
-            chave,
+            chave.clone(),
             self.conhecidos.quantidade(),
+            self.autonomia(&chave, &registro, modo),
         )
+    }
+
+    /// O que dizer sobre quanto tempo ainda da para jogar.
+    ///
+    /// Sem percentual exato nao ha o que estimar: os quatro degraus do XInput nao dizem
+    /// quanto caiu, e inventar uma duracao a partir deles seria chutar com cara de conta.
+    fn autonomia(&self, chave: &str, registro: &Registro, modo: LinkMode) -> Option<String> {
+        if modo == LinkMode::Offline || modo == LinkMode::Cable {
+            return None;
+        }
+        let percent = registro.percent.filter(|_| registro.precisao == Precisao::Exata)?;
+
+        if let Some(minutos) = self.historico.autonomia_em_minutos(chave, percent) {
+            return Some(crate::model::descrever_autonomia(minutos));
+        }
+        // Ha consumo medido, mas nao o bastante para uma duracao honesta. Dizer a taxa
+        // ja e mais util que calar.
+        if let Some(taxa) = self.historico.consumo_por_hora(chave) {
+            return Some(format!("consumo de {taxa:.1} %/h").replace('.', ","));
+        }
+        Some("medindo o consumo".to_string())
     }
 
     pub fn historico(&self) -> &History {

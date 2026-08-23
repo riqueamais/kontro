@@ -23,7 +23,6 @@ pub const PAD_ESCALA_BANDEJA: f32 = 0.5;
 pub const PAD_CENTRO_Y_BANDEJA: f32 = 268.0;
 
 pub const VERDE: &str = "#5FE083";
-pub const TEAL: &str = "#35D7A8";
 pub const AMBAR: &str = "#F2C14E";
 pub const VERMELHO: &str = "#F2564E";
 pub const CINZA: &str = "#8D979F";

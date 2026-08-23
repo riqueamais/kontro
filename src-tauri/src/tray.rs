@@ -141,6 +141,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, tema_claro: bool) -> Option<()
             None,
             "demo".into(),
             1,
+            None,
         );
 
         let svg = montar_svg(&estado, tema_claro);

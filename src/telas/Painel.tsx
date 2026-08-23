@@ -104,10 +104,11 @@ export function Painel() {
 function detalhe(estado: Estado) {
   if (estado.mode === "Offline") return estado.deviceName;
   if (estado.conectadoSemCarga)
-    return `conectado ${estado.textoDaLigacao} - não informa bateria`;
+    return `conectado ${estado.textoDaLigacao} · não informa bateria`;
   if (estado.precisao === "Aproximada")
     return `${estado.textoDaCarga} · sem percentual neste controle`;
-  return estado.textoDaLigacao;
+  // a autonomia e o que o usuario quer saber de fato; a via so importa quando nao ha
+  return estado.autonomia ?? estado.textoDaLigacao;
 }
 
 /**

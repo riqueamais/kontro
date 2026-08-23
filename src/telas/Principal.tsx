@@ -164,7 +164,7 @@ export function Principal() {
                 ? `Conectado ${estado.textoDaLigacao} · este controle não informa a bateria`
                 : estado.precisao === "Aproximada"
                   ? `${estado.textoDaCarga} · este controle não informa percentual`
-                  : `Conectado - ${estado.textoDaLigacao}`}
+                  : (estado.autonomia ?? `Conectado · ${estado.textoDaLigacao}`)}
           </div>
         </div>
       </section>
