@@ -11,8 +11,10 @@ mod janelas;
 mod known;
 mod model;
 mod monitor;
+mod orquestra;
 mod paths;
 mod settings;
+mod tela;
 mod tempo;
 mod tray;
 
@@ -127,6 +129,7 @@ fn iniciar_ciclo(
 
         let mut monitor = monitor::Monitor::novo();
         let mut ultimo_icone = String::new();
+        let mut orquestrador = orquestra::Orquestrador::novo();
 
         loop {
             match pedidos.try_recv() {
@@ -147,6 +150,15 @@ fn iniciar_ciclo(
 
                 let _ = app.emit("kontro://estado", &estado);
                 atualizar_bandeja(&app, &estado, &mut ultimo_icone);
+            }
+
+            // Fora do `if`: a visibilidade da sobreposicao depende do que ocupa a tela,
+            // nao do estado da bateria. Reavaliar so na mudanca de carga faria entrar e
+            // sair de um jogo nao ter efeito ate a proxima variacao de percentual.
+            {
+                let estado = compartilhado.estado.lock().unwrap().clone();
+                let cfg = compartilhado.config.lock().unwrap().clone();
+                orquestrador.reavaliar(&app, &estado, &cfg);
             }
 
             std::thread::sleep(INTERVALO_DO_CICLO);

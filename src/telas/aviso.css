@@ -16,11 +16,21 @@
   animation: kontro-entrar-de-cima var(--motion-slow) var(--curva);
 }
 
+/* Sair e mais rapido que entrar: esperar uma saida lenta incomoda, esperar uma
+   entrada lenta nao. */
+.cartao.saindo {
+  animation: kontro-sair-por-cima var(--motion-slow) var(--curva) forwards;
+}
+
 .cartao .pct {
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.cartao .texto {
+  min-width: 0;
 }
 
 .cartao .nome {
@@ -40,6 +50,13 @@
 
 @keyframes kontro-entrar-de-cima {
   from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes kontro-sair-por-cima {
+  to {
     opacity: 0;
     transform: translateY(-12px);
   }
