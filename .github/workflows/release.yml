@@ -55,16 +55,44 @@ jobs:
           $conf.version = $v
           $conf | ConvertTo-Json -Depth 20 | Set-Content src-tauri/tauri.conf.json -Encoding utf8
 
-          # so a primeira ocorrencia: a linha de versao do pacote vem antes das
-          # dependencias, e trocar todas quebraria as versoes delas
+          # A linha de versao do pacote vem antes das dependencias, entao so a
+          # primeira troca. O padrao nao pode terminar em $: num checkout no Windows o
+          # arquivo chega com CRLF, o \r fica entre a aspa e o fim da linha e o padrao
+          # nunca casa. Foi assim que a 2.0.2 saiu se dizendo 2.0.0.
           $cargo = Get-Content src-tauri/Cargo.toml -Raw
-          $cargo = [regex]::Replace($cargo, '(?m)^version = ".*?"$', "version = ""$v""", 1)
-          Set-Content src-tauri/Cargo.toml $cargo -Encoding utf8
+          $trocado = $false
+          $cargo = [regex]::Replace($cargo, '(?m)^version = "[^"]*"', {
+            param($m)
+            if ($script:trocado) { return $m.Value }
+            $script:trocado = $true
+            return 'version = "' + $v + '"'
+          })
+          Set-Content src-tauri/Cargo.toml $cargo -Encoding utf8 -NoNewline
+
+      - name: Conferir o carimbo
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+
+          $noCargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "(.+)"' |
+            Select-Object -First 1).Matches.Groups[1].Value
+          $noConf = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+
+          Write-Host "tag=$v  cargo=$noCargo  conf=$noConf"
+          if ($noCargo -ne $v -or $noConf -ne $v) {
+            Write-Error "A versao nao foi carimbada em todos os lugares."
+            exit 1
+          }
 
       - name: Instalar dependencias do front
         run: npm ci
 
       - name: Empacotar
+        env:
+          # Assinar e o que permite ao app confiar no pacote que ele mesmo baixa. Sem
+          # isto o updater recusa a atualizacao, e com razao.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npx tauri build
 
       - name: Listar o que saiu
@@ -76,7 +104,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi).FullName
+          $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi, *.sig).FullName
+
+          # O manifesto que o app consulta. O endereco fixo `latest/download/latest.json`
+          # so funciona porque o arquivo entra como anexo da release.
+          $instalador = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter *-setup.exe | Select-Object -First 1
+          $assinatura = Get-Content "$($instalador.FullName).sig" -Raw
+          $manifesto = @{
+            version = $v
+            notes = "Veja a pagina da release para o que mudou."
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $assinatura.Trim()
+                url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$($instalador.Name)"
+              }
+            }
+          }
+          $manifesto | ConvertTo-Json -Depth 10 | Set-Content latest.json -Encoding utf8
+          $arquivos += (Resolve-Path latest.json).Path
 
           # A anotacao da tag e onde a release foi escrita para gente ler. Quando
           # existir, ela manda; sem ela, a lista de commits do GitHub ao menos diz

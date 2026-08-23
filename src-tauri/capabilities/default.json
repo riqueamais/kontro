@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "O que as janelas do app podem pedir ao sistema.",
+  "windows": [
+    "principal",
+    "painel",
+    "sobreposicao",
+    "aviso"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-show",
+    "core:window:allow-set-focus",
+    "shell:allow-open",
+    "notification:default",
+    "updater:default",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:allow-restart"
+  ]
+}

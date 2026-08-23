@@ -18,7 +18,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "riqueamais",
     "copyright": "© 2026 riqueamais",
     "shortDescription": "Bateria do seu controle na bandeja",
@@ -36,8 +38,23 @@
         "installerIcon": "../Assets/branding/setup.ico",
         "headerImage": "../Assets/branding/installer/nsis-header.bmp",
         "sidebarImage": "../Assets/branding/installer/nsis-sidebar.bmp",
-        "languages": ["PortugueseBR", "English"],
+        "languages": [
+          "PortugueseBR",
+          "English"
+        ],
         "displayLanguageSelector": false
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE3QThEMDkzQkI4OUQ2NDgKUldSSTFvbTdrOUNvRnhYYmVlSEliaVAwZUIxemFOVzF6bk56REViYnVCUmtzWWwvREdsd2lKcSsK",
+      "endpoints": [
+        "https://github.com/riqueamais/kontro/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
       }
     }
   }

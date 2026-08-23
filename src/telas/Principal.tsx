@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import { open as abrirNoNavegador } from "@tauri-apps/plugin-shell";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
@@ -52,11 +53,19 @@ interface VersaoNova {
   atual: string;
 }
 
+/** Em que ponto da atualizacao estamos. */
+type Passo =
+  | { tipo: "parado" }
+  | { tipo: "procurando" }
+  | { tipo: "baixando"; porcento: number | null }
+  | { tipo: "instalando" }
+  | { tipo: "falhou"; motivo: string };
+
 export function Principal() {
   const estado = useEstado();
   const [cfg, setCfg] = useState<Config | null>(null);
   const [nova, setNova] = useState<VersaoNova | null>(null);
-  const [procurando, setProcurando] = useState(false);
+  const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
 
   useEffect(() => {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
@@ -64,13 +73,51 @@ export function Principal() {
   }, []);
 
   const procurar = async () => {
-    setProcurando(true);
+    setPasso({ tipo: "procurando" });
     try {
       setNova(await invoke<VersaoNova | null>("procurar_atualizacao"));
+      setPasso({ tipo: "parado" });
     } catch {
-      // sem rede nao ha o que dizer alem de "nao deu"
-    } finally {
-      setProcurando(false);
+      setPasso({ tipo: "falhou", motivo: "não deu para consultar o repositório" });
+    }
+  };
+
+  /**
+   * Baixa, instala e reinicia.
+   *
+   * O pacote e verificado contra a chave publica que vive dentro do app: um instalador
+   * que nao tenha sido assinado com a chave correspondente e recusado antes de rodar.
+   * Sem isso, atualizar sozinho seria executar o que quer que estivesse naquela URL.
+   */
+  const atualizarAgora = async () => {
+    setPasso({ tipo: "baixando", porcento: null });
+    try {
+      const atualizacao = await check();
+      if (!atualizacao) {
+        setNova(null);
+        setPasso({ tipo: "parado" });
+        return;
+      }
+
+      let total = 0;
+      let baixado = 0;
+      await atualizacao.downloadAndInstall((evento) => {
+        if (evento.event === "Started") {
+          total = evento.data.contentLength ?? 0;
+        } else if (evento.event === "Progress") {
+          baixado += evento.data.chunkLength;
+          setPasso({
+            tipo: "baixando",
+            porcento: total > 0 ? Math.round((baixado / total) * 100) : null,
+          });
+        } else if (evento.event === "Finished") {
+          setPasso({ tipo: "instalando" });
+        }
+      });
+
+      await relaunch();
+    } catch (e) {
+      setPasso({ tipo: "falhou", motivo: String(e) });
     }
   };
 
@@ -205,23 +252,18 @@ export function Principal() {
       </Linha>
 
       <h2>Versão</h2>
-      <Linha
-        titulo={nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações"}
-        descricao={
-          nova
-            ? `Você está na ${nova.atual}. O download é pela página da release.`
-            : procurando
-              ? "Consultando o repositório..."
-              : "O app avisa sozinho a cada três horas quando sai versão nova."
-        }
-      >
-        {nova ? (
-          <button className="ciclo destaque" onClick={() => void abrirNoNavegador(nova.pagina)}>
-            Abrir a página
+      <Linha titulo={tituloDaVersao(nova, passo)} descricao={detalheDaVersao(nova, passo)}>
+        {nova && passo.tipo === "parado" ? (
+          <button className="ciclo destaque" onClick={() => void atualizarAgora()}>
+            Atualizar agora
           </button>
         ) : (
-          <button className="ciclo" disabled={procurando} onClick={() => void procurar()}>
-            {procurando ? "Procurando..." : "Procurar"}
+          <button
+            className="ciclo"
+            disabled={passo.tipo !== "parado" && passo.tipo !== "falhou"}
+            onClick={() => void procurar()}
+          >
+            {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
           </button>
         )}
       </Linha>
@@ -237,6 +279,32 @@ export function Principal() {
       </Linha>
     </div>
   );
+}
+
+function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
+  switch (passo.tipo) {
+    case "baixando":
+      return passo.porcento === null
+        ? "Baixando a atualização..."
+        : `Baixando a atualização... ${passo.porcento}%`;
+    case "instalando":
+      return "Instalando — o app vai reiniciar";
+    case "falhou":
+      return "Não foi possível atualizar";
+    default:
+      return nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações";
+  }
+}
+
+function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
+  if (passo.tipo === "falhou") return passo.motivo;
+  if (passo.tipo === "procurando") return "Consultando o repositório...";
+  if (passo.tipo === "baixando" || passo.tipo === "instalando") {
+    return "O pacote é verificado antes de rodar.";
+  }
+  return nova
+    ? `Você está na ${nova.atual}. O app baixa e instala sozinho.`
+    : "O app avisa sozinho a cada três horas quando sai versão nova.";
 }
 
 function Linha({
