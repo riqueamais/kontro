@@ -1,0 +1,43 @@
+:root {
+  /* superficies -- o mesmo sistema "Anel" da versao anterior */
+  --ink: #0b0e11;
+  --surface: #0f1318;
+  --surface-alt: #151a20;
+  --stroke: #1e252c;
+  --stroke-strong: #2a333b;
+
+  --text-primary: #e8ecef;
+  --text-secondary: #9aa4ad;
+  --text-tertiary: #6b757d;
+
+  --accent-green: #5fe083;
+  --accent-teal: #35d7a8;
+  --amber: #f2c14e;
+  --red: #f2564e;
+  --gray: #8d979f;
+
+  --ring-track: rgba(255, 255, 255, 0.13);
+
+  /* tipografia */
+  --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: Consolas, ui-monospace, monospace;
+
+  /* espaco */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-field: 8px;
+  --radius-card: 12px;
+  --radius-window: 16px;
+
+  /* movimento */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-slow: 240ms;
+  --curva: cubic-bezier(0.33, 1, 0.68, 1);
+}
