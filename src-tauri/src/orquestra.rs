@@ -79,13 +79,17 @@ impl Orquestrador {
         let momento_de_jogo =
             cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
 
-        // Enquanto as configuracoes estao abertas a sobreposicao fica visivel de
-        // qualquer jeito, funcionando como previa. Sem isso, escolher o canto seria as
-        // cegas: ao clicar no botao a janela de configuracoes vira o primeiro plano, o
-        // app conclui que saiu do jogo e esconde justamente o que se esta posicionando.
+        // Enquanto o usuario esta na janela de configuracoes a sobreposicao aparece de
+        // qualquer jeito, funcionando como previa: escolher o canto seria as cegas se
+        // ela sumisse ao clicar no botao.
+        //
+        // O criterio e o foco, e nao a visibilidade. Uma janela aberta atras de tudo, ou
+        // minimizada, continua "visivel" para o sistema -- e com esse criterio bastava
+        // abrir as configuracoes uma vez e nao fechar para a pilula ficar na tela para
+        // sempre, mesmo no modo que so devia aparecer em jogo.
         let ajustando = app
             .get_webview_window(janelas::PRINCIPAL)
-            .and_then(|j| j.is_visible().ok())
+            .and_then(|j| j.is_focused().ok())
             .unwrap_or(false);
 
         let mostrar = ligada && (ajustando || (tem_leitura && momento_de_jogo));

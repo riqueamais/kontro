@@ -57,6 +57,7 @@ interface VersaoNova {
 type Passo =
   | { tipo: "parado" }
   | { tipo: "procurando" }
+  | { tipo: "atualizado" }
   | { tipo: "baixando"; porcento: number | null }
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string };
@@ -75,8 +76,11 @@ export function Principal() {
   const procurar = async () => {
     setPasso({ tipo: "procurando" });
     try {
-      setNova(await invoke<VersaoNova | null>("procurar_atualizacao"));
-      setPasso({ tipo: "parado" });
+      const achado = await invoke<VersaoNova | null>("procurar_atualizacao");
+      setNova(achado);
+      // Nao achar nada e um resultado, e precisa ser dito. Voltar ao estado inicial em
+      // silencio faz parecer que o botao nao fez nada.
+      setPasso(achado ? { tipo: "parado" } : { tipo: "atualizado" });
     } catch {
       setPasso({ tipo: "falhou", motivo: "não deu para consultar o repositório" });
     }
@@ -260,7 +264,7 @@ export function Principal() {
         ) : (
           <button
             className="ciclo"
-            disabled={passo.tipo !== "parado" && passo.tipo !== "falhou"}
+            disabled={passo.tipo === "procurando" || passo.tipo === "baixando" || passo.tipo === "instalando"}
             onClick={() => void procurar()}
           >
             {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
@@ -283,6 +287,8 @@ export function Principal() {
 
 function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
   switch (passo.tipo) {
+    case "atualizado":
+      return "Você está na versão mais recente";
     case "baixando":
       return passo.porcento === null
         ? "Baixando a atualização..."
@@ -299,6 +305,7 @@ function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
 function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
   if (passo.tipo === "falhou") return passo.motivo;
   if (passo.tipo === "procurando") return "Consultando o repositório...";
+  if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
   if (passo.tipo === "baixando" || passo.tipo === "instalando") {
     return "O pacote é verificado antes de rodar.";
   }

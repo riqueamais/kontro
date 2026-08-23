@@ -29,14 +29,12 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
     let grossura = g::ANEL_LARGURA;
 
     // No tema claro da barra o controle precisa ser escuro, senao ele some no proprio
-    // fundo. Nos demais estados a cor vem do que o anel esta dizendo.
+    // fundo. E o trilho e sempre o glifo a 22%, nao um branco fixo: com o branco, numa
+    // barra clara o anel de fundo desaparecia.
     let cor_glifo = if tema_claro { g::GLIFO_NO_CLARO } else { "#FFFFFF" };
 
-    // O trilho e sempre branco translucido, e nao um tom da cor do estado. Tingi-lo
-    // fazia o anel de fundo quase sumir quando a cor era escura -- que e justamente o
-    // caso do desconectado, o estado em que so o trilho existe.
     let trilho = format!(
-        r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="{grossura}"/>"##
+        r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="0.22" stroke-width="{grossura}"/>"##
     );
 
     let desenhar_glifo = |opacidade: f32| {
@@ -51,16 +49,17 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
     };
 
     let miolo = match (estado.mode, estado.preenchimento) {
-        // Desconectado nao desenha carga: o controle apaga e ganha um risco. Um anel
-        // cinza cheio diria "medi e deu zero", que e diferente de "nao ha o que medir".
+        // Desconectado nao desenha anel nenhum -- nem o trilho. Um anel de fundo ali
+        // sugere uma medida que nao existe; o controle apagado e riscado diz o que
+        // realmente se sabe, que e nada.
         (LinkMode::Offline, _) => format!(
             r##"{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
             desenhar_glifo(0.45)
         ),
 
-        // No cabo tambem nao ha percentual, mas ha ligacao: anel cheio e neutro.
+        // No cabo o anel fica inteiro e neutro: "estou plugado e nao tenho numero".
         (LinkMode::Cable, None) => format!(
-            r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-opacity="0.9" stroke-width="{grossura}"/>{}"##,
+            r##"{trilho}<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-width="{grossura}"/>{}"##,
             g::CINZA,
             desenhar_glifo(1.0)
         ),
@@ -79,14 +78,14 @@ fn montar_svg(estado: &BatteryState, tema_claro: bool) -> String {
             } else {
                 String::new()
             };
-            format!("{arco}{}", desenhar_glifo(1.0))
+            format!("{trilho}{arco}{}", desenhar_glifo(1.0))
         }
 
-        (_, None) => desenhar_glifo(1.0),
+        (_, None) => format!("{trilho}{}", desenhar_glifo(1.0)),
     };
 
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{trilho}{miolo}</svg>"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{miolo}</svg>"##
     )
 }
 
