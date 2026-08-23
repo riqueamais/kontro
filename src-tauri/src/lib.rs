@@ -5,6 +5,7 @@
 //! apartamento e evita que a leitura trave o desenho.
 
 mod device;
+mod diagnostico;
 mod geometria;
 mod history;
 mod janelas;
@@ -45,6 +46,23 @@ enum Pedido {
 const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
 
 pub fn executar() {
+    // O diagnostico roda antes de qualquer janela existir: ele nao precisa de interface,
+    // e quem o pede esta atras de um arquivo para mandar, nao de um app aberto.
+    let argumentos: Vec<String> = std::env::args().collect();
+    if let Some(i) = argumentos.iter().position(|a| a == "--diagnose") {
+        let destino = argumentos
+            .get(i + 1)
+            .cloned()
+            .unwrap_or_else(|| "kontro-diagnostico.txt".to_string());
+
+        device::iniciar_apartamento();
+        match diagnostico::escrever(&destino) {
+            Ok(()) => println!("diagnostico salvo em {destino}"),
+            Err(e) => eprintln!("nao consegui salvar o diagnostico: {e}"),
+        }
+        return;
+    }
+
     let config = Settings::carregar();
     let compartilhado = Arc::new(Compartilhado {
         estado: Mutex::new(model::BatteryState::montar(
