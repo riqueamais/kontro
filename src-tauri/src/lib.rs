@@ -10,6 +10,7 @@ mod device;
 mod diagnostico;
 mod geometria;
 mod history;
+mod icones;
 mod janelas;
 mod known;
 mod model;
@@ -90,10 +91,9 @@ pub fn executar() {
     }
 
     if let Some(i) = argumentos.iter().position(|a| a == "--gerar-icones") {
-        let pasta = argumentos.get(i + 1).cloned().unwrap_or_else(|| "icones".into());
-        let tamanhos = [16u32, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512];
-        match tray::salvar_icones(&pasta, &tamanhos) {
-            Ok(()) => println!("icones do app gravados em {pasta}"),
+        let raiz = argumentos.get(i + 1).cloned().unwrap_or_else(|| ".".into());
+        match icones::gerar(&raiz) {
+            Ok(()) => println!("icones redesenhados a partir de {raiz}"),
             Err(e) => eprintln!("nao consegui gravar os icones: {e}"),
         }
         return;

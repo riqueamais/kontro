@@ -54,23 +54,36 @@ Pelo ícone na bandeja você ajusta:
 
 ## Compilando
 
-Requer o SDK do .NET 8.
+Requer Node 20 e a toolchain estável do Rust.
 
 ```bash
-dotnet build -c Release
-dotnet run
+npm install
+npm run tauri dev
+npm run tauri build
 ```
 
 Sinalizadores úteis durante o desenvolvimento:
 
 | Sinalizador | O que faz |
 |---|---|
-| `--make-icon <ico> [preview]` | Gera o `app.ico` a partir da geometria do controle |
-| `--icon-preview <png>` | Renderiza todos os estados do ícone da bandeja |
+| `--gerar-icones [raiz]` | Redesenha todos os ícones do repositório a partir da geometria |
+| `--icon-preview <png> [tamanho] [--claro]` | Renderiza os estados do ícone da bandeja, ampliados |
 | `--diagnose <txt>` | Despeja o que a descoberta enxerga: HID por usage, Bluetooth pareado, resultado |
 | `--show` | Abre o painel já na inicialização |
-| `--check-update [arquivo] [--apply]` | Consulta as releases e, com `--apply`, baixa e instala |
-| `--toast-demo [pct]` | Mostra o aviso de conexão com um estado inventado |
+| `--painel` | Abre direto o painel da bandeja |
+| `--minimizado` | Sobe só para a bandeja, sem janela |
+
+### Ícones
+
+Todos os ícones saem de `src-tauri/src/geometria.rs`. Nenhum é editado à mão:
+
+```bash
+cargo run --release -- --gerar-icones .
+```
+
+O comando redesenha `src-tauri/icons/`, os ícones de `docs/`, o `setup.ico` do instalador,
+o favicon da interface e os vetores de referência em `Assets/svg/`. Se algo aparecer no
+`git status` depois de rodar, é porque a geometria mudou e os arquivos estavam atrasados.
 
 ## Publicando uma versão
 

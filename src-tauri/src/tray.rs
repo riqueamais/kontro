@@ -21,7 +21,7 @@ pub fn desenhar(estado: &BatteryState, tamanho: u32) -> Option<Image<'static>> {
     rasterizar(&montar_svg(estado), tamanho)
 }
 
-fn montar_svg(estado: &BatteryState) -> String {
+pub(crate) fn montar_svg(estado: &BatteryState) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
@@ -101,6 +101,33 @@ fn montar_svg(estado: &BatteryState) -> String {
     )
 }
 
+/// Um estado inventado, so para desenhar.
+///
+/// A previa e os vetores de referencia precisam de um `BatteryState` para pedir o
+/// desenho, mas nao tem controle nenhum na mao. Montar o estado num lugar so evita que as
+/// duas ferramentas desenhem estados sutilmente diferentes e mostrem icones que o app
+/// nunca produz.
+pub(crate) fn estado_demo(preenchimento: Option<i32>, modo: LinkMode) -> BatteryState {
+    BatteryState::montar(
+        modo,
+        preenchimento,
+        if preenchimento.is_some() {
+            crate::model::Precisao::Exata
+        } else {
+            crate::model::Precisao::Nenhuma
+        },
+        None,
+        None,
+        false,
+        false,
+        "demo".into(),
+        None,
+        "demo".into(),
+        1,
+        None,
+    )
+}
+
 /// Salva em disco exatamente o que a bandeja receberia.
 ///
 /// Um icone de dezesseis pixels e pequeno demais para julgar na tela. Ampliado sobre o
@@ -136,26 +163,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
     };
 
     for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
-        let estado = crate::model::BatteryState::montar(
-            *modo,
-            *preenchimento,
-            if preenchimento.is_some() {
-                crate::model::Precisao::Exata
-            } else {
-                crate::model::Precisao::Nenhuma
-            },
-            None,
-            None,
-            false,
-            false,
-            "demo".into(),
-            None,
-            "demo".into(),
-            1,
-            None,
-        );
-
-        let svg = montar_svg(&estado);
+        let svg = montar_svg(&estado_demo(*preenchimento, *modo));
         let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
 
         let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;
@@ -246,23 +254,6 @@ pub fn tamanho_do_icone_grande() -> u32 {
     } else {
         medido as u32
     }
-}
-
-/// Grava o icone do app em PNG, um arquivo por tamanho.
-pub fn salvar_icones(pasta: &str, tamanhos: &[u32]) -> std::io::Result<()> {
-    std::fs::create_dir_all(pasta)?;
-    for &t in tamanhos {
-        let svg = svg_do_app(t);
-        let Some(arvore) = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok() else {
-            continue;
-        };
-        let Some(mut mapa) = tiny_skia::Pixmap::new(t, t) else { continue };
-        let e = t as f32 / g::CAIXA;
-        resvg::render(&arvore, tiny_skia::Transform::from_scale(e, e), &mut mapa.as_mut());
-        mapa.save_png(format!("{pasta}/{t}.png"))
-            .map_err(|e| std::io::Error::other(e.to_string()))?;
-    }
-    Ok(())
 }
 
 fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
