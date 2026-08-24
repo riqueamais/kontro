@@ -12,7 +12,8 @@ const DIR = { x: 382.7, y: 228 };
 const circulo = (c: { x: number; y: number }) =>
   `M${c.x - RAIO} ${c.y} a${RAIO} ${RAIO} 0 1 0 ${RAIO * 2} 0 a${RAIO} ${RAIO} 0 1 0 -${RAIO * 2} 0 Z`;
 
-const CAMINHO = `${PAD} ${circulo(ESQ)} ${circulo(DIR)}`;
+/// A silhueta com os analogicos vazados, como um caminho unico de regra par-impar.
+export const PAD_COM_STICKS_VAZADOS = `${PAD} ${circulo(ESQ)} ${circulo(DIR)}`;
 
 /**
  * A silhueta do controle com os analogicos vazados.
@@ -29,7 +30,7 @@ export function Glifo({ tamanho, cor }: { tamanho: number; cor: string }) {
       aria-hidden="true"
       style={{ display: "block" }}
     >
-      <path d={CAMINHO} fill={cor} fillRule="evenodd" />
+      <path d={PAD_COM_STICKS_VAZADOS} fill={cor} fillRule="evenodd" />
     </svg>
   );
 }

@@ -15,7 +15,7 @@ export function BarraDeTitulo() {
   return (
     <header className="barra" data-tauri-drag-region>
       <div className="marca" data-tauri-drag-region>
-        <Marca tamanho={15} />
+        <Marca tamanho={17} />
         <span data-tauri-drag-region>Kontro</span>
       </div>
 

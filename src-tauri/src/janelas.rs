@@ -55,7 +55,19 @@ fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
             .build()?;
 
     arredondar_cantos(&janela);
+    vestir_icone(&janela);
     Ok(janela)
+}
+
+/// Desenha o icone da janela no tamanho que esta tela pede.
+///
+/// O icone que vem do pacote tem tamanho fixo, e o sistema estica ou encolhe o que
+/// recebeu. Desenhar no tamanho final custa alguns milissegundos uma vez e resolve o
+/// borrao da barra de tarefas em telas com escala.
+fn vestir_icone(janela: &WebviewWindow) {
+    if let Some(icone) = crate::tray::icone_do_app(crate::tray::tamanho_do_icone_grande()) {
+        let _ = janela.set_icon(icone);
+    }
 }
 
 /// Devolve os cantos arredondados que a janela perdeu ao dispensar a moldura.

@@ -228,6 +228,26 @@ pub fn svg_do_app(tamanho: u32) -> String {
     )
 }
 
+/// O icone do app pronto para o Windows, no tamanho pedido.
+pub fn icone_do_app(tamanho: u32) -> Option<Image<'static>> {
+    rasterizar(&svg_do_app(tamanho), tamanho)
+}
+
+/// Tamanho do icone grande de janela, ja com a escala da tela.
+///
+/// E o que a barra de tarefas e o Alt+Tab pedem. O icone embutido no pacote tem 32
+/// pixels; em telas a 125% ou 150% o sistema precisa de 40 ou 48 e amplia aqueles 32 --
+/// e ampliar e o que borra.
+pub fn tamanho_do_icone_grande() -> u32 {
+    use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXICON};
+    let medido = unsafe { GetSystemMetrics(SM_CXICON) };
+    if medido <= 0 {
+        32
+    } else {
+        medido as u32
+    }
+}
+
 /// Grava o icone do app em PNG, um arquivo por tamanho.
 pub fn salvar_icones(pasta: &str, tamanhos: &[u32]) -> std::io::Result<()> {
     std::fs::create_dir_all(pasta)?;
