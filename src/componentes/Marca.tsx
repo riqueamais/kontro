@@ -1,17 +1,5 @@
 import { PAD_COM_STICKS_VAZADOS } from "./Glifo";
 
-/**
- * A marca do app: o mesmo desenho do icone, em tamanho de interface.
- *
- * Repetir aqui o desenho que o Rust gera para o icone e proposital -- sao dois meios
- * diferentes, e o unico jeito de o app na barra de tarefas e o app na tela serem a mesma
- * coisa e as duas versoes sairem da mesma geometria. Os numeros vem de
- * `src-tauri/src/geometria.rs`; mexer la pede mexer aqui.
- *
- * Abaixo de 24 pixels vale a geometria da bandeja, e nao a do icone: um anel de 30
- * unidades em 512 da menos de um pixel nesse tamanho, e o que sobra e uma mancha. E a
- * mesma troca que o Rust faz entre o icone do app e o da bandeja.
- */
 export function Marca({ tamanho = 16 }: { tamanho?: number }) {
   const miudo = tamanho < 24;
   const raio = miudo ? 194 : 202;
@@ -53,7 +41,6 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
         strokeOpacity={miudo ? 0.22 : 0.13}
         strokeWidth={grossura}
       />
-      {/* 72% da volta, comecando no topo -- o mesmo arco gravado no icone */}
       <circle
         cx="256"
         cy="256"

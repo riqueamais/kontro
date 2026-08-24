@@ -7,20 +7,11 @@ const RAIO = 48.3;
 const ESQ = { x: 129.3, y: 228 };
 const DIR = { x: 382.7, y: 228 };
 
-// Circulo escrito como subcaminho para viver dentro do mesmo path do controle: e o
-// que permite vazar os analogicos com regra par-impar em vez de pintar por cima.
 const circulo = (c: { x: number; y: number }) =>
   `M${c.x - RAIO} ${c.y} a${RAIO} ${RAIO} 0 1 0 ${RAIO * 2} 0 a${RAIO} ${RAIO} 0 1 0 -${RAIO * 2} 0 Z`;
 
-/// A silhueta com os analogicos vazados, como um caminho unico de regra par-impar.
 export const PAD_COM_STICKS_VAZADOS = `${PAD} ${circulo(ESQ)} ${circulo(DIR)}`;
 
-/**
- * A silhueta do controle com os analogicos vazados.
- *
- * Sem os recortes ela vira uma mancha que so lembra a marca; com eles, se le como
- * controle mesmo em 16 pixels. E a mesma geometria do icone da bandeja.
- */
 export function Glifo({ tamanho, cor }: { tamanho: number; cor: string }) {
   return (
     <svg
