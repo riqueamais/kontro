@@ -177,6 +177,74 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
     tira.save_png(caminho).ok()
 }
 
+/// O icone do app, desenhado no tamanho pedido.
+///
+/// Nao e o icone da bandeja: aqui o anel nao mede carga nenhuma, ele e a marca. O que os
+/// dois compartilham e a silhueta do controle e a paleta, para que o app na barra de
+/// tarefas e o icone ao lado do relogio sejam reconhecidamente a mesma coisa.
+///
+/// Cada tamanho e desenhado do zero em vez de reduzido do maior: reduzir um bitmap de
+/// 256 para 16 borra o anel ate ele virar um halo, que e o aspecto de "baixa resolucao"
+/// que aparece na barra de tarefas.
+pub fn svg_do_app(tamanho: u32) -> String {
+    let caixa = g::CAIXA;
+    let centro = caixa / 2.0;
+    let raio = g::APP_ANEL_RAIO;
+    let grossura = g::APP_ANEL_LARGURA;
+
+    // Abaixo de 32 pixels a borda de um pixel nao chega a ser borda: vira um cinza que
+    // engorda a silhueta e come o contraste do anel.
+    let borda = if tamanho >= 32 {
+        format!(
+            r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="8"/>"##,
+            centro - 4.0
+        )
+    } else {
+        String::new()
+    };
+
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">
+<defs><linearGradient id="marca" x1="120" y1="80" x2="400" y2="440" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{verde}"/><stop offset="1" stop-color="#35D7A8"/></linearGradient></defs>
+<circle cx="{centro}" cy="{centro}" r="{centro}" fill="{fundo}"/>
+{borda}
+<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="#FFFFFF" stroke-opacity="0.13" stroke-width="{grossura}"/>
+<path d="{arco}" fill="none" stroke="url(#marca)" stroke-width="{grossura}" stroke-linecap="round"/>
+<g transform="translate({centro},{pad_y}) scale({escala}) translate({desloca_x},{desloca_y})"><path d="{pad}" fill="#F4F7F9"/><circle cx="{ex}" cy="{ey}" r="{sr}" fill="{fundo}"/><circle cx="{dx}" cy="{dy}" r="{sr}" fill="{fundo}"/></g>
+</svg>"##,
+        verde = g::VERDE,
+        fundo = g::FUNDO,
+        arco = g::arco_em(g::APP_ANEL_VARREDURA, raio),
+        pad_y = g::APP_PAD_CENTRO_Y,
+        escala = g::APP_PAD_ESCALA,
+        desloca_x = -centro,
+        desloca_y = -g::PAD_CENTRO_Y,
+        pad = g::PAD,
+        ex = g::APP_STICK_ESQ.0,
+        ey = g::APP_STICK_ESQ.1,
+        dx = g::APP_STICK_DIR.0,
+        dy = g::APP_STICK_DIR.1,
+        sr = g::APP_STICK_RAIO,
+    )
+}
+
+/// Grava o icone do app em PNG, um arquivo por tamanho.
+pub fn salvar_icones(pasta: &str, tamanhos: &[u32]) -> std::io::Result<()> {
+    std::fs::create_dir_all(pasta)?;
+    for &t in tamanhos {
+        let svg = svg_do_app(t);
+        let Some(arvore) = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok() else {
+            continue;
+        };
+        let Some(mut mapa) = tiny_skia::Pixmap::new(t, t) else { continue };
+        let e = t as f32 / g::CAIXA;
+        resvg::render(&arvore, tiny_skia::Transform::from_scale(e, e), &mut mapa.as_mut());
+        mapa.save_png(format!("{pasta}/{t}.png"))
+            .map_err(|e| std::io::Error::other(e.to_string()))?;
+    }
+    Ok(())
+}
+
 fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
     let opcoes = usvg::Options::default();
     let arvore = usvg::Tree::from_str(svg, &opcoes).ok()?;

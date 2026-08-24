@@ -42,10 +42,6 @@ pub fn slots_conectados() -> Vec<u32> {
     (0u32..4).filter(|s| conectado(*s)).collect()
 }
 
-pub fn alguem_conectado() -> bool {
-    (0u32..4).any(conectado)
-}
-
 /// Ligacao por cabo, dita pelo proprio XInput.
 ///
 /// E a forma mais confiavel de saber que o controle esta no cabo: no modo GIP/USB ele

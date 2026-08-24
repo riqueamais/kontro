@@ -21,6 +21,24 @@ pub const PAD_CENTRO_Y: f32 = 288.0;
 pub const FUNDO_RAIO: f32 = 252.0;
 pub const FUNDO: &str = "#0F1318";
 
+/// O icone do app tem geometria propria, e nao a da bandeja.
+///
+/// Sao desenhos com trabalhos diferentes: na bandeja o anel precisa se ler em 16 pixels
+/// ao lado do relogio, e por isso e grosso e o controle e pequeno. Como icone do app ele
+/// aparece grande, na barra de tarefas e no menu -- ali o anel grosso vira um pneu e o
+/// controle miudo some. Emprestar as medidas de um para o outro estraga os dois.
+pub const APP_ANEL_RAIO: f32 = 202.0;
+pub const APP_ANEL_LARGURA: f32 = 30.0;
+pub const APP_PAD_ESCALA: f32 = 0.6;
+pub const APP_PAD_CENTRO_Y: f32 = 274.0;
+/// Os analogicos do icone do app sao menores e mais para dentro que os da bandeja: em
+/// tamanho grande, os furos largos da bandeja abrem buracos no meio do controle.
+pub const APP_STICK_RAIO: f32 = 29.0;
+pub const APP_STICK_ESQ: (f32, f32) = (180.0, 238.0);
+pub const APP_STICK_DIR: (f32, f32) = (332.0, 238.0);
+/// Volta do anel na marca, em graus: 72% do circulo.
+pub const APP_ANEL_VARREDURA: f32 = 259.2;
+
 pub const ANEL_RAIO: f32 = 194.0;
 pub const ANEL_LARGURA: f32 = 56.0;
 pub const PAD_ESCALA_BANDEJA: f32 = 0.5;
@@ -61,8 +79,12 @@ fn circulo((cx, cy): (f32, f32)) -> String {
 
 /// Arco do anel comecando no topo, em graus. Devolve o atributo `d` de um path.
 pub fn arco(varredura: f32) -> String {
+    arco_em(varredura, ANEL_RAIO)
+}
+
+/// O mesmo arco, num raio qualquer.
+pub fn arco_em(varredura: f32, r: f32) -> String {
     let centro = CAIXA / 2.0;
-    let r = ANEL_RAIO;
     let varredura = varredura.clamp(0.0, 359.9);
 
     let ponto = |graus: f32| {

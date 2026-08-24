@@ -64,6 +64,16 @@ impl History {
         self.por_controle.get(chave).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
+    /// Apaga a serie de um controle esquecido.
+    ///
+    /// Guardar o historico de um aparelho que saiu da lista deixaria a media de consumo
+    /// de um controle futuro contaminada pela bateria de outro, caso a chave se repita.
+    pub fn esquecer(&mut self, chave: &str) {
+        if self.por_controle.remove(chave).is_some() {
+            self.salvar();
+        }
+    }
+
     pub fn adicionar(&mut self, chave: &str, percent: i32, quando: i64) {
         let serie = self.por_controle.entry(chave.to_string()).or_default();
 

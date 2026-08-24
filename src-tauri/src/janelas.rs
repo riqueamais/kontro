@@ -44,35 +44,41 @@ fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let janela =
         WebviewWindowBuilder::new(app, PRINCIPAL, WebviewUrl::App("index.html?janela=principal".into()))
             .title("Kontro")
-            .inner_size(480.0, 720.0)
-            .resizable(false)
+            .inner_size(840.0, 600.0)
+            .min_inner_size(720.0, 520.0)
+            // A moldura e desenhada pelo app. A do sistema traz uma faixa de outro
+            // material em cima do conteudo, e obriga a barra lateral a comecar abaixo
+            // dela -- o app pareceria uma pagina dentro de uma janela, e nao um app.
+            .decorations(false)
             .visible(false)
             .center()
             .build()?;
 
-    escurecer_barra_de_titulo(&janela);
+    arredondar_cantos(&janela);
     Ok(janela)
 }
 
-/// Pinta a barra de titulo de escuro.
+/// Devolve os cantos arredondados que a janela perdeu ao dispensar a moldura.
 ///
-/// E a unica janela do app com moldura do sistema. Sem isto ela ganha uma faixa clara
-/// em cima do conteudo escuro -- o tipo de detalhe que denuncia na hora que o app foi
-/// feito as pressas.
-fn escurecer_barra_de_titulo(janela: &WebviewWindow) {
+/// Sem moldura o Windows entrega um retangulo de canto vivo, que ao lado de qualquer
+/// outra janela do sistema salta aos olhos. O DWM arredonda do lado dele, junto com a
+/// sombra, que e o unico jeito de ficar igual ao resto do sistema.
+fn arredondar_cantos(janela: &WebviewWindow) {
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_USE_IMMERSIVE_DARK_MODE};
+    use windows::Win32::Graphics::Dwm::{
+        DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
+    };
 
     let Ok(bruto) = janela.hwnd() else { return };
     let alvo = HWND(bruto.0 as *mut core::ffi::c_void);
-    let ligado: i32 = 1;
+    let preferencia = DWMWCP_ROUND;
 
     unsafe {
         let _ = DwmSetWindowAttribute(
             alvo,
-            DWMWA_USE_IMMERSIVE_DARK_MODE,
-            &ligado as *const i32 as *const core::ffi::c_void,
-            core::mem::size_of::<i32>() as u32,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            &preferencia as *const _ as *const core::ffi::c_void,
+            core::mem::size_of_val(&preferencia) as u32,
         );
     }
 }

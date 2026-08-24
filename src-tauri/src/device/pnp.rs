@@ -74,12 +74,27 @@ pub fn nos_com_bateria() -> Vec<NoDeBateria> {
     .unwrap_or_default()
 }
 
+/// Carga guardada pelo Windows, com a data em que ele diz te-la anotado.
+///
+/// A data vem junto de proposito: quem chama precisa dela para nao carimbar de "agora"
+/// um numero que o Windows guardou ontem.
+pub struct CargaGuardada {
+    pub percent: i32,
+    pub medido_em: Option<i64>,
+}
+
+impl From<NoDeBateria> for CargaGuardada {
+    fn from(no: NoDeBateria) -> Self {
+        CargaGuardada { percent: no.percent, medido_em: no.medido_em }
+    }
+}
+
 /// Carga de um no cujo id de instancia contenha o trecho dado.
 ///
 /// `desde` descarta valor anterior ao inicio da ligacao atual. Quando o driver nao
 /// carimba data nenhuma, o valor passa: descartar por falta de carimbo tiraria do ar
 /// fontes que funcionam.
-pub fn por_instancia(instancia: &str, desde: Option<i64>) -> Option<i32> {
+pub fn por_instancia(instancia: &str, desde: Option<i64>) -> Option<CargaGuardada> {
     if instancia.is_empty() {
         return None;
     }
@@ -88,7 +103,7 @@ pub fn por_instancia(instancia: &str, desde: Option<i64>) -> Option<i32> {
         .find(|no| {
             no.instancia.to_lowercase().contains(&instancia.to_lowercase()) && recente(no, desde)
         })
-        .map(|no| no.percent)
+        .map(CargaGuardada::from)
 }
 
 /// Carga publicada em qualquer no do mesmo aparelho fisico.
@@ -97,14 +112,14 @@ pub fn por_instancia(instancia: &str, desde: Option<i64>) -> Option<i32> {
 /// dispositivo, o do adaptador -- e a carga nem sempre esta naquele cujo id o app
 /// conhece. O container e o que amarra todos ao mesmo aparelho, e por isso encontra a
 /// carga sem depender de reconhecer fabricante, que seria lista eternamente incompleta.
-pub fn por_container(container: &str, desde: Option<i64>) -> Option<i32> {
+pub fn por_container(container: &str, desde: Option<i64>) -> Option<CargaGuardada> {
     if container.is_empty() {
         return None;
     }
     nos_com_bateria()
         .into_iter()
         .find(|no| no.container.eq_ignore_ascii_case(container) && recente(no, desde))
-        .map(|no| no.percent)
+        .map(CargaGuardada::from)
 }
 
 fn recente(no: &NoDeBateria, desde: Option<i64>) -> bool {

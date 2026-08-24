@@ -20,6 +20,8 @@ pub struct ControleSalvo {
     pub container_id: String,
     #[serde(rename = "XInputSlot")]
     pub xinput_slot: i32,
+    /// Nome dado pelo usuario. Quando existe, manda sobre o do sistema.
+    pub apelido: String,
 }
 
 impl Default for ControleSalvo {
@@ -32,6 +34,7 @@ impl Default for ControleSalvo {
             instance_id: String::new(),
             container_id: String::new(),
             xinput_slot: -1,
+            apelido: String::new(),
         }
     }
 }
@@ -40,7 +43,11 @@ impl ControleSalvo {
     pub fn como_controle(&self) -> Controle {
         Controle {
             endereco: self.address,
-            nome: self.name.clone(),
+            nome: if self.apelido.trim().is_empty() {
+                self.name.clone()
+            } else {
+                self.apelido.clone()
+            },
             id_hid: self.hid_id.clone(),
             id_instancia: self.instance_id.clone(),
             container: self.container_id.clone(),
@@ -98,6 +105,15 @@ impl Conhecidos {
     fn limpar(&mut self) -> bool {
         let antes = self.itens.len();
 
+        // versoes antigas chegaram a gravar o nome do sistema como apelido
+        let mut mudou = false;
+        for item in &mut self.itens {
+            if item.apelido == item.name {
+                item.apelido.clear();
+                mudou = true;
+            }
+        }
+
         // o mais recente de cada container fica; sem container, cada um e unico
         self.itens.sort_by(|a, b| b.visto_em().cmp(&a.visto_em()));
         let mut vistos: Vec<String> = Vec::new();
@@ -113,7 +129,7 @@ impl Conhecidos {
             true
         });
 
-        self.itens.len() != antes
+        mudou || self.itens.len() != antes
     }
 
     pub fn itens(&self) -> &[ControleSalvo] {
@@ -167,6 +183,7 @@ impl Conhecidos {
                         instance_id: d.id_instancia.clone(),
                         container_id: d.container.clone(),
                         xinput_slot: d.slot_xinput,
+                        apelido: String::new(),
                     });
                     mudou = true;
                 }
@@ -177,6 +194,44 @@ impl Conhecidos {
             self.salvar();
         }
         mudou
+    }
+
+    /// Tira um controle da lista.
+    ///
+    /// Nao e um "nunca mais": a descoberta reencontra o aparelho na hora em que ele for
+    /// ligado de novo. O que se apaga e a lembranca de um controle que nao se usa mais --
+    /// que hoje fica ocupando espaco na tela para sempre.
+    pub fn esquecer(&mut self, chave: &str) -> bool {
+        let antes = self.itens.len();
+        self.itens.retain(|i| i.como_controle().chave() != chave);
+        if self.itens.len() == antes {
+            return false;
+        }
+        self.salvar();
+        true
+    }
+
+    /// Devolve true quando o apelido mudou de fato.
+    pub fn renomear(&mut self, chave: &str, nome: &str) -> bool {
+        let Some(item) = self.itens.iter_mut().find(|i| i.como_controle().chave() == chave)
+        else {
+            return false;
+        };
+
+        // Um apelido igual ao nome do sistema nao e apelido nenhum: guardar isso deixaria
+        // o arquivo com uma escolha que o usuario nao fez, e que passaria a segurar o nome
+        // caso o sistema viesse a informar um melhor depois.
+        let novo = match nome.trim() {
+            n if n == item.name => "",
+            n => n,
+        };
+        // apagar o apelido devolve o nome do sistema, que continua guardado
+        if item.apelido == novo {
+            return false;
+        }
+        item.apelido = novo.to_string();
+        self.salvar();
+        true
     }
 
     pub fn salvar(&self) {

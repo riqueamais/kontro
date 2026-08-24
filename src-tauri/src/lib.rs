@@ -31,11 +31,14 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::history::Amostra;
 use crate::model::BatteryState;
-use crate::settings::Settings;
+use crate::settings::{CloseAction, Settings};
 
 /// O que a interface le. Nunca contem objeto do sistema, so dado ja apurado.
 pub struct Compartilhado {
+    /// O controle que manda no icone, na sobreposicao e no aviso.
     estado: Mutex<BatteryState>,
+    /// Todos os conhecidos, para o painel listar.
+    todos: Mutex<Vec<BatteryState>>,
     serie: Mutex<Vec<Amostra>>,
     config: Mutex<Settings>,
     /// Versao nova encontrada, para a janela de configuracoes mostrar.
@@ -45,6 +48,8 @@ pub struct Compartilhado {
 /// Pedidos que a interface faz ao ciclo de leitura.
 enum Pedido {
     LerAgora,
+    Renomear { chave: String, nome: String },
+    Esquecer { chave: String },
     Encerrar,
 }
 
@@ -84,6 +89,16 @@ pub fn executar() {
         return;
     }
 
+    if let Some(i) = argumentos.iter().position(|a| a == "--gerar-icones") {
+        let pasta = argumentos.get(i + 1).cloned().unwrap_or_else(|| "icones".into());
+        let tamanhos = [16u32, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512];
+        match tray::salvar_icones(&pasta, &tamanhos) {
+            Ok(()) => println!("icones do app gravados em {pasta}"),
+            Err(e) => eprintln!("nao consegui gravar os icones: {e}"),
+        }
+        return;
+    }
+
     let mut config = Settings::carregar();
 
     // O usuario pode ter tirado o app da inicializacao pelo Gerenciador de Tarefas. O
@@ -106,6 +121,7 @@ pub fn executar() {
             None,
         )),
         serie: Mutex::new(Vec::new()),
+        todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
     });
@@ -133,6 +149,9 @@ pub fn executar() {
         .manage(envio.clone())
         .invoke_handler(tauri::generate_handler![
             estado_atual,
+            controles,
+            renomear_controle,
+            esquecer_controle,
             serie_do_historico,
             configuracoes,
             salvar_configuracoes,
@@ -193,13 +212,28 @@ pub fn executar() {
             Ok(())
         })
         .on_window_event(|janela, evento| {
-            // fechar a janela de configuracoes nao encerra o app: ele vive na bandeja
-            if let tauri::WindowEvent::CloseRequested { api, .. } = evento {
-                if janela.label() == janelas::PRINCIPAL {
-                    api.prevent_close();
-                    let _ = janela.hide();
-                }
+            let tauri::WindowEvent::CloseRequested { api, .. } = evento else { return };
+            if janela.label() != janelas::PRINCIPAL {
+                return;
             }
+
+            // Por padrao o X so esconde: o app vive na bandeja, e quem fecha a janela
+            // quase sempre quer tirar ela da frente, nao parar de monitorar. Mas a
+            // escolha esta na tela, e ate agora ela nao fazia nada -- oferecer "Encerrar"
+            // e continuar minimizando e pior do que nao oferecer.
+            let encerrar = janela
+                .app_handle()
+                .try_state::<Arc<Compartilhado>>()
+                .map(|c| c.config.lock().unwrap().close_action == CloseAction::Exit)
+                .unwrap_or(false);
+
+            if encerrar {
+                janela.app_handle().exit(0);
+                return;
+            }
+
+            api.prevent_close();
+            let _ = janela.hide();
         })
         .run(tauri::generate_context!())
         .expect("nao foi possivel iniciar o Kontro");
@@ -225,22 +259,30 @@ fn iniciar_ciclo(
         loop {
             match pedidos.try_recv() {
                 Ok(Pedido::Encerrar) | Err(mpsc::TryRecvError::Disconnected) => break,
+                Ok(Pedido::Renomear { chave, nome }) => monitor.renomear(&chave, &nome),
+                Ok(Pedido::Esquecer { chave }) => monitor.esquecer(&chave),
                 Ok(Pedido::LerAgora) => {}
                 Err(mpsc::TryRecvError::Empty) => {}
             }
 
-            if let Some(estado) = monitor.ciclo() {
+            if let Some(panorama) = monitor.ciclo() {
+                let principal = panorama.principal.clone();
                 {
                     let mut atual = compartilhado.estado.lock().unwrap();
-                    *atual = estado.clone();
+                    *atual = principal.clone();
+                }
+                {
+                    let mut todos = compartilhado.todos.lock().unwrap();
+                    *todos = panorama.todos.clone();
                 }
                 {
                     let mut serie = compartilhado.serie.lock().unwrap();
-                    *serie = monitor.historico().serie(&estado.key).to_vec();
+                    *serie = monitor.historico().serie(&principal.key).to_vec();
                 }
 
-                let _ = app.emit("kontro://estado", &estado);
-                atualizar_bandeja(&app, &estado, &mut ultimo_icone);
+                let _ = app.emit("kontro://estado", &principal);
+                let _ = app.emit("kontro://controles", &panorama.todos);
+                atualizar_bandeja(&app, &principal, &mut ultimo_icone);
             }
 
             if tempo::agora() >= proxima_checagem {
@@ -367,6 +409,27 @@ fn avisar_versao_nova(app: &AppHandle) {
 #[tauri::command]
 fn estado_atual(compartilhado: tauri::State<Arc<Compartilhado>>) -> BatteryState {
     compartilhado.estado.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn controles(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<BatteryState> {
+    compartilhado.todos.lock().unwrap().clone()
+}
+
+/// Troca o nome com que um controle aparece.
+///
+/// O nome do sistema continua guardado: o apelido so cobre a exibicao. Sem isso, um
+/// controle sem Bluetooth fica para sempre chamado "controlador de jogo compativel com
+/// HID" -- que e o que o Windows responde, e serve para todos igualmente.
+#[tauri::command]
+fn renomear_controle(chave: String, nome: String, envio: tauri::State<mpsc::Sender<Pedido>>) {
+    let _ = envio.send(Pedido::Renomear { chave, nome });
+}
+
+/// Tira um controle da lista.
+#[tauri::command]
+fn esquecer_controle(chave: String, envio: tauri::State<mpsc::Sender<Pedido>>) {
+    let _ = envio.send(Pedido::Esquecer { chave });
 }
 
 #[tauri::command]

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
+import { Historico } from "../componentes/Historico";
+import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Amostra, Estado, corDoAnel, useEstado } from "../estado";
 import "./painel.css";
 
@@ -114,6 +116,8 @@ export function Painel() {
 
       <Historico serie={serie} cor={corDoAnel(estado)} />
 
+      <ListaDeControles principal={estado.key} />
+
       <div className="acoes">
         <button onClick={() => invoke("mostrar_janela", { rotulo: "principal" })}>
           Configurações
@@ -132,45 +136,4 @@ function detalhe(estado: Estado) {
     return `${estado.textoDaCarga} · sem percentual neste controle`;
   // a autonomia e o que o usuario quer saber de fato; a via so importa quando nao ha
   return estado.autonomia ?? estado.textoDaLigacao;
-}
-
-/**
- * O historico e contexto, nao protagonista: linha de um pixel, sem eixo e sem grade.
- */
-function Historico({ serie, cor }: { serie: Amostra[]; cor: string }) {
-  if (serie.length < 2) return <div className="historico vazio">medindo o consumo</div>;
-
-  const largura = 320;
-  const altura = 56;
-  const folga = 6;
-
-  const t0 = serie[0].t;
-  const span = serie[serie.length - 1].t - t0 || 1;
-  const min = Math.min(...serie.map((s) => s.p));
-  const max = Math.max(...serie.map((s) => s.p));
-  // piso de amplitude para variacao minuscula nao virar uma serra gigante
-  const faixa = Math.max(max - min, 8);
-  const base = (max + min) / 2 - faixa / 2;
-
-  const pontos = serie
-    .map((s) => {
-      const x = ((s.t - t0) / span) * largura;
-      const y = altura - folga - ((s.p - base) / faixa) * (altura - folga * 2);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  return (
-    <div className="historico">
-      <div className="faixa">
-        <span>
-          {min}% – {max}%
-        </span>
-        <span>últimas 24 h</span>
-      </div>
-      <svg width="100%" height={altura} viewBox={`0 0 ${largura} ${altura}`} preserveAspectRatio="none">
-        <polyline points={pontos} fill="none" stroke={cor} strokeWidth="1.5" strokeLinejoin="round" />
-      </svg>
-    </div>
-  );
 }

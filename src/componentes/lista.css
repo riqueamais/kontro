@@ -1,0 +1,141 @@
+.lista {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--stroke);
+}
+
+.lista-titulo {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 8px;
+  border-radius: var(--radius-field);
+  border: 1px solid transparent;
+}
+
+/* O principal e o que esta no icone da bandeja. Marcar qual e evita a duvida de por
+   que a bandeja mostra um numero e a lista mostra outro. */
+.item.principal {
+  background: var(--surface);
+  border-color: var(--stroke);
+}
+
+.item-texto {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-nome {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px dashed transparent;
+  transition: border-color var(--motion-fast);
+}
+
+.item-nome:hover {
+  border-bottom-color: var(--stroke-strong);
+}
+
+.renomear {
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-teal);
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13.5px;
+}
+
+.item-estado {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Na janela do app a lista e o assunto da tela, e nao um rodape do painel: sem a
+   divisoria de cima, e com o mesmo respiro dos cartoes vizinhos. */
+.lista.solta {
+  margin-top: var(--space-5);
+  padding-top: 0;
+  border-top: 0;
+}
+
+.lista.solta .item {
+  border-color: var(--stroke);
+  background: var(--surface);
+  margin-bottom: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+}
+
+.lista.solta .item.principal {
+  border-color: var(--stroke-strong);
+}
+
+.esquecer {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity var(--motion-fast), background var(--motion-fast),
+    color var(--motion-fast);
+}
+
+/* O botao so aparece com o ponteiro na linha: um "x" permanente em cada controle
+   convida ao clique errado num lugar onde o clique errado apaga historico. */
+.item:hover .esquecer,
+.esquecer:focus-visible {
+  opacity: 1;
+}
+
+.esquecer:hover {
+  background: var(--surface-alt);
+  color: var(--red);
+}
+
+.confirmar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.confirmar .ciclo {
+  padding: 4px 10px;
+  font-size: 12.5px;
+}
+
+.ciclo.perigo {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.ciclo.perigo:hover {
+  background: var(--red);
+  color: var(--ink);
+}

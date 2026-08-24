@@ -1,22 +1,124 @@
-.principal {
-  padding: var(--space-5) var(--space-5) var(--space-6);
+/* A janela inteira e o app: sem moldura do sistema, a altura e nossa do topo ao rodape. */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--ink);
+  overflow: hidden;
 }
 
-.principal header {
+/* ------------------------------------------------------------------ barra de titulo */
+
+.barra {
+  flex: 0 0 auto;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: var(--space-4);
+  background: var(--ink);
+  border-bottom: 1px solid var(--stroke);
+  /* a barra e a alca da janela: nada aqui deve virar selecao de texto ao arrastar */
+  user-select: none;
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.botoes-da-janela {
+  display: flex;
+  height: 100%;
+}
+
+.botao-janela {
+  width: 46px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.botao-janela:hover {
+  background: var(--surface-alt);
+  color: var(--text-primary);
+}
+
+/* O vermelho e a convencao do sistema para o fechar, e so para ele. */
+.botao-janela.fechar:hover {
+  background: var(--red);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------ corpo e trilho */
+
+.corpo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  min-height: 0;
+}
+
+.trilho {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface);
+  border-right: 1px solid var(--stroke);
+}
+
+.aba {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-5);
+  padding: 9px var(--space-3);
+  border: 0;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  text-align: left;
+  transition: background var(--motion-fast), color var(--motion-fast);
 }
 
-.principal h1 {
+.aba:hover {
+  background: var(--surface-alt);
+  color: var(--text-primary);
+}
+
+.aba.ativa {
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  font-weight: 500;
+  /* a barrinha e o que diz em que pagina se esta sem depender so do tom de cinza */
+  box-shadow: inset 2px 0 0 var(--accent-teal);
+}
+
+.pagina {
+  min-width: 0;
+  overflow-y: auto;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+}
+
+.titulo-da-pagina {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 600;
-  margin: 0;
+  margin: 0 0 var(--space-4);
 }
 
-.principal h2 {
+.pagina h2 {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -25,17 +127,25 @@
   margin: var(--space-5) 0 var(--space-2);
 }
 
+/* ------------------------------------------------------------------ cartoes */
+
 .cartao {
   background: var(--surface);
   border: 1px solid var(--stroke);
   border-radius: var(--radius-card);
   padding: var(--space-4);
+  margin-bottom: var(--space-3);
 }
 
 .cartao.estado {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-5);
+}
+
+.cartao .leitura {
+  flex: 1;
+  min-width: 0;
 }
 
 .cartao .numero {
@@ -44,8 +154,12 @@
   font-weight: 600;
 }
 
+.cartao .numero.grande {
+  font-size: 26px;
+}
+
 .cartao .dispositivo {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -54,6 +168,15 @@
   font-size: 13px;
   color: var(--text-secondary);
 }
+
+.cartao .rodape {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+/* ------------------------------------------------------------------ ajustes */
 
 /* Duas colunas, e nao margem fixa: com margem, descricao longa passa por baixo do
    controle e os dois se sobrepoem. */
