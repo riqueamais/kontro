@@ -53,6 +53,24 @@ impl ControleSalvo {
     }
 }
 
+/// O nome novo vale a pena?
+///
+/// Nome de Bluetooth e o bom: o HID devolve rotulo generico, igual para qualquer
+/// controle. Entao um nome vindo do Bluetooth sempre substitui, e um nome sem Bluetooth
+/// nunca derruba um que veio de la.
+fn melhor_nome(atual: &str, novo: &str, endereco_atual: u64, endereco_novo: u64) -> bool {
+    if novo.trim().is_empty() || atual == novo {
+        return false;
+    }
+    if atual.trim().is_empty() {
+        return true;
+    }
+    if endereco_novo != 0 {
+        return true;
+    }
+    endereco_atual == 0
+}
+
 #[derive(Debug, Default)]
 pub struct Conhecidos {
     itens: Vec<ControleSalvo>,
@@ -64,7 +82,38 @@ impl Conhecidos {
             .ok()
             .and_then(|t| serde_json::from_str::<Vec<ControleSalvo>>(&t).ok())
             .unwrap_or_default();
-        Conhecidos { itens }
+
+        let mut conhecidos = Conhecidos { itens };
+        if conhecidos.limpar() {
+            conhecidos.salvar();
+        }
+        conhecidos
+    }
+
+    /// Junta copias do mesmo controle que ja tenham sido gravadas.
+    ///
+    /// A correcao na fusao evita criar novas, mas quem ja tem o arquivo sujo continuaria
+    /// sujo para sempre -- e sao registros que nunca aparecem na tela, entao ninguem
+    /// tem como limpar por fora.
+    fn limpar(&mut self) -> bool {
+        let antes = self.itens.len();
+
+        // o mais recente de cada container fica; sem container, cada um e unico
+        self.itens.sort_by(|a, b| b.visto_em().cmp(&a.visto_em()));
+        let mut vistos: Vec<String> = Vec::new();
+        self.itens.retain(|i| {
+            if i.container_id.is_empty() {
+                return true;
+            }
+            let chave = i.container_id.to_lowercase();
+            if vistos.contains(&chave) {
+                return false;
+            }
+            vistos.push(chave);
+            true
+        });
+
+        self.itens.len() != antes
     }
 
     pub fn itens(&self) -> &[ControleSalvo] {
@@ -76,17 +125,32 @@ impl Conhecidos {
     }
 
     /// Funde a descoberta com o que ja era conhecido. Devolve true se algo mudou.
+    ///
+    /// O casamento e por chave ou por container. So a chave nao basta: o mesmo controle
+    /// fisico ganha ids de interface diferentes conforme a via por onde aparece, e a
+    /// lista ia acumulando copias dele -- todas com o nome generico que o Windows da, e
+    /// nenhuma visivel para o usuario apagar.
     pub fn fundir(&mut self, descobertos: &[Controle]) -> bool {
         let mut mudou = false;
         let agora = tempo::para_texto(tempo::agora());
 
         for d in descobertos {
             let chave = d.chave();
-            match self.itens.iter_mut().find(|i| i.como_controle().chave() == chave) {
+            let achado = self.itens.iter_mut().find(|i| {
+                i.como_controle().chave() == chave
+                    || (!d.container.is_empty() && i.container_id.eq_ignore_ascii_case(&d.container))
+            });
+
+            match achado {
                 Some(existente) => {
-                    if existente.name != d.nome {
+                    if melhor_nome(&existente.name, &d.nome, existente.address, d.endereco) {
                         existente.name = d.nome.clone();
                         mudou = true;
+                    }
+                    // o endereco Bluetooth so entra, nunca sai: perde-lo faria o controle
+                    // trocar de chave e virar um registro novo
+                    if d.endereco != 0 {
+                        existente.address = d.endereco;
                     }
                     existente.hid_id = d.id_hid.clone();
                     existente.instance_id = d.id_instancia.clone();

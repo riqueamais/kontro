@@ -177,6 +177,18 @@ pub fn executar() {
                 }
             }
 
+            // A primeira execucao acabou de acontecer, entao ela precisa ficar
+            // registrada. Sem isto a marca nasce desligada e nunca muda: o app se
+            // apresenta a cada inicializacao, para sempre, e parece quebrado. So nao
+            // aparecia em quem migrou do app antigo, que ja tinha a marca gravada.
+            {
+                let mut cfg = compartilhado.config.lock().unwrap();
+                if !cfg.first_run_done {
+                    cfg.first_run_done = true;
+                    cfg.salvar();
+                }
+            }
+
             iniciar_ciclo(handle, compartilhado.clone(), recebimento);
             Ok(())
         })
