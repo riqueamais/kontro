@@ -5,6 +5,7 @@ import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
+import { Saude } from "../componentes/Saude";
 import { Amostra, Estado, corDoAnel, useEstado } from "../estado";
 
 /** A tela de abrir: o que esta acontecendo agora, e com quais controles. */
@@ -52,6 +53,7 @@ export function Resumo() {
 
       <section className="cartao">
         <Historico serie={serie} cor={corDoAnel(estado)} altura={84} />
+        <Saude chave={estado.key} />
       </section>
 
       <ListaDeControles principal={estado.key} sempre />

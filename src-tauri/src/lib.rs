@@ -41,6 +41,7 @@ pub struct Compartilhado {
     /// Todos os conhecidos, para o painel listar.
     todos: Mutex<Vec<BatteryState>>,
     serie: Mutex<Vec<Amostra>>,
+    saude: Mutex<Option<history::Saude>>,
     config: Mutex<Settings>,
     /// Versao nova encontrada, para a janela de configuracoes mostrar.
     novidade: Mutex<Option<atualizacao::Novidade>>,
@@ -121,6 +122,7 @@ pub fn executar() {
             None,
         )),
         serie: Mutex::new(Vec::new()),
+        saude: Mutex::new(None),
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
@@ -153,6 +155,7 @@ pub fn executar() {
             renomear_controle,
             esquecer_controle,
             serie_do_historico,
+            saude_da_bateria,
             configuracoes,
             salvar_configuracoes,
             ler_agora,
@@ -278,6 +281,10 @@ fn iniciar_ciclo(
                 {
                     let mut serie = compartilhado.serie.lock().unwrap();
                     *serie = monitor.historico().serie(&principal.key).to_vec();
+                }
+                {
+                    let mut saude = compartilhado.saude.lock().unwrap();
+                    *saude = Some(monitor.historico().saude(&principal.key));
                 }
 
                 let _ = app.emit("kontro://estado", &principal);
@@ -437,6 +444,11 @@ fn esquecer_controle(chave: String, envio: tauri::State<mpsc::Sender<Pedido>>) {
 #[tauri::command]
 fn serie_do_historico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<Amostra> {
     compartilhado.serie.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn saude_da_bateria(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<history::Saude> {
+    compartilhado.saude.lock().unwrap().clone()
 }
 
 #[tauri::command]
