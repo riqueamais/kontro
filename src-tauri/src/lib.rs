@@ -254,7 +254,7 @@ fn iniciar_ciclo(
         let mut monitor = monitor::Monitor::novo();
         let mut ultimo_icone = String::new();
         let mut orquestrador = orquestra::Orquestrador::novo();
-        let mut proxima_checagem = tempo::agora();
+        let mut proxima_checagem = atualizacao::ultima_checagem() + atualizacao::JANELA_MS;
 
         loop {
             match pedidos.try_recv() {
@@ -385,7 +385,9 @@ fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String
 fn avisar_versao_nova(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let Some(novidade) = atualizacao::procurar() else { return };
+        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar() else {
+            return;
+        };
 
         // A notificacao do sistema fica na Central de Acoes para ser lida depois. O
         // balao antigo do Windows piscava e sumia, o que para um aviso que pede uma
@@ -488,16 +490,48 @@ fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<
     })
 }
 
-/// Procura agora, sem esperar a proxima janela. Devolve o que achou.
+#[derive(serde::Serialize)]
+struct Busca {
+    estado: &'static str,
+    versao: Option<String>,
+    pagina: Option<String>,
+    atual: String,
+    motivo: Option<String>,
+}
+
 #[tauri::command]
-fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<VersaoNova> {
-    let achado = atualizacao::procurar();
-    *compartilhado.novidade.lock().unwrap() = achado.clone();
-    achado.map(|n| VersaoNova {
-        versao: n.versao,
-        pagina: n.pagina,
-        atual: env!("CARGO_PKG_VERSION").to_string(),
-    })
+fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Busca {
+    let atual = env!("CARGO_PKG_VERSION").to_string();
+
+    match atualizacao::procurar() {
+        atualizacao::Consulta::Nova(n) => {
+            *compartilhado.novidade.lock().unwrap() = Some(n.clone());
+            Busca {
+                estado: "nova",
+                versao: Some(n.versao),
+                pagina: Some(n.pagina),
+                atual,
+                motivo: None,
+            }
+        }
+        atualizacao::Consulta::EmDia => {
+            *compartilhado.novidade.lock().unwrap() = None;
+            Busca {
+                estado: "em-dia",
+                versao: None,
+                pagina: None,
+                atual,
+                motivo: None,
+            }
+        }
+        atualizacao::Consulta::Falhou(motivo) => Busca {
+            estado: "falhou",
+            versao: None,
+            pagina: None,
+            atual,
+            motivo: Some(motivo),
+        },
+    }
 }
 
 #[tauri::command]

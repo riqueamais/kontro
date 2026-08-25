@@ -48,6 +48,14 @@ interface VersaoNova {
   atual: string;
 }
 
+interface Busca {
+  estado: "nova" | "em-dia" | "falhou";
+  versao: string | null;
+  pagina: string | null;
+  atual: string;
+  motivo: string | null;
+}
+
 /** Em que ponto da atualizacao estamos. */
 type Passo =
   | { tipo: "parado" }
@@ -55,7 +63,7 @@ type Passo =
   | { tipo: "atualizado" }
   | { tipo: "baixando"; porcento: number | null }
   | { tipo: "instalando" }
-  | { tipo: "falhou"; motivo: string };
+  | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
 export function Configuracoes() {
   const [cfg, setCfg] = useState<Config | null>(null);
@@ -70,13 +78,31 @@ export function Configuracoes() {
   const procurar = async () => {
     setPasso({ tipo: "procurando" });
     try {
-      const achado = await invoke<VersaoNova | null>("procurar_atualizacao");
-      setNova(achado);
-      // Nao achar nada e um resultado, e precisa ser dito. Voltar ao estado inicial em
-      // silencio faz parecer que o botao nao fez nada.
-      setPasso(achado ? { tipo: "parado" } : { tipo: "atualizado" });
+      const busca = await invoke<Busca>("procurar_atualizacao");
+
+      if (busca.estado === "falhou") {
+        setPasso({
+          tipo: "falhou",
+          ao: "verificar",
+          motivo: busca.motivo ?? "não deu para consultar o repositório",
+        });
+        return;
+      }
+
+      if (busca.estado === "nova" && busca.versao && busca.pagina) {
+        setNova({ versao: busca.versao, pagina: busca.pagina, atual: busca.atual });
+        setPasso({ tipo: "parado" });
+        return;
+      }
+
+      setNova(null);
+      setPasso({ tipo: "atualizado" });
     } catch {
-      setPasso({ tipo: "falhou", motivo: "não deu para consultar o repositório" });
+      setPasso({
+        tipo: "falhou",
+        ao: "verificar",
+        motivo: "não deu para consultar o repositório",
+      });
     }
   };
 
@@ -115,7 +141,7 @@ export function Configuracoes() {
 
       await relaunch();
     } catch (e) {
-      setPasso({ tipo: "falhou", motivo: String(e) });
+      setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
     }
   };
 
@@ -264,7 +290,9 @@ function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
     case "instalando":
       return "Instalando — o app vai reiniciar";
     case "falhou":
-      return "Não foi possível atualizar";
+      return passo.ao === "verificar"
+        ? "Não foi possível verificar"
+        : "Não foi possível atualizar";
     default:
       return nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações";
   }
@@ -279,7 +307,7 @@ function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
   }
   return nova
     ? `Você está na ${nova.atual}. O app baixa e instala sozinho.`
-    : "O app avisa sozinho a cada três horas quando sai versão nova.";
+    : "O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.";
 }
 
 function Linha({
