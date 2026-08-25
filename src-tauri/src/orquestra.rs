@@ -62,8 +62,14 @@ impl Orquestrador {
     /// depende do que ocupa a tela. Reavaliar so na mudanca de carga faria entrar e sair
     /// de um jogo nao ter efeito ate a proxima variacao de percentual, o que pode
     /// demorar muitos minutos.
-    pub fn reavaliar(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
-        self.sobreposicao(app, estado, cfg);
+    pub fn reavaliar(
+        &mut self,
+        app: &AppHandle,
+        estado: &BatteryState,
+        cfg: &Settings,
+        mao: Option<bool>,
+    ) {
+        self.sobreposicao(app, estado, cfg, mao);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
         self.limiares(app, estado, cfg);
@@ -71,7 +77,13 @@ impl Orquestrador {
 
     // ------------------------------------------------------------ sobreposicao
 
-    fn sobreposicao(&self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
+    fn sobreposicao(
+        &self,
+        app: &AppHandle,
+        estado: &BatteryState,
+        cfg: &Settings,
+        mao: Option<bool>,
+    ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
         let ligada = cfg.overlay_mode != OverlayMode::Desligada;
@@ -92,7 +104,23 @@ impl Orquestrador {
             .and_then(|j| j.is_focused().ok())
             .unwrap_or(false);
 
-        let mostrar = ligada && (ajustando || (tem_leitura && momento_de_jogo));
+        // Abaixo do limiar critico a pilula aparece mesmo fora de jogo. A sobreposicao
+        // existe para avisar antes de o controle morrer; ficar calada justamente quando
+        // resta menos carga inverte o proprio motivo dela existir. No cabo nao vale: ali
+        // o numero baixo esta subindo, e nao caindo.
+        let critico = !estado.charging
+            && estado
+                .preenchimento
+                .map(|p| p <= cfg.critical_threshold)
+                .unwrap_or(false);
+
+        // A mao do usuario ganha da regra. O atalho existe para tirar a pilula da frente
+        // sem sair do jogo -- e uma pilula que voltasse sozinha dois segundos depois nao
+        // seria atalho nenhum.
+        let mostrar = match mao {
+            Some(escolha) => ligada && escolha,
+            None => ligada && (ajustando || (tem_leitura && (momento_de_jogo || critico))),
+        };
 
         if mostrar {
             janelas::posicionar_sobreposicao(app, cfg);

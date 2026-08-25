@@ -1,32 +1,36 @@
 import { Amostra } from "../estado";
 import "./historico.css";
 
-/**
- * O historico e contexto, nao protagonista: linha de um pixel, sem eixo e sem grade.
- */
+const HORA = 3_600_000;
+const DIA = 24 * HORA;
+
 export function Historico({
   serie,
   cor,
   altura = 56,
+  dias = 7,
 }: {
   serie: Amostra[];
   cor: string;
   altura?: number;
+  dias?: number;
 }) {
-  if (serie.length < 2) return <div className="historico vazio">medindo o consumo</div>;
+  const corte = Date.now() - dias * DIA;
+  const janela = serie.filter((s) => s.t >= corte);
+
+  if (janela.length < 2) return <div className="historico vazio">medindo o consumo</div>;
 
   const largura = 320;
   const folga = 6;
 
-  const t0 = serie[0].t;
-  const span = serie[serie.length - 1].t - t0 || 1;
-  const min = Math.min(...serie.map((s) => s.p));
-  const max = Math.max(...serie.map((s) => s.p));
-  // piso de amplitude para variacao minuscula nao virar uma serra gigante
+  const t0 = janela[0].t;
+  const span = janela[janela.length - 1].t - t0 || 1;
+  const min = Math.min(...janela.map((s) => s.p));
+  const max = Math.max(...janela.map((s) => s.p));
   const faixa = Math.max(max - min, 8);
   const base = (max + min) / 2 - faixa / 2;
 
-  const pontos = serie
+  const pontos = janela
     .map((s) => {
       const x = ((s.t - t0) / span) * largura;
       const y = altura - folga - ((s.p - base) / faixa) * (altura - folga * 2);
@@ -40,7 +44,7 @@ export function Historico({
         <span>
           {min}% – {max}%
         </span>
-        <span>últimas 24 h</span>
+        <span>{legenda(span)}</span>
       </div>
       <svg
         width="100%"
@@ -58,4 +62,15 @@ export function Historico({
       </svg>
     </div>
   );
+}
+
+function legenda(span: number): string {
+  if (span < 2 * HORA) {
+    const minutos = Math.max(1, Math.round(span / 60_000));
+    return `últimos ${minutos} min`;
+  }
+  if (span < 36 * HORA) {
+    return `últimas ${Math.round(span / HORA)} h`;
+  }
+  return `últimos ${Math.round(span / DIA)} dias`;
 }

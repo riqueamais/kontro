@@ -4,6 +4,7 @@
 //! recebe e o estado ja pronto. Isso mantem os objetos do WinRT presos a um unico
 //! apartamento e evita que a leitura trave o desenho.
 
+mod atalho;
 mod atualizacao;
 mod autostart;
 mod device;
@@ -42,6 +43,8 @@ pub struct Compartilhado {
     todos: Mutex<Vec<BatteryState>>,
     serie: Mutex<Vec<Amostra>>,
     saude: Mutex<Option<history::Saude>>,
+    /// Escolha do atalho: nula enquanto a regra manda, `Some` depois que o usuario mexeu.
+    sobreposicao_a_mao: Mutex<Option<bool>>,
     config: Mutex<Settings>,
     /// Versao nova encontrada, para a janela de configuracoes mostrar.
     novidade: Mutex<Option<atualizacao::Novidade>>,
@@ -123,6 +126,7 @@ pub fn executar() {
         )),
         serie: Mutex::new(Vec::new()),
         saude: Mutex::new(None),
+        sobreposicao_a_mao: Mutex::new(None),
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
@@ -147,6 +151,7 @@ pub fn executar() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(atalho::plugin())
         .manage(compartilhado.clone())
         .manage(envio.clone())
         .invoke_handler(tauri::generate_handler![
@@ -169,6 +174,8 @@ pub fn executar() {
             let handle = app.handle().clone();
             janelas::criar_todas(&handle)?;
             montar_bandeja(&handle)?;
+
+            atalho::aplicar(&handle, compartilhado.config.lock().unwrap().overlay_shortcut_enabled);
 
             // `--show` abre a janela mesmo com "iniciar minimizado" ligado. Serve para
             // o atalho do menu e para conferir a interface sem ter de mexer na
@@ -306,7 +313,8 @@ fn iniciar_ciclo(
             {
                 let estado = compartilhado.estado.lock().unwrap().clone();
                 let cfg = compartilhado.config.lock().unwrap().clone();
-                orquestrador.reavaliar(&app, &estado, &cfg);
+                let mao = *compartilhado.sobreposicao_a_mao.lock().unwrap();
+                orquestrador.reavaliar(&app, &estado, &cfg, mao);
             }
 
             std::thread::sleep(INTERVALO_DO_CICLO);
@@ -475,6 +483,18 @@ fn salvar_configuracoes(
             novas.start_with_windows = autostart::ligado();
         }
     }
+
+    // Mexer no modo da sobreposicao devolve a palavra a regra: se o usuario acabou de
+    // dizer como ele quer a pilula, uma escolha antiga do atalho contradiria o que ele
+    // acabou de pedir.
+    {
+        let anterior = compartilhado.config.lock().unwrap().overlay_mode;
+        if novas.overlay_mode != anterior {
+            *compartilhado.sobreposicao_a_mao.lock().unwrap() = None;
+        }
+    }
+
+    atalho::aplicar(&app, novas.overlay_shortcut_enabled);
 
     novas.salvar();
     janelas::posicionar_sobreposicao(&app, &novas);

@@ -46,6 +46,7 @@ pub struct Settings {
     pub overlay_scale: f64,
     pub overlay_opacity: f64,
     pub auto_check_updates: bool,
+    pub overlay_shortcut_enabled: bool,
     pub first_run_done: bool,
 }
 
@@ -66,6 +67,7 @@ impl Default for Settings {
             overlay_scale: 1.0,
             overlay_opacity: 0.9,
             auto_check_updates: true,
+            overlay_shortcut_enabled: true,
             first_run_done: false,
         }
     }

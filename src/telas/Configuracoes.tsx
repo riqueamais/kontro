@@ -26,8 +26,11 @@ interface Config {
   OverlayScale: number;
   OverlayOpacity: number;
   AutoCheckUpdates: boolean;
+  OverlayShortcutEnabled: boolean;
   FirstRunDone: boolean;
 }
+
+const ATALHO = "Ctrl + Shift + K";
 
 const CANTOS: Record<OverlayCorner, string> = {
   SuperiorEsquerdo: "Superior esquerdo",
@@ -246,6 +249,16 @@ export function Configuracoes() {
         >
           {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
         </button>
+      </Linha>
+
+      <Linha
+        titulo="Atalho para mostrar e esconder"
+        descricao={`${ATALHO} tira a pílula da frente sem precisar sair do jogo.`}
+      >
+        <Chave
+          ligado={cfg.OverlayShortcutEnabled}
+          aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
+        />
       </Linha>
 
       <h2>Versão</h2>
