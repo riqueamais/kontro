@@ -18,14 +18,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # a anotacao da tag e a nota da release: sem o historico e sem as tags
-          # o checkout traz so o commit, e a mensagem nao viria junto
+          # a nota da release sai da anotacao da tag, e a versao sai do nome dela:
+          # sem o historico completo nao ha nem uma coisa nem outra
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
+
+      - name: Trazer a anotacao da tag
+        shell: pwsh
+        run: |
+          # O checkout deixa a tag como referencia leve, apontando direto para o commit.
+          # `git tag -l --format=%(contents)` entao devolve a mensagem do commit, e a
+          # release saia com o texto escrito para quem le codigo no lugar do escrito para
+          # quem usa o app -- em silencio, porque a guarda de "sem anotacao" nunca via
+          # vazio. Buscar a tag de novo, a forca, traz o objeto anotado de verdade.
+          git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
+          $tipo = git cat-file -t "${{ github.ref_name }}"
+          Write-Host "a tag e um objeto do tipo: $tipo"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -139,7 +151,14 @@ jobs:
           # A anotacao da tag e onde a release foi escrita para gente ler. Quando
           # existir, ela manda; sem ela, a lista de commits do GitHub ao menos diz
           # o que mudou.
-          $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
+          #
+          # A conferencia do tipo e o que torna a escolha honesta: numa tag leve o
+          # `%(contents)` cai na mensagem do commit, que nunca esta vazia, e o galho de
+          # baixo jamais era alcancado.
+          $notas = ""
+          if ((git cat-file -t "${{ github.ref_name }}") -eq "tag") {
+            $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
+          }
           if ([string]::IsNullOrWhiteSpace($notas)) {
             gh release create "${{ github.ref_name }}" $arquivos `
               --title "Kontro ${{ github.ref_name }}" `
