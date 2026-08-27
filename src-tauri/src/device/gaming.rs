@@ -30,11 +30,3 @@ pub fn carregando() -> bool {
     })()
     .unwrap_or(false)
 }
-
-/// Quantos controles o sistema enxerga, seja qual for a via.
-pub fn quantidade() -> usize {
-    RawGameController::RawGameControllers()
-        .and_then(|c| c.Size())
-        .map(|n| n as usize)
-        .unwrap_or(0)
-}

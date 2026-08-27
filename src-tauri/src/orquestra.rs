@@ -4,6 +4,8 @@
 //! quem decide se e hora de mostrar precisa saber o que ocupa a tela e o que mudou na
 //! ligacao desde o ciclo anterior. Essa memoria vive aqui.
 
+use std::collections::HashMap;
+
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
@@ -37,22 +39,26 @@ const CARENCIA_DA_ABERTURA_MS: i64 = 6_000;
 
 pub struct Orquestrador {
     aberto_em: i64,
-    modo_anterior: LinkMode,
+    /// De quem era o estado do ciclo anterior, e como ele estava ligado. A chave vem
+    /// junto porque o principal pode trocar de controle: sem ela, o segundo controle
+    /// entrando parecia o primeiro mudando de via.
+    anterior: Option<(String, LinkMode)>,
     /// Conexao que ainda espera uma leitura para virar aviso.
     conexao_a_avisar: Option<i64>,
-    /// Limiares ja avisados nesta carga, para nao repetir a cada leitura.
-    avisados: Vec<i32>,
-    ultimo_percentual: Option<i32>,
+    /// Limiares ja avisados nesta carga, por controle. Um valor so fazia o "ja avisei
+    /// 20%" de um controle calar o aviso do outro assim que o principal trocasse.
+    avisados: HashMap<String, Vec<i32>>,
+    ultimo_percentual: HashMap<String, i32>,
 }
 
 impl Orquestrador {
     pub fn novo() -> Self {
         Orquestrador {
             aberto_em: tempo::agora(),
-            modo_anterior: LinkMode::Offline,
+            anterior: None,
             conexao_a_avisar: None,
-            avisados: Vec::new(),
-            ultimo_percentual: None,
+            avisados: HashMap::new(),
+            ultimo_percentual: HashMap::new(),
         }
     }
 
@@ -108,7 +114,12 @@ impl Orquestrador {
         // existe para avisar antes de o controle morrer; ficar calada justamente quando
         // resta menos carga inverte o proprio motivo dela existir. No cabo nao vale: ali
         // o numero baixo esta subindo, e nao caindo.
+        //
+        // Leitura velha tambem nao vale: uma ultima carga de 8% da semana passada punha
+        // a pilula na tela no instante em que o controle reaparecesse, anunciando que ele
+        // estava morrendo antes de existir uma unica medida desta ligacao.
         let critico = !estado.charging
+            && !estado.stale
             && estado
                 .preenchimento
                 .map(|p| p <= cfg.critical_threshold)
@@ -136,11 +147,15 @@ impl Orquestrador {
 
     /// Detecta o que mudou na ligacao e decide se ha algo a avisar.
     fn transicao(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
-        let anterior = self.modo_anterior;
-        self.modo_anterior = estado.mode;
-        if anterior == estado.mode {
+        let anterior = self.anterior.replace((estado.key.clone(), estado.mode));
+
+        // trocar de controle nao e trocar de via: so ha transicao a relatar quando o
+        // estado desta volta e do mesmo aparelho da volta passada
+        let Some((chave, modo)) = anterior else { return };
+        if chave != estado.key || modo == estado.mode {
             return;
         }
+        let anterior = modo;
 
         if !cfg.connect_toast_enabled {
             return;
@@ -198,15 +213,23 @@ impl Orquestrador {
         if !cfg.notifications_enabled || estado.mode == LinkMode::Offline {
             return;
         }
+        // Leitura velha nao dispara aviso. Sem isto, um controle que desligou com 8% e
+        // reapareceu no cabo era anunciado como "carga critica" antes de existir uma
+        // unica medida desta ligacao -- justamente quando ele estava carregando.
+        if estado.stale {
+            return;
+        }
         let Some(pct) = estado.percent.filter(|_| estado.tem_numero) else { return };
 
+        let avisados = self.avisados.entry(estado.key.clone()).or_default();
+
         // subiu de forma relevante: carga nova, pode avisar de novo mais tarde
-        if let Some(anterior) = self.ultimo_percentual {
+        if let Some(anterior) = self.ultimo_percentual.get(&estado.key) {
             if pct - anterior > 5 {
-                self.avisados.clear();
+                avisados.clear();
             }
         }
-        self.ultimo_percentual = Some(pct);
+        self.ultimo_percentual.insert(estado.key.clone(), pct);
 
         let nome = if estado.device_name.trim().is_empty() {
             "O controle"
@@ -215,10 +238,10 @@ impl Orquestrador {
         };
 
         for limite in [cfg.critical_threshold, cfg.warn_threshold] {
-            if pct > limite || self.avisados.contains(&limite) {
+            if pct > limite || avisados.contains(&limite) {
                 continue;
             }
-            self.avisados.push(limite);
+            avisados.push(limite);
 
             let corpo = format!("{nome} está com {pct}% de carga.");
             let titulo = if limite == cfg.critical_threshold {

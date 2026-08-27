@@ -13,7 +13,6 @@
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:window:allow-set-focus",
-    "shell:allow-open",
     "notification:default",
     "updater:default",
     "updater:allow-check",

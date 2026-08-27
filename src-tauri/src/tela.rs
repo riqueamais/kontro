@@ -26,3 +26,29 @@ pub fn em_tela_cheia() -> bool {
 fn consultar() -> Option<QUERY_USER_NOTIFICATION_STATE> {
     unsafe { SHQueryUserNotificationState().ok() }
 }
+
+/// O centro da janela em foco, em pixels fisicos.
+///
+/// E o que permite a sobreposicao acompanhar o jogo em vez de ficar presa numa tela. O
+/// criterio e a janela em foco, e nao o cursor: em jogo de tela cheia o cursor some, e
+/// seguir o cursor levaria a pilula para o monitor onde o mouse ficou esquecido.
+pub fn centro_da_janela_em_foco() -> Option<(f64, f64)> {
+    use windows::Win32::Foundation::RECT;
+    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowRect};
+
+    unsafe {
+        let janela = GetForegroundWindow();
+        if janela.is_invalid() {
+            return None;
+        }
+        let mut area = RECT::default();
+        GetWindowRect(janela, &mut area).ok()?;
+        if area.right <= area.left || area.bottom <= area.top {
+            return None;
+        }
+        Some((
+            (area.left + area.right) as f64 / 2.0,
+            (area.top + area.bottom) as f64 / 2.0,
+        ))
+    }
+}

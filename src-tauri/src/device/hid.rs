@@ -92,14 +92,23 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
     let operacao = dispositivo.GetInputReportByIdAsync(id).ok()?;
     let (envio, recebimento) = mpsc::channel();
 
-    // A espera roda em outra thread para poder ser abandonada: nao existe cancelamento
-    // barato aqui, e travar o monitor por causa de um controle parado seria pior.
+    // A espera roda em outra thread para o monitor nao ficar preso a um controle parado.
+    let esperando = operacao.clone();
     std::thread::spawn(move || {
         crate::device::iniciar_apartamento();
-        let _ = envio.send(operacao.join());
+        let _ = envio.send(esperando.join());
     });
 
-    let relatorio = recebimento.recv_timeout(Duration::from_secs(2)).ok()?.ok()?;
+    let resposta = recebimento.recv_timeout(Duration::from_secs(2));
+    if resposta.is_err() {
+        // Desistir da espera nao desistia da operacao: a thread ficava presa no `join`
+        // para sempre, segurando o dispositivo aberto. Num controle que declara o
+        // relatorio de entrada e nunca manda nada, era uma thread vazada por releitura.
+        let _ = operacao.Cancel();
+        return None;
+    }
+
+    let relatorio = resposta.ok()?.ok()?;
     let controle = relatorio
         .GetNumericControl(PAGINA_CONTROLES_GENERICOS, USO_CARGA_DA_BATERIA)
         .ok()?;

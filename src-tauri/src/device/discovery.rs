@@ -12,7 +12,7 @@ use windows_collections::IIterable;
 use super::{hid, pnp, xinput};
 
 /// Interface que o Windows publica para todo controle atendido pelo XUSB.
-const GUID_XUSB: &str = "{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}";
+pub(crate) const GUID_XUSB: &str = "{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}";
 
 #[derive(Debug, Clone, Default)]
 pub struct Controle {
@@ -98,13 +98,19 @@ pub fn extrair_endereco(id: &str) -> u64 {
 }
 
 pub fn descobrir() -> Vec<Controle> {
+    descobrir_com(&super::gatt::pareados())
+}
+
+/// A varredura, com a lista de pareados vinda de fora.
+///
+/// `pareados` so serve para dar nome: ela custa uma abertura de dispositivo Bluetooth
+/// por aparelho e o nome de um controle nao muda entre uma varredura e a seguinte. Quem
+/// chama guarda a lista e a renova quando ela envelhece -- e essa separacao e o que
+/// permite varrer de segundos em segundos sem acordar o radio a toa.
+pub fn descobrir_com(pareados: &[(u64, String)]) -> Vec<Controle> {
     // Sem HID ainda pode haver controle: o XUSB e um mundo a parte, conferido mais
     // abaixo. Desistir aqui era justamente o que escondia controle de dongle.
     let achados = gamepads_hid();
-
-    // Nome bom vem do Bluetooth: o HID devolve rotulo generico, que nao diz ao usuario
-    // qual controle e o dele.
-    let pareados = super::gatt::pareados();
 
     let mut resultado: Vec<Controle> = Vec::new();
     let mut containers_hid: Vec<String> = Vec::new();

@@ -27,6 +27,11 @@ pub struct Amostra {
 #[derive(Debug, Default)]
 pub struct History {
     por_controle: HashMap<String, Vec<Amostra>>,
+    /// Ha amostra em memoria que ainda nao esta no arquivo.
+    ///
+    /// Existe para a gravacao periodica nao reescrever o arquivo a cada meio minuto num
+    /// app que passa o dia sem nada acontecer.
+    sujo: bool,
 }
 
 /// Trinta dias: o suficiente para uma media de consumo honesta sem virar arquivao.
@@ -58,10 +63,12 @@ pub struct Saude {
 
 impl History {
     pub fn carregar() -> Self {
-        let bruto = std::fs::read_to_string(paths::arquivo("history.json")).unwrap_or_default();
+        let bruto = paths::ler("history.json").unwrap_or_default();
         let mapa: HashMap<String, Vec<AmostraEmDisco>> =
             serde_json::from_str(&bruto).unwrap_or_default();
         let corte = tempo::agora() - JANELA_MS;
+
+        let lidas: usize = mapa.values().map(|s| s.len()).sum();
 
         let por_controle = mapa
             .into_iter()
@@ -76,7 +83,16 @@ impl History {
             })
             .collect();
 
-        History { por_controle }
+        // A poda so vale se for gravada: sem isto o arquivo carrega para sempre
+        // amostras que a memoria ja descartou.
+        let podou = quantas(&por_controle) != lidas;
+
+        History { por_controle, sujo: podou }
+    }
+
+    /// Ha o que gravar.
+    pub fn precisa_salvar(&self) -> bool {
+        self.sujo
     }
 
     pub fn ultimo(&self, chave: &str) -> Option<Amostra> {
@@ -93,6 +109,7 @@ impl History {
     /// de um controle futuro contaminada pela bateria de outro, caso a chave se repita.
     pub fn esquecer(&mut self, chave: &str) {
         if self.por_controle.remove(chave).is_some() {
+            self.sujo = true;
             self.salvar();
         }
     }
@@ -113,13 +130,17 @@ impl History {
 
         serie.push(Amostra { t: quando, p: percent });
         serie.sort_by_key(|a| a.t);
+        self.sujo = true;
     }
 
-    pub fn salvar(&self) {
+    pub fn salvar(&mut self) {
         paths::garantir_dir();
+        // Serie vazia nao e informacao: e uma chave que sobrou de um controle que nunca
+        // chegou a ter leitura, e que ficaria no arquivo para sempre.
         let em_disco: HashMap<&String, Vec<AmostraEmDisco>> = self
             .por_controle
             .iter()
+            .filter(|(_, serie)| !serie.is_empty())
             .map(|(chave, serie)| {
                 let convertida = serie
                     .iter()
@@ -129,8 +150,12 @@ impl History {
             })
             .collect();
 
+        // So limpa a marca se o arquivo foi mesmo escrito: disco cheio ou pasta sem
+        // permissao nao pode se passar por gravacao feita.
         if let Ok(t) = serde_json::to_string(&em_disco) {
-            let _ = std::fs::write(paths::arquivo("history.json"), t);
+            if std::fs::write(paths::arquivo("history.json"), t).is_ok() {
+                self.sujo = false;
+            }
         }
     }
 
@@ -218,6 +243,10 @@ impl History {
     }
 }
 
+fn quantas(por_controle: &HashMap<String, Vec<Amostra>>) -> usize {
+    por_controle.values().map(|s| s.len()).sum()
+}
+
 fn descargas(serie: &[Amostra]) -> Vec<Descarga> {
     let mut saida = Vec::new();
     let mut i = 0;
@@ -285,7 +314,7 @@ mod testes {
         amostras.sort_by_key(|a| a.t);
         let mut por_controle = HashMap::new();
         por_controle.insert("c".to_string(), amostras);
-        History { por_controle }
+        History { por_controle, sujo: false }
     }
 
     #[test]

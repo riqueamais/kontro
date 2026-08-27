@@ -55,7 +55,9 @@ enum Pedido {
     LerAgora,
     Renomear { chave: String, nome: String },
     Esquecer { chave: String },
-    Encerrar,
+    /// Grave o que ainda esta so na memoria e pare. O canal de volta e o aperto de mao:
+    /// sem ele quem pediu segue em frente e o processo morre antes da gravacao acabar.
+    Encerrar(mpsc::Sender<()>),
 }
 
 const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
@@ -133,8 +135,9 @@ pub fn executar() {
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
+    let ao_encerrar = envio.clone();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         // Precisa vir antes dos outros: quando ja ha uma instancia rodando, este plugin
         // encerra a nova imediatamente, e nada mais chega a subir.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -147,7 +150,6 @@ pub fn executar() {
                 let _ = janela.set_focus();
             }
         }))
-        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -168,6 +170,7 @@ pub fn executar() {
             procurar_atualizacao,
             mostrar_janela,
             esconder_janela,
+            quantidade_de_telas,
             ajustar_altura_do_painel
         ])
         .setup(move |app| {
@@ -245,10 +248,26 @@ pub fn executar() {
             api.prevent_close();
             let _ = janela.hide();
         })
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("nao foi possivel iniciar o Kontro");
 
-    let _ = envio.send(Pedido::Encerrar);
+    // `Builder::run` nunca devolve o controle: por baixo dele o laco de eventos tem
+    // assinatura `-> !` e o processo sai por `process::exit`. Todo codigo escrito depois
+    // dele e codigo morto -- e era ali que morava a unica gravacao do historico. Na
+    // pratica o arquivo nunca era escrito, e depois de reiniciar o computador o app
+    // abria mostrando como "ultima leitura" o que sobrara de sessoes muito anteriores.
+    //
+    // Montando em duas etapas, o evento de saida chega antes do processo acabar, e da
+    // para esperar a thread do monitor terminar de gravar.
+    app.run(move |_app, evento| {
+        if !matches!(evento, tauri::RunEvent::Exit) {
+            return;
+        }
+        let (feito, esperar) = mpsc::channel();
+        if ao_encerrar.send(Pedido::Encerrar(feito)).is_ok() {
+            let _ = esperar.recv_timeout(Duration::from_secs(3));
+        }
+    });
 }
 
 /// O ciclo de leitura, na sua propria thread.
@@ -267,14 +286,6 @@ fn iniciar_ciclo(
         let mut proxima_checagem = atualizacao::ultima_checagem() + atualizacao::JANELA_MS;
 
         loop {
-            match pedidos.try_recv() {
-                Ok(Pedido::Encerrar) | Err(mpsc::TryRecvError::Disconnected) => break,
-                Ok(Pedido::Renomear { chave, nome }) => monitor.renomear(&chave, &nome),
-                Ok(Pedido::Esquecer { chave }) => monitor.esquecer(&chave),
-                Ok(Pedido::LerAgora) => {}
-                Err(mpsc::TryRecvError::Empty) => {}
-            }
-
             if let Some(panorama) = monitor.ciclo() {
                 let principal = panorama.principal.clone();
                 {
@@ -317,16 +328,28 @@ fn iniciar_ciclo(
                 orquestrador.reavaliar(&app, &estado, &cfg, mao);
             }
 
-            std::thread::sleep(INTERVALO_DO_CICLO);
+            // A espera e o proprio ponto de escuta: dormir e so conferir depois fazia o
+            // botao "Atualizar" levar ate dois segundos para ser notado, e o pedido de
+            // encerramento chegar tarde demais para valer alguma coisa.
+            match pedidos.recv_timeout(INTERVALO_DO_CICLO) {
+                Ok(Pedido::Encerrar(feito)) => {
+                    monitor.salvar();
+                    let _ = feito.send(());
+                    break;
+                }
+                Ok(Pedido::Renomear { chave, nome }) => monitor.renomear(&chave, &nome),
+                Ok(Pedido::Esquecer { chave }) => monitor.esquecer(&chave),
+                Ok(Pedido::LerAgora) => monitor.ler_agora(),
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
         }
-
-        monitor.salvar();
     });
 }
 
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
     let abrir = MenuItem::with_id(app, "abrir", "Configurações", true, None::<&str>)?;
-    let atualizar = MenuItem::with_id(app, "atualizar", "Atualizar agora", true, None::<&str>)?;
+    let atualizar = MenuItem::with_id(app, "atualizar", "Ler a bateria agora", true, None::<&str>)?;
     let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&abrir, &atualizar, &sair])?;
 
@@ -373,8 +396,18 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
 /// O ciclo roda a cada dois segundos; rasterizar de novo um icone identico seria
 /// trabalho jogado fora num app que passa o dia parado.
 fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String) {
-    let tamanho = tray::tamanho_do_icone();
+    let Some(bandeja) = app.tray_by_id("kontro") else { return };
 
+    // A dica e so texto, e refaze-la nao custa nada. Presa a assinatura do desenho, ela
+    // continuava dizendo "no cabo" depois de o controle comecar a carregar: `charging`
+    // muda o texto da ligacao e nao muda desenho nenhum.
+    let dica = format!(
+        "{} - {} - {}",
+        estado.device_name, estado.texto_da_carga, estado.texto_da_ligacao
+    );
+    let _ = bandeja.set_tooltip(Some(dica));
+
+    let tamanho = tray::tamanho_do_icone();
     // o tamanho entra na assinatura porque trocar a escala da tela muda o desenho
     let assinatura = format!("{:?}|{:?}|{tamanho}", estado.mode, estado.preenchimento);
     if assinatura == *ultimo {
@@ -382,14 +415,8 @@ fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String
     }
     *ultimo = assinatura;
 
-    let Some(icone) = tray::desenhar(estado, tamanho) else { return };
-    if let Some(bandeja) = app.tray_by_id("kontro") {
+    if let Some(icone) = tray::desenhar(estado, tamanho) {
         let _ = bandeja.set_icon(Some(icone));
-        let dica = format!(
-            "{} - {} - {}",
-            estado.device_name, estado.texto_da_carga, estado.texto_da_ligacao
-        );
-        let _ = bandeja.set_tooltip(Some(dica));
     }
 }
 
@@ -496,8 +523,14 @@ fn salvar_configuracoes(
 
     atalho::aplicar(&app, novas.overlay_shortcut_enabled);
 
+    novas.ajustar();
     novas.salvar();
     janelas::posicionar_sobreposicao(&app, &novas);
+
+    // A pilula desenha com o tamanho e a opacidade escolhidos, e ela e uma janela a
+    // parte: sem este aviso ela so mudaria de aparencia na proxima vez que fosse aberta.
+    let _ = app.emit("kontro://config", &novas);
+
     *compartilhado.config.lock().unwrap() = novas;
 }
 
@@ -564,6 +597,15 @@ fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Busc
             motivo: Some(motivo),
         },
     }
+}
+
+/// Quantas telas existem, para a escolha do monitor da sobreposicao.
+///
+/// A tela oferecia "Monitor 1" e "Monitor 2" e nada mais: quem tem tres nunca alcancava
+/// a terceira, porque o ciclo estava escrito com o numero dois dentro dele.
+#[tauri::command]
+fn quantidade_de_telas(app: AppHandle) -> usize {
+    app.available_monitors().map(|m| m.len()).unwrap_or(1)
 }
 
 #[tauri::command]

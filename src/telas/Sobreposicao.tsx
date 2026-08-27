@@ -1,6 +1,6 @@
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
-import { corDoAnel, useEstado } from "../estado";
+import { corDoAnel, useConfig, useEstado } from "../estado";
 import "./sobreposicao.css";
 
 /**
@@ -11,7 +11,13 @@ import "./sobreposicao.css";
  */
 export function Sobreposicao() {
   const estado = useEstado();
+  const cfg = useConfig();
   if (!estado) return null;
+
+  // O tamanho e a transparencia sao escolha do usuario: numa tela de 27" a pilula
+  // padrao some, e numa partida com HUD carregado ela precisa sumir um pouco.
+  const escala = cfg?.OverlayScale ?? 1;
+  const opacidade = cfg?.OverlayOpacity ?? 0.9;
 
   const texto = estado.girando
     ? "cabo"
@@ -20,8 +26,11 @@ export function Sobreposicao() {
       : estado.textoDaCarga;
 
   return (
-    <div className="sobreposicao">
-      <div className="pilula">
+    <div
+      className="sobreposicao"
+      style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}
+    >
+      <div className="pilula" style={{ opacity: opacidade }}>
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado)}

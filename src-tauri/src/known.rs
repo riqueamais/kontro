@@ -85,8 +85,7 @@ pub struct Conhecidos {
 
 impl Conhecidos {
     pub fn carregar() -> Self {
-        let itens = std::fs::read_to_string(paths::arquivo("controllers.json"))
-            .ok()
+        let itens = paths::ler("controllers.json")
             .and_then(|t| serde_json::from_str::<Vec<ControleSalvo>>(&t).ok())
             .unwrap_or_default();
 

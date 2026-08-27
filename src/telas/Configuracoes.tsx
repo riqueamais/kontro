@@ -3,34 +3,28 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
-type CloseAction = "MinimizeToTray" | "Exit";
-type OverlayMode = "Desligada" | "EmJogo" | "Sempre";
-type OverlayCorner =
-  | "SuperiorEsquerdo"
-  | "SuperiorDireito"
-  | "InferiorEsquerdo"
-  | "InferiorDireito";
-
-interface Config {
-  StartWithWindows: boolean;
-  StartMinimized: boolean;
-  CloseAction: CloseAction;
-  NotificationsEnabled: boolean;
-  WarnThreshold: number;
-  CriticalThreshold: number;
-  ConnectToastEnabled: boolean;
-  OverlayMode: OverlayMode;
-  OverlayTipShown: boolean;
-  OverlayCorner: OverlayCorner;
-  OverlayMonitor: number;
-  OverlayScale: number;
-  OverlayOpacity: number;
-  AutoCheckUpdates: boolean;
-  OverlayShortcutEnabled: boolean;
-  FirstRunDone: boolean;
-}
+import { Config, OverlayCorner, OverlayMode } from "../estado";
 
 const ATALHO = "Ctrl + Shift + K";
+
+/// Os degraus que a tela oferece. O aviso critico precisa caber abaixo do de carga
+/// baixa, e o Rust ainda confere isso: o arquivo pode ter sido editado a mao.
+const LIMIARES_DE_AVISO = [40, 30, 25, 20, 15, 10] as const;
+const LIMIARES_CRITICOS = [20, 15, 10, 5] as const;
+
+const TAMANHOS: [number, string][] = [
+  [0.85, "Pequena"],
+  [1, "Padrão"],
+  [1.2, "Grande"],
+  [1.45, "Enorme"],
+];
+
+const OPACIDADES: [number, string][] = [
+  [1, "Sólida"],
+  [0.9, "90%"],
+  [0.75, "75%"],
+  [0.55, "55%"],
+];
 
 const CANTOS: Record<OverlayCorner, string> = {
   SuperiorEsquerdo: "Superior esquerdo",
@@ -72,10 +66,12 @@ export function Configuracoes() {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
+  const [telas, setTelas] = useState(1);
 
   useEffect(() => {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
     invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
+    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
   }, []);
 
   const procurar = async () => {
@@ -156,8 +152,12 @@ export function Configuracoes() {
     void invoke("salvar_configuracoes", { novas });
   };
 
-  const ciclar = <T extends string>(atual: T, opcoes: readonly T[]): T =>
-    opcoes[(opcoes.indexOf(atual) + 1) % opcoes.length];
+  const ciclar = <T extends string | number>(atual: T, opcoes: readonly T[]): T => {
+    const i = opcoes.indexOf(atual);
+    // Valor fora da lista -- de um arquivo editado a mao, ou de uma versao anterior --
+    // volta para o primeiro degrau em vez de travar o botao.
+    return i < 0 ? opcoes[0] : opcoes[(i + 1) % opcoes.length];
+  };
 
   return (
     <>
@@ -196,6 +196,43 @@ export function Configuracoes() {
           ligado={cfg.NotificationsEnabled}
           aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
         />
+      </Linha>
+      <Linha
+        titulo="Avisar em"
+        descricao="Carga a partir da qual o Kontro avisa que ela está baixa."
+      >
+        <button
+          className="ciclo"
+          disabled={!cfg.NotificationsEnabled}
+          onClick={() => {
+            const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
+            gravar({
+              WarnThreshold: aviso,
+              CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 5),
+            });
+          }}
+        >
+          {cfg.WarnThreshold}%
+        </button>
+      </Linha>
+      <Linha
+        titulo="Avisar de novo em"
+        descricao="O segundo aviso, mais urgente. É ele que também traz a pílula para a tela fora de jogo."
+      >
+        <button
+          className="ciclo"
+          disabled={!cfg.NotificationsEnabled}
+          onClick={() =>
+            gravar({
+              CriticalThreshold: Math.min(
+                ciclar(cfg.CriticalThreshold, LIMIARES_CRITICOS),
+                cfg.WarnThreshold - 5,
+              ),
+            })
+          }
+        >
+          {cfg.CriticalThreshold}%
+        </button>
       </Linha>
       <Linha
         titulo="Avisar ao conectar"
@@ -239,15 +276,33 @@ export function Configuracoes() {
       </Linha>
       <Linha
         titulo="Monitor"
-        descricao="Fixa a pílula numa tela em vez de deixar que ela siga o foco."
+        descricao="Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
       >
         <button
           className="ciclo"
           onClick={() =>
-            gravar({ OverlayMonitor: cfg.OverlayMonitor >= 1 ? -1 : cfg.OverlayMonitor + 1 })
+            gravar({
+              OverlayMonitor: cfg.OverlayMonitor + 1 >= telas ? -1 : cfg.OverlayMonitor + 1,
+            })
           }
         >
           {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
+        </button>
+      </Linha>
+      <Linha titulo="Tamanho" descricao="Quanto espaço a pílula ocupa na tela.">
+        <button
+          className="ciclo"
+          onClick={() => gravar({ OverlayScale: ciclar(cfg.OverlayScale, tamanhos()) })}
+        >
+          {rotulo(TAMANHOS, cfg.OverlayScale)}
+        </button>
+      </Linha>
+      <Linha titulo="Transparência" descricao="Para a pílula não competir com o HUD do jogo.">
+        <button
+          className="ciclo"
+          onClick={() => gravar({ OverlayOpacity: ciclar(cfg.OverlayOpacity, opacidades()) })}
+        >
+          {rotulo(OPACIDADES, cfg.OverlayOpacity)}
         </button>
       </Linha>
 
@@ -290,6 +345,15 @@ export function Configuracoes() {
       </Linha>
     </>
   );
+}
+
+const tamanhos = () => TAMANHOS.map(([v]) => v);
+const opacidades = () => OPACIDADES.map(([v]) => v);
+
+/// O nome do degrau em que o valor esta, ou o proprio numero quando ele nao e nenhum
+/// deles -- que e o que acontece com um arquivo vindo de fora.
+function rotulo(degraus: [number, string][], valor: number): string {
+  return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
 }
 
 function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {

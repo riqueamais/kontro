@@ -21,8 +21,9 @@ pub enum Precisao {
 /// Sem fio nao e sinonimo de Bluetooth: dongle de radio e adaptador sem fio ligam sem
 /// cabo e sem Bluetooth nenhum, e a diferenca importa porque so o Bluetooth entrega
 /// percentual exato e avisa sozinho quando muda.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum LinkMode {
+    #[default]
     Offline,
     Bluetooth,
     Cable,

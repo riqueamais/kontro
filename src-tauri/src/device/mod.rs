@@ -11,6 +11,7 @@ pub mod hid;
 pub mod pnp;
 pub mod xinput;
 pub mod discovery;
+pub mod vigia;
 
 /// O sistema respondeu, so nao com sucesso.
 ///

@@ -113,6 +113,14 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
     ))
 }
 
+/// Pergunta a carga agora, pelo vinculo que ja esta aberto.
+///
+/// O Notify cobre a variacao, mas ele so fala quando o valor muda: quem acabou de pedir
+/// "ler agora" ficaria esperando a bateria cair para a tela responder.
+pub fn reler(vinculo: &VinculoGatt) -> Option<i32> {
+    ler(&vinculo.caracteristica).ok()
+}
+
 fn ler(caracteristica: &GattCharacteristic) -> Result<i32> {
     let resultado = caracteristica
         .ReadValueWithCacheModeAsync(BluetoothCacheMode::Uncached)?

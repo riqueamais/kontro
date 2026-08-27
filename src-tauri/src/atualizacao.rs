@@ -74,8 +74,7 @@ fn descrever(erro: &ureq::Error) -> String {
 }
 
 pub fn ultima_checagem() -> i64 {
-    std::fs::read_to_string(paths::arquivo("atualizacao.json"))
-        .ok()
+    paths::ler("atualizacao.json")
         .and_then(|t| serde_json::from_str::<Marca>(&t).ok())
         .map(|m| m.ultima_checagem_ms)
         .unwrap_or(0)

@@ -6,7 +6,7 @@ import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
-import { Amostra, Estado, corDoAnel, useEstado } from "../estado";
+import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
 import "./painel.css";
 
 /** Faixas de cor do anel, as mesmas gravadas nos icones. */
@@ -68,10 +68,6 @@ export function Painel() {
 
   if (!estado) return null;
 
-  const rodape = estado.readAt
-    ? `${estado.stale ? "lido" : "atualizado"} às ${new Date(estado.readAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
-    : "sem leitura ainda";
-
   return (
     <div className="painel" ref={painel}>
       <button
@@ -110,7 +106,7 @@ export function Painel() {
             {estado.mode === "Offline" ? "Desconectado" : estado.deviceName}
           </div>
           <div className="detalhe">{detalhe(estado)}</div>
-          <div className="rodape">{rodape}</div>
+          <div className="rodape">{quandoLeu(estado)}</div>
         </div>
       </div>
 

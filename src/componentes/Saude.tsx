@@ -21,7 +21,7 @@ interface SaudeCrua {
 
 const DIAS_PARA_COMPARAR = 14;
 
-export function Saude({ chave }: { chave: string }) {
+export function Saude({ chave, pulso }: { chave: string; pulso?: number | null }) {
   const [saude, setSaude] = useState<Saude | null>(null);
 
   useEffect(() => {
@@ -38,7 +38,9 @@ export function Saude({ chave }: { chave: string }) {
         ),
       )
       .catch(() => {});
-  }, [chave]);
+    // `pulso` e a hora da ultima leitura: sem ele o veredito congelava no que fosse
+    // quando a janela abriu, e so mudava se o usuario trocasse de controle.
+  }, [chave, pulso]);
 
   if (!saude) return null;
 

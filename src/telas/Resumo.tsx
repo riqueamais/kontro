@@ -6,7 +6,7 @@ import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
-import { Amostra, Estado, corDoAnel, useEstado } from "../estado";
+import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
 
 /** A tela de abrir: o que esta acontecendo agora, e com quais controles. */
 export function Resumo() {
@@ -43,7 +43,7 @@ export function Resumo() {
             {estado.mode === "Offline" ? "Desconectado" : estado.deviceName}
           </div>
           <div className="detalhe">{detalhe(estado)}</div>
-          <div className="rodape">{quando(estado)}</div>
+          <div className="rodape">{quandoLeu(estado)}</div>
         </div>
 
         <button className="ciclo" onClick={() => invoke("ler_agora")}>
@@ -53,7 +53,7 @@ export function Resumo() {
 
       <section className="cartao">
         <Historico serie={serie} cor={corDoAnel(estado)} altura={84} />
-        <Saude chave={estado.key} />
+        <Saude chave={estado.key} pulso={estado.readAt} />
       </section>
 
       <ListaDeControles principal={estado.key} sempre />
@@ -70,11 +70,3 @@ function detalhe(estado: Estado) {
   return estado.autonomia ?? estado.textoDaLigacao;
 }
 
-function quando(estado: Estado) {
-  if (!estado.readAt) return "sem leitura ainda";
-  const hora = new Date(estado.readAt).toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${estado.stale ? "lido" : "atualizado"} às ${hora}`;
-}
