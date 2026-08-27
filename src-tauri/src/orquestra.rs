@@ -1,9 +1,3 @@
-//! Quando cada janela aparece.
-//!
-//! A sobreposicao e o aviso nao sao decisao da interface: ela desenha o que recebe, mas
-//! quem decide se e hora de mostrar precisa saber o que ocupa a tela e o que mudou na
-//! ligacao desde o ciclo anterior. Essa memoria vive aqui.
-
 use std::collections::HashMap;
 
 use serde::Serialize;
@@ -16,37 +10,21 @@ use crate::settings::{OverlayMode, Settings};
 use crate::tela;
 use crate::tempo;
 
-/// Do que o aviso trata.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum AvisoDeLigacao {
     Conectou,
     Desconectou,
-    /// Estava sem fio e passou para o cabo, ou o contrario.
     TrocouDeVia,
 }
 
-/// Quanto esperar pela carga antes de avisar assim mesmo.
-///
-/// A leitura real chega alguns segundos depois da conexao, e o aviso fica muito melhor
-/// com o numero pronto. Mas ha controle que nunca informa carga: passado este tempo,
-/// avisar sem numero e melhor que nao avisar.
 const ESPERA_DO_AVISO_MS: i64 = 10_000;
 
-/// Os primeiros segundos apos abrir sao ignorados de proposito: o app parte de
-/// desconectado e logo encontra o controle, o que viraria um aviso em toda inicializacao
-/// sem nada ter acontecido.
 const CARENCIA_DA_ABERTURA_MS: i64 = 6_000;
 
 pub struct Orquestrador {
     aberto_em: i64,
-    /// De quem era o estado do ciclo anterior, e como ele estava ligado. A chave vem
-    /// junto porque o principal pode trocar de controle: sem ela, o segundo controle
-    /// entrando parecia o primeiro mudando de via.
     anterior: Option<(String, LinkMode)>,
-    /// Conexao que ainda espera uma leitura para virar aviso.
     conexao_a_avisar: Option<i64>,
-    /// Limiares ja avisados nesta carga, por controle. Um valor so fazia o "ja avisei
-    /// 20%" de um controle calar o aviso do outro assim que o principal trocasse.
     avisados: HashMap<String, Vec<i32>>,
     ultimo_percentual: HashMap<String, i32>,
 }
@@ -62,26 +40,19 @@ impl Orquestrador {
         }
     }
 
-    /// Reavalia as janelas para o estado atual.
-    ///
-    /// Roda a cada ciclo, e nao so quando a carga muda: a visibilidade da sobreposicao
-    /// depende do que ocupa a tela. Reavaliar so na mudanca de carga faria entrar e sair
-    /// de um jogo nao ter efeito ate a proxima variacao de percentual, o que pode
-    /// demorar muitos minutos.
     pub fn reavaliar(
         &mut self,
         app: &AppHandle,
         estado: &BatteryState,
         cfg: &Settings,
         mao: Option<bool>,
+        ligados: usize,
     ) {
-        self.sobreposicao(app, estado, cfg, mao);
+        self.sobreposicao(app, estado, cfg, mao, ligados);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
         self.limiares(app, estado, cfg);
     }
-
-    // ------------------------------------------------------------ sobreposicao
 
     fn sobreposicao(
         &self,
@@ -89,6 +60,7 @@ impl Orquestrador {
         estado: &BatteryState,
         cfg: &Settings,
         mao: Option<bool>,
+        ligados: usize,
     ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
@@ -97,27 +69,11 @@ impl Orquestrador {
         let momento_de_jogo =
             cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
 
-        // Enquanto o usuario esta na janela de configuracoes a sobreposicao aparece de
-        // qualquer jeito, funcionando como previa: escolher o canto seria as cegas se
-        // ela sumisse ao clicar no botao.
-        //
-        // O criterio e o foco, e nao a visibilidade. Uma janela aberta atras de tudo, ou
-        // minimizada, continua "visivel" para o sistema -- e com esse criterio bastava
-        // abrir as configuracoes uma vez e nao fechar para a pilula ficar na tela para
-        // sempre, mesmo no modo que so devia aparecer em jogo.
         let ajustando = app
             .get_webview_window(janelas::PRINCIPAL)
             .and_then(|j| j.is_focused().ok())
             .unwrap_or(false);
 
-        // Abaixo do limiar critico a pilula aparece mesmo fora de jogo. A sobreposicao
-        // existe para avisar antes de o controle morrer; ficar calada justamente quando
-        // resta menos carga inverte o proprio motivo dela existir. No cabo nao vale: ali
-        // o numero baixo esta subindo, e nao caindo.
-        //
-        // Leitura velha tambem nao vale: uma ultima carga de 8% da semana passada punha
-        // a pilula na tela no instante em que o controle reaparecesse, anunciando que ele
-        // estava morrendo antes de existir uma unica medida desta ligacao.
         let critico = !estado.charging
             && !estado.stale
             && estado
@@ -125,16 +81,13 @@ impl Orquestrador {
                 .map(|p| p <= cfg.critical_threshold)
                 .unwrap_or(false);
 
-        // A mao do usuario ganha da regra. O atalho existe para tirar a pilula da frente
-        // sem sair do jogo -- e uma pilula que voltasse sozinha dois segundos depois nao
-        // seria atalho nenhum.
         let mostrar = match mao {
             Some(escolha) => ligada && escolha,
             None => ligada && (ajustando || (tem_leitura && (momento_de_jogo || critico))),
         };
 
         if mostrar {
-            janelas::posicionar_sobreposicao(app, cfg);
+            janelas::posicionar_sobreposicao(app, cfg, ligados);
             if !janela.is_visible().unwrap_or(false) {
                 let _ = janela.show();
             }
@@ -143,14 +96,9 @@ impl Orquestrador {
         }
     }
 
-    // ------------------------------------------------------------ aviso
-
-    /// Detecta o que mudou na ligacao e decide se ha algo a avisar.
     fn transicao(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
         let anterior = self.anterior.replace((estado.key.clone(), estado.mode));
 
-        // trocar de controle nao e trocar de via: so ha transicao a relatar quando o
-        // estado desta volta e do mesmo aparelho da volta passada
         let Some((chave, modo)) = anterior else { return };
         if chave != estado.key || modo == estado.mode {
             return;
@@ -166,25 +114,19 @@ impl Orquestrador {
         }
 
         if estado.mode == LinkMode::Offline {
-            // nao ha leitura a esperar: o controle acabou de sair
             self.conexao_a_avisar = None;
             mostrar_aviso(app, estado, AvisoDeLigacao::Desconectou);
             return;
         }
 
         if anterior == LinkMode::Offline {
-            // Conectar e um evento; ter a carga e outro, alguns segundos depois. O aviso
-            // fica marcado aqui e sai quando o numero existe -- assim ele nasce pronto,
-            // em vez de aparecer dizendo que esta lendo.
             self.conexao_a_avisar = Some(tempo::agora());
             return;
         }
 
-        // seguia ligado e trocou de via: cabo para sem fio, ou o contrario
         mostrar_aviso(app, estado, AvisoDeLigacao::TrocouDeVia);
     }
 
-    /// Solta o aviso marcado quando a carga chega, ou quando a espera acaba.
     fn talvez_avisar(&mut self, app: &AppHandle, estado: &BatteryState) {
         let Some(desde) = self.conexao_a_avisar else { return };
         if estado.mode == LinkMode::Offline {
@@ -204,18 +146,10 @@ impl Orquestrador {
 }
 
 impl Orquestrador {
-    /// Avisa quando a carga cruza os limiares que o usuario escolheu.
-    ///
-    /// Limiar em porcentagem so faz sentido com leitura exata: com os quatro degraus do
-    /// XInput nao da para dizer se passou de vinte por cento. Melhor calar do que
-    /// inventar o momento do aviso.
     fn limiares(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
         if !cfg.notifications_enabled || estado.mode == LinkMode::Offline {
             return;
         }
-        // Leitura velha nao dispara aviso. Sem isto, um controle que desligou com 8% e
-        // reapareceu no cabo era anunciado como "carga critica" antes de existir uma
-        // unica medida desta ligacao -- justamente quando ele estava carregando.
         if estado.stale {
             return;
         }
@@ -223,7 +157,6 @@ impl Orquestrador {
 
         let avisados = self.avisados.entry(estado.key.clone()).or_default();
 
-        // subiu de forma relevante: carga nova, pode avisar de novo mais tarde
         if let Some(anterior) = self.ultimo_percentual.get(&estado.key) {
             if pct - anterior > 5 {
                 avisados.clear();
@@ -250,9 +183,6 @@ impl Orquestrador {
                 "Carga baixa"
             };
 
-            // A notificacao do sistema e a certa aqui, e nao a caixa do proprio app: ela
-            // fica na Central de Acoes para ser lida depois. O aviso do app e para o que
-            // acontece na hora e nao precisa sobreviver.
             let _ = app.notification().builder().title(titulo).body(corpo).show();
             break;
         }
@@ -265,10 +195,6 @@ struct Pacote<'a> {
     estado: &'a BatteryState,
 }
 
-/// Posiciona, mostra e conta para a interface do que se trata.
-///
-/// Quem apaga o aviso e a propria interface: ela conhece a duracao da animacao de saida,
-/// e escondendo daqui a janela sumiria no meio dela.
 fn mostrar_aviso(app: &AppHandle, estado: &BatteryState, assunto: AvisoDeLigacao) {
     let Some(janela) = app.get_webview_window(janelas::AVISO) else { return };
 

@@ -1,19 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 
-import { Estado, corDoAnel } from "../estado";
+import { Estado, corDoAnel, useControles } from "../estado";
 import { Anel } from "./Anel";
 import { Glifo } from "./Glifo";
 import "./lista.css";
 
-/**
- * Os controles que o app conhece, um por linha.
- *
- * No painel ela aparece so quando ha mais de um: com um controle so ela repetiria, em
- * letra menor, o que ja esta escrito logo acima. Na janela do app ela aparece sempre --
- * la ela e o assunto, e nao um complemento.
- */
 export function ListaDeControles({
   principal,
   sempre = false,
@@ -21,19 +13,9 @@ export function ListaDeControles({
   principal: string;
   sempre?: boolean;
 }) {
-  const [controles, setControles] = useState<Estado[]>([]);
+  const controles = useControles();
   const [editando, setEditando] = useState<string | null>(null);
-
-  useEffect(() => {
-    invoke<Estado[]>("controles").then(setControles).catch(() => {});
-    const parar = listen<Estado[]>("kontro://controles", (e) => setControles(e.payload));
-    return () => {
-      void parar.then((f) => f());
-    };
-  }, []);
-
   if (controles.length < (sempre ? 1 : 2)) return null;
-
   return (
     <div className={`lista${sempre ? " solta" : ""}`}>
       <div className="lista-titulo">Seus controles</div>
@@ -51,7 +33,6 @@ export function ListaDeControles({
     </div>
   );
 }
-
 function Linha({
   controle,
   principal,
@@ -69,14 +50,12 @@ function Linha({
 }) {
   const campo = useRef<HTMLInputElement>(null);
   const [confirmando, setConfirmando] = useState(false);
-
   useEffect(() => {
     if (editando) {
       campo.current?.focus();
       campo.current?.select();
     }
   }, [editando]);
-
   const salvar = () => {
     const nome = campo.current?.value ?? "";
     // O painel se esconde quando perde o foco, e isso dispara o onBlur. Sem esta guarda,
@@ -86,11 +65,9 @@ function Linha({
     }
     aoSair();
   };
-
   // Esquecer um controle que esta ligado nao adianta: a descoberta o encontra de novo no
   // ciclo seguinte, e ele reaparece como se nada tivesse acontecido.
   const removivel = podeEsquecer && controle.mode === "Offline";
-
   return (
     <div className={`item${principal ? " principal" : ""}`}>
       <Anel
@@ -102,7 +79,6 @@ function Linha({
       >
         <Glifo tamanho={11} cor="var(--text-secondary)" />
       </Anel>
-
       <div className="item-texto">
         {editando ? (
           <input
@@ -131,7 +107,6 @@ function Linha({
             : `${controle.textoDaCarga} · ${controle.textoDaLigacao}`}
         </div>
       </div>
-
       {removivel &&
         (confirmando ? (
           <div className="confirmar">

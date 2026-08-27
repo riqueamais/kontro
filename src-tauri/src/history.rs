@@ -1,9 +1,3 @@
-//! Historico de carga por controle, e a estimativa de autonomia.
-//!
-//! So grava quando o valor muda ou a cada dez minutos: registrar cada leitura faria o
-//! arquivo crescer sem acrescentar informacao. O formato em disco e o mesmo da versao em
-//! .NET -- data como texto ISO -- para que o usuario nao perca a serie ao atualizar.
-
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
@@ -27,14 +21,9 @@ pub struct Amostra {
 #[derive(Debug, Default)]
 pub struct History {
     por_controle: HashMap<String, Vec<Amostra>>,
-    /// Ha amostra em memoria que ainda nao esta no arquivo.
-    ///
-    /// Existe para a gravacao periodica nao reescrever o arquivo a cada meio minuto num
-    /// app que passa o dia sem nada acontecer.
     sujo: bool,
 }
 
-/// Trinta dias: o suficiente para uma media de consumo honesta sem virar arquivao.
 const JANELA_MS: i64 = 30 * 24 * 60 * 60 * 1000;
 const DEZ_MINUTOS_MS: i64 = 10 * 60 * 1000;
 const SEMANA_MS: i64 = 7 * 24 * 60 * 60 * 1000;
@@ -83,14 +72,11 @@ impl History {
             })
             .collect();
 
-        // A poda so vale se for gravada: sem isto o arquivo carrega para sempre
-        // amostras que a memoria ja descartou.
         let podou = quantas(&por_controle) != lidas;
 
         History { por_controle, sujo: podou }
     }
 
-    /// Ha o que gravar.
     pub fn precisa_salvar(&self) -> bool {
         self.sujo
     }
@@ -103,10 +89,6 @@ impl History {
         self.por_controle.get(chave).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
-    /// Apaga a serie de um controle esquecido.
-    ///
-    /// Guardar o historico de um aparelho que saiu da lista deixaria a media de consumo
-    /// de um controle futuro contaminada pela bateria de outro, caso a chave se repita.
     pub fn esquecer(&mut self, chave: &str) {
         if self.por_controle.remove(chave).is_some() {
             self.sujo = true;
@@ -135,8 +117,6 @@ impl History {
 
     pub fn salvar(&mut self) {
         paths::garantir_dir();
-        // Serie vazia nao e informacao: e uma chave que sobrou de um controle que nunca
-        // chegou a ter leitura, e que ficaria no arquivo para sempre.
         let em_disco: HashMap<&String, Vec<AmostraEmDisco>> = self
             .por_controle
             .iter()
@@ -150,8 +130,6 @@ impl History {
             })
             .collect();
 
-        // So limpa a marca se o arquivo foi mesmo escrito: disco cheio ou pasta sem
-        // permissao nao pode se passar por gravacao feita.
         if let Ok(t) = serde_json::to_string(&em_disco) {
             if std::fs::write(paths::arquivo("history.json"), t).is_ok() {
                 self.sujo = false;
@@ -159,32 +137,17 @@ impl History {
         }
     }
 
-    /// Consumo em pontos percentuais por hora, medido no trecho recente em que a carga
-    /// so caiu. Trecho que sobe e carga, nao consumo, e por isso nao entra na conta.
     pub fn consumo_por_hora(&self, chave: &str) -> Option<f64> {
         let serie = self.serie(chave);
-        if serie.len() < 2 {
-            return None;
+        let trechos = descargas(serie);
+        let fim_da_serie = serie.last()?.t;
+
+        if let Some(agora) = trechos.iter().find(|d| d.fim == fim_da_serie) {
+            return Some(agora.queda / agora.horas);
         }
 
-        let fim = serie.len() - 1;
-        let mut inicio = fim;
-        while inicio > 0 && serie[inicio - 1].p >= serie[inicio].p {
-            inicio -= 1;
-        }
-        if inicio == fim {
-            return None;
-        }
-
-        let queda = (serie[inicio].p - serie[fim].p) as f64;
-        let horas = (serie[fim].t - serie[inicio].t) as f64 / 3_600_000.0;
-        if queda <= 0.0 || horas < 0.25 {
-            return None;
-        }
-
-        // consumo absurdo denuncia leitura ruim, nao bateria ruim
-        let taxa = queda / horas;
-        (0.1..=60.0).contains(&taxa).then_some(taxa)
+        let corte = tempo::agora() - SEMANA_MS;
+        taxa(trechos.iter().filter(|d| d.fim >= corte))
     }
 
     pub fn saude(&self, chave: &str) -> Saude {
@@ -235,7 +198,6 @@ impl History {
         }
     }
 
-    /// Quanto tempo de jogo ainda cabe, em minutos.
     pub fn autonomia_em_minutos(&self, chave: &str, percent: i32) -> Option<i64> {
         let taxa = self.consumo_por_hora(chave)?;
         let horas = percent as f64 / taxa;
@@ -342,6 +304,39 @@ mod testes {
         assert_eq!(trechos.len(), 2, "duas sessoes, e nao uma de 26 horas");
         let horas: f64 = trechos.iter().map(|d| d.horas).sum();
         assert!(horas < 5.0, "as 24h desligado entraram na conta: {horas}");
+    }
+
+    #[test]
+    fn a_noite_desligado_nao_entra_no_consumo() {
+        let mut a = sessao(30, 2, 80, 70);
+        a.extend(sessao(4, 2, 70, 60));
+
+        let taxa = historico(a).consumo_por_hora("c").expect("ha descarga medida");
+        assert!((4.0..7.0).contains(&taxa), "a conta pegou o buraco entre as sessoes: {taxa}");
+    }
+
+    #[test]
+    fn o_consumo_de_agora_manda_sobre_o_de_antes() {
+        let mut a = sessao(40, 4, 100, 90);
+        a.extend(sessao(3, 2, 90, 70));
+
+        let taxa = historico(a).consumo_por_hora("c").expect("ha descarga medida");
+        assert!((9.0..11.0).contains(&taxa), "esperava o trecho de agora: {taxa}");
+    }
+
+    #[test]
+    fn no_cabo_vale_a_media_da_semana() {
+        let mut a = sessao(30, 3, 90, 60);
+        a.extend(sessao(5, 2, 60, 90));
+
+        let taxa = historico(a).consumo_por_hora("c").expect("ha descarga na semana");
+        assert!((9.0..12.0).contains(&taxa), "esperava a media da semana: {taxa}");
+    }
+
+    #[test]
+    fn sem_descarga_nenhuma_nao_ha_o_que_dizer() {
+        let a = sessao(3, 2, 60, 90);
+        assert_eq!(historico(a).consumo_por_hora("c"), None);
     }
 
     #[test]

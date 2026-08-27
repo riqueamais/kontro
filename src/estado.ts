@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 export type LinkMode = "Offline" | "Bluetooth" | "Cable" | "Wireless";
 export type Precisao = "Nenhuma" | "Aproximada" | "Exata";
 
-/// O estado chega pronto do Rust: a interface nunca reimplementa a regra de o que
-/// pode ser afirmado sobre a carga.
 export interface Estado {
   mode: LinkMode;
   percent: number | null;
@@ -56,7 +54,29 @@ export function useEstado(): Estado | null {
   return estado;
 }
 
-/// Cor do anel para um estado. Teal nao fala de carga, fala de estar na energia.
+export function useControles(): Estado[] {
+  const [controles, setControles] = useState<Estado[]>([]);
+
+  useEffect(() => {
+    let vivo = true;
+
+    invoke<Estado[]>("controles").then((c) => {
+      if (vivo) setControles(c);
+    });
+
+    const parar = listen<Estado[]>("kontro://controles", (evento) => {
+      if (vivo) setControles(evento.payload);
+    });
+
+    return () => {
+      vivo = false;
+      parar.then((f) => f());
+    };
+  }, []);
+
+  return controles;
+}
+
 export function corDoAnel(estado: Estado): string {
   if (estado.girando) return "var(--accent-teal)";
   if (estado.mode === "Offline" || estado.preenchimento === null) return "var(--gray)";
@@ -77,8 +97,6 @@ export type OverlayCorner =
   | "InferiorEsquerdo"
   | "InferiorDireito";
 
-/// Os nomes vem em PascalCase porque o arquivo em disco e o mesmo desde a versao em
-/// .NET, e trocar os nomes agora faria todo mundo perder o que ja tinha configurado.
 export interface Config {
   StartWithWindows: boolean;
   StartMinimized: boolean;
@@ -97,10 +115,6 @@ export interface Config {
   FirstRunDone: boolean;
 }
 
-/// A configuracao, acompanhando quem a mudar em outra janela.
-///
-/// A sobreposicao e uma janela separada da tela de ajustes: sem escutar o aviso, mexer
-/// no tamanho da pilula so teria efeito na proxima vez que ela aparecesse.
 export function useConfig(): Config | null {
   const [cfg, setCfg] = useState<Config | null>(null);
 
@@ -124,11 +138,6 @@ export function useConfig(): Config | null {
   return cfg;
 }
 
-/// Quando a leitura foi feita, em texto.
-///
-/// A data entra sempre que a leitura nao for de hoje. So a hora fazia um numero de tres
-/// dias atras aparecer como "lido as 21:34" e passar por recente -- e o horario esta ali
-/// justamente para levantar essa duvida, nao para escondê-la.
 export function quandoLeu(estado: Estado): string {
   if (!estado.readAt) return "sem leitura ainda";
 

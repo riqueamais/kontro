@@ -1,5 +1,4 @@
 .sobreposicao {
-  /* a folga acomoda a sombra, que e o que separa a pilula do jogo */
   padding: 12px;
 }
 
@@ -14,12 +13,29 @@
 }
 
 .pilula .valor {
-  /* largura fixa: sem isso a pilula encolhe e cresce conforme o numero muda de 100%
-     para 69%, e ancorada a direita ela ficaria pulando */
   min-width: 46px;
   text-align: center;
   font-family: var(--font-mono);
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.pilula .acompanhantes {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 2px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+}
+.pilula .acompanhante {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pilula .valor.menor {
+  min-width: 34px;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
