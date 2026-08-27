@@ -8,7 +8,6 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
 
-/** A tela de abrir: o que esta acontecendo agora, e com quais controles. */
 export function Resumo() {
   const estado = useEstado();
   const [serie, setSerie] = useState<Amostra[]>([]);
@@ -69,4 +68,3 @@ function detalhe(estado: Estado) {
     return `${estado.textoDaCarga} · sem percentual neste controle`;
   return estado.autonomia ?? estado.textoDaLigacao;
 }
-

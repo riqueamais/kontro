@@ -1,9 +1,3 @@
-//! Carga informada pelo proprio dispositivo HID.
-//!
-//! E por aqui que boa parte dos controles de dongle publica a bateria. O valor nao vem
-//! em porcentagem: vem numa escala que o proprio dispositivo declara, e converter sem
-//! olhar essa escala produziria numero errado com cara de certo.
-
 use std::sync::mpsc;
 use std::time::Duration;
 
@@ -21,11 +15,6 @@ pub const USO_JOYSTICK: u16 = 0x04;
 pub const USO_GAMEPAD: u16 = 0x05;
 pub const USO_MULTI_EIXO: u16 = 0x08;
 
-/// Le a carga pelo HID. Tenta o relatorio de recurso antes do de entrada.
-///
-/// O de recurso pode ser pedido a qualquer momento; o de entrada so chega quando o
-/// controle resolve mandar algo. Um controle parado deixaria a leitura pendurada para
-/// sempre, e por isso o segundo caminho tem prazo.
 pub fn ler(id_hid: &str) -> Leitura {
     if id_hid.is_empty() {
         return Leitura::VAZIA;
@@ -42,8 +31,6 @@ pub fn ler(id_hid: &str) -> Leitura {
 }
 
 fn abrir(id_hid: &str) -> Result<HidDevice> {
-    // Devolver nulo aqui e normal, nao erro: acontece quando outro processo detem
-    // acesso exclusivo ao controle.
     HidDevice::FromIdAsync(&HSTRING::from(id_hid), FileAccessMode::Read)?.join()
 }
 
@@ -92,7 +79,6 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
     let operacao = dispositivo.GetInputReportByIdAsync(id).ok()?;
     let (envio, recebimento) = mpsc::channel();
 
-    // A espera roda em outra thread para o monitor nao ficar preso a um controle parado.
     let esperando = operacao.clone();
     std::thread::spawn(move || {
         crate::device::iniciar_apartamento();
@@ -101,9 +87,6 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
 
     let resposta = recebimento.recv_timeout(Duration::from_secs(2));
     if resposta.is_err() {
-        // Desistir da espera nao desistia da operacao: a thread ficava presa no `join`
-        // para sempre, segurando o dispositivo aberto. Num controle que declara o
-        // relatorio de entrada e nunca manda nada, era uma thread vazada por releitura.
         let _ = operacao.Cancel();
         return None;
     }
@@ -115,10 +98,6 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
     escalar(controle.Value().ok()?, minimo.into(), maximo.into())
 }
 
-/// Converte pela escala que o dispositivo declarou.
-///
-/// Faixa que comeca abaixo de zero nao e bateria -- e eixo, gatilho ou chapeu. Aceitar
-/// isso daria 50% para um analogico centrado.
 fn escalar(valor: i64, minimo: i64, maximo: i64) -> Option<Leitura> {
     if maximo <= minimo || minimo < 0 {
         return None;

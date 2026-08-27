@@ -1,9 +1,3 @@
-//! Gaming.Input, usado para uma coisa so: saber se o controle esta carregando.
-//!
-//! O XInput distingue cabo de bateria, mas nao diz se a bateria esta subindo. Quem sabe
-//! isso e o relatorio de energia do Gaming.Input. Se a consulta falhar, o app segue
-//! dizendo apenas "no cabo" -- e menos informacao, nunca informacao errada.
-
 use windows::Gaming::Input::RawGameController;
 use windows::System::Power::BatteryStatus;
 

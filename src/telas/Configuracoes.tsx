@@ -7,8 +7,6 @@ import { Config, OverlayCorner, OverlayMode } from "../estado";
 
 const ATALHO = "Ctrl + Shift + K";
 
-/// Os degraus que a tela oferece. O aviso critico precisa caber abaixo do de carga
-/// baixa, e o Rust ainda confere isso: o arquivo pode ter sido editado a mao.
 const LIMIARES_DE_AVISO = [40, 30, 25, 20, 15, 10] as const;
 const LIMIARES_CRITICOS = [20, 15, 10, 5] as const;
 
@@ -53,7 +51,6 @@ interface Busca {
   motivo: string | null;
 }
 
-/** Em que ponto da atualizacao estamos. */
 type Passo =
   | { tipo: "parado" }
   | { tipo: "procurando" }
@@ -105,13 +102,6 @@ export function Configuracoes() {
     }
   };
 
-  /**
-   * Baixa, instala e reinicia.
-   *
-   * O pacote e verificado contra a chave publica que vive dentro do app: um instalador
-   * que nao tenha sido assinado com a chave correspondente e recusado antes de rodar.
-   * Sem isso, atualizar sozinho seria executar o que quer que estivesse naquela URL.
-   */
   const atualizarAgora = async () => {
     setPasso({ tipo: "baixando", porcento: null });
     try {
@@ -121,7 +111,6 @@ export function Configuracoes() {
         setPasso({ tipo: "parado" });
         return;
       }
-
       let total = 0;
       let baixado = 0;
       await atualizacao.downloadAndInstall((evento) => {
@@ -137,7 +126,6 @@ export function Configuracoes() {
           setPasso({ tipo: "instalando" });
         }
       });
-
       await relaunch();
     } catch (e) {
       setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
@@ -145,7 +133,6 @@ export function Configuracoes() {
   };
 
   if (!cfg) return null;
-
   const gravar = (mudanca: Partial<Config>) => {
     const novas = { ...cfg, ...mudanca };
     setCfg(novas);
@@ -154,15 +141,11 @@ export function Configuracoes() {
 
   const ciclar = <T extends string | number>(atual: T, opcoes: readonly T[]): T => {
     const i = opcoes.indexOf(atual);
-    // Valor fora da lista -- de um arquivo editado a mao, ou de uma versao anterior --
-    // volta para o primeiro degrau em vez de travar o botao.
     return i < 0 ? opcoes[0] : opcoes[(i + 1) % opcoes.length];
   };
-
   return (
     <>
       <h1 className="titulo-da-pagina">Configurações</h1>
-
       <h2>Inicialização</h2>
       <Linha
         titulo="Iniciar com o Windows"
@@ -189,7 +172,6 @@ export function Configuracoes() {
           {cfg.CloseAction === "MinimizeToTray" ? "Minimizar" : "Encerrar"}
         </button>
       </Linha>
-
       <h2>Avisos</h2>
       <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
         <Chave
@@ -243,7 +225,6 @@ export function Configuracoes() {
           aoTrocar={(v) => gravar({ ConnectToastEnabled: v })}
         />
       </Linha>
-
       <h2>Sobreposição</h2>
       <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
         <button
@@ -305,7 +286,6 @@ export function Configuracoes() {
           {rotulo(OPACIDADES, cfg.OverlayOpacity)}
         </button>
       </Linha>
-
       <Linha
         titulo="Atalho para mostrar e esconder"
         descricao={`${ATALHO} tira a pílula da frente sem precisar sair do jogo.`}
@@ -315,7 +295,6 @@ export function Configuracoes() {
           aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
         />
       </Linha>
-
       <h2>Versão</h2>
       <Linha titulo={tituloDaVersao(nova, passo)} descricao={detalheDaVersao(nova, passo)}>
         {nova && passo.tipo === "parado" ? (
@@ -336,7 +315,6 @@ export function Configuracoes() {
           </button>
         )}
       </Linha>
-
       <Linha
         titulo="Avisar sobre versões novas"
         descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
@@ -346,10 +324,8 @@ export function Configuracoes() {
     </>
   );
 }
-
 const tamanhos = () => TAMANHOS.map(([v]) => v);
 const opacidades = () => OPACIDADES.map(([v]) => v);
-
 /// O nome do degrau em que o valor esta, ou o proprio numero quando ele nao e nenhum
 /// deles -- que e o que acontece com um arquivo vindo de fora.
 function rotulo(degraus: [number, string][], valor: number): string {
@@ -374,7 +350,6 @@ function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
       return nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações";
   }
 }
-
 function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
   if (passo.tipo === "falhou") return passo.motivo;
   if (passo.tipo === "procurando") return "Consultando o repositório...";
@@ -386,7 +361,6 @@ function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
     ? `Você está na ${nova.atual}. O app baixa e instala sozinho.`
     : "O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.";
 }
-
 function Linha({
   titulo,
   descricao,
@@ -406,7 +380,6 @@ function Linha({
     </div>
   );
 }
-
 function Chave({ ligado, aoTrocar }: { ligado: boolean; aoTrocar: (v: boolean) => void }) {
   return (
     <button

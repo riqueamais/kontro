@@ -1,13 +1,3 @@
-//! A fonte da verdade: o Battery Service do Bluetooth LE.
-//!
-//! E a unica via que da percentual exato, e a unica que avisa sozinha quando a carga
-//! muda -- o controle empurra o valor pelo Notify em vez de esperar ser perguntado.
-//! Perguntar de tempos em tempos acordaria o radio a toa e ainda daria numero atrasado.
-//!
-//! No cabo este servico desaparece: o controle troca de protocolo e para de publicar
-//! carga. Nao ha o que consertar ali -- ha o que dizer ao usuario, e quem diz e a
-//! interface.
-
 use std::sync::mpsc::Sender;
 
 use windows::core::Result;
@@ -19,9 +9,7 @@ use windows::Devices::Bluetooth::{BluetoothCacheMode, BluetoothLEDevice};
 use windows::Foundation::TypedEventHandler;
 use windows::Storage::Streams::DataReader;
 
-/// O que o vinculo GATT manda para o monitor.
 pub enum AvisoGatt {
-    /// Carga empurrada pelo controle. E sempre uma medida do vinculo atual.
     Carga { endereco: u64, percent: i32 },
 }
 
@@ -44,7 +32,6 @@ impl Drop for VinculoGatt {
     }
 }
 
-/// O controle esta conectado agora?
 pub fn conectado(endereco: u64) -> bool {
     (|| -> Result<bool> {
         let dev = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
@@ -55,12 +42,6 @@ pub fn conectado(endereco: u64) -> bool {
     .unwrap_or(false)
 }
 
-/// Abre o vinculo, faz a leitura inicial e assina o Notify.
-///
-/// A leitura inicial volta separada de proposito: ela nao merece a mesma confianca que
-/// as seguintes. Ha controle que responde a primeira consulta com um valor de espera --
-/// 50%, num caso medido -- e so manda a medida real segundos depois, pelo Notify. Quem
-/// decide o que fazer com isso e o monitor.
 pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Option<i32>)> {
     let dispositivo = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
         .join()?;
@@ -100,7 +81,6 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
     );
     let inscricao = caracteristica.ValueChanged(&manipulador)?;
 
-    // sem isto o controle nunca envia nada por conta propria
     let _ = caracteristica
         .WriteClientCharacteristicConfigurationDescriptorAsync(
             GattClientCharacteristicConfigurationDescriptorValue::Notify,
@@ -113,10 +93,6 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
     ))
 }
 
-/// Pergunta a carga agora, pelo vinculo que ja esta aberto.
-///
-/// O Notify cobre a variacao, mas ele so fala quando o valor muda: quem acabou de pedir
-/// "ler agora" ficaria esperando a bateria cair para a tela responder.
 pub fn reler(vinculo: &VinculoGatt) -> Option<i32> {
     ler(&vinculo.caracteristica).ok()
 }
@@ -132,17 +108,12 @@ fn ler(caracteristica: &GattCharacteristic) -> Result<i32> {
     primeiro_byte(&buffer).ok_or_else(crate::device::sem_resposta)
 }
 
-/// A carga do Battery Service e um unico byte de 0 a 100.
 fn primeiro_byte(buffer: &windows::Storage::Streams::IBuffer) -> Option<i32> {
     let leitor = DataReader::FromBuffer(buffer).ok()?;
     let valor = leitor.ReadByte().ok()? as i32;
     (0..=100).contains(&valor).then_some(valor)
 }
 
-/// Enderecos de todo dispositivo Bluetooth LE pareado, com o nome que o sistema da.
-///
-/// O nome vem daqui e nao do HID porque o HID devolve rotulo generico -- "controlador de
-/// jogo compativel com HID" nao diz ao usuario qual controle e o dele.
 pub fn pareados() -> Vec<(u64, String)> {
     use windows::Devices::Enumeration::DeviceInformation;
 

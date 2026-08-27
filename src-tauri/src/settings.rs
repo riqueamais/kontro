@@ -1,8 +1,3 @@
-//! Preferencias do usuario.
-//!
-//! Os nomes dos campos sao os mesmos do arquivo da versao em .NET -- por isso o
-//! PascalCase -- para que quem atualiza nao perca o que ja tinha configurado.
-
 use serde::{Deserialize, Serialize};
 
 use crate::paths;
@@ -40,9 +35,7 @@ pub struct Settings {
     pub connect_toast_enabled: bool,
     pub overlay_mode: OverlayMode,
     pub overlay_corner: OverlayCorner,
-    /// -1 significa acompanhar a tela em foco.
     pub overlay_monitor: i32,
-    /// Tamanho da pilula, como multiplicador.
     pub overlay_scale: f64,
     pub overlay_opacity: f64,
     pub auto_check_updates: bool,
@@ -84,10 +77,6 @@ impl Settings {
                 cfg
             }
             Err(_) => {
-                // O arquivo existe e nao foi entendido. Deixa-lo no lugar seria pior: a
-                // abertura ve `first_run_done` falso, regrava com os padroes e apaga em
-                // silencio tudo o que o usuario tinha escolhido. Guardado de lado, ao
-                // menos da para recuperar o que havia dentro.
                 let caminho = paths::arquivo("settings.json");
                 let _ = std::fs::rename(&caminho, caminho.with_extension("json.invalido"));
                 Settings::default()
@@ -95,11 +84,6 @@ impl Settings {
         }
     }
 
-    /// Poe os valores dentro do que o app sabe desenhar.
-    ///
-    /// A configuracao vem da interface, mas tambem de um arquivo que o usuario pode ter
-    /// editado a mao ou que sobrou de uma versao anterior. Um limiar critico acima do de
-    /// aviso, por exemplo, faria os dois avisos sairem juntos e no momento errado.
     pub fn ajustar(&mut self) {
         self.warn_threshold = self.warn_threshold.clamp(5, 90);
         self.critical_threshold = self.critical_threshold.clamp(1, self.warn_threshold - 1);
@@ -121,8 +105,6 @@ mod testes {
 
     #[test]
     fn o_critico_cabe_abaixo_do_aviso() {
-        // Um arquivo editado a mao, ou vindo de uma versao anterior, pode trazer os dois
-        // trocados -- e ai os dois avisos sairiam juntos, no momento errado.
         let mut cfg = Settings { warn_threshold: 10, critical_threshold: 40, ..Default::default() };
         cfg.ajustar();
         assert!(cfg.critical_threshold < cfg.warn_threshold);

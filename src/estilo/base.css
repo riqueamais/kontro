@@ -8,9 +8,6 @@ body,
 }
 
 body {
-  /* As janelas sem moldura sao transparentes: o fundo e desenhado pelo painel de
-     dentro, nao pelo body. Pintar aqui deixaria um retangulo opaco por baixo da
-     sombra e dos cantos arredondados. */
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-text);
@@ -20,51 +17,35 @@ body {
   user-select: none;
   cursor: default;
 }
-
-/* A janela do app tem fundo proprio e rolagem propria: quem rola e a area de conteudo,
-   nunca o body. Deixar os dois rolarem produz duas barras, e a de fora nao rola nada. */
 body[data-janela="principal"] {
   background: var(--ink);
   overflow: hidden;
 }
-
-/* ------------------------------------------------------------------ rolagem
-
-   A barra do sistema e clara, larga e com setas, e num app escuro ela e a peca que mais
-   grita "pagina web dentro de uma janela". A nossa e a mesma em toda parte: sem setas,
-   sem trilho pintado, e so aparece com contraste quando o ponteiro esta em cima. */
-
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--stroke-strong) transparent;
 }
-
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--stroke-strong);
-  /* a borda transparente afina o polegar sem estreitar a area de clique */
+
   border: 3px solid transparent;
   border-radius: 999px;
   background-clip: content-box;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: #3a444d;
   background-clip: content-box;
 }
-
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
-
 button {
   font-family: inherit;
   font-size: inherit;
@@ -77,7 +58,6 @@ button {
   outline-offset: 2px;
   border-radius: 4px;
 }
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -87,8 +67,6 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
-
-/* O giro do anel vale para todas as janelas: e o mesmo gesto em toda parte. */
 @keyframes kontro-girar {
   to {
     transform: rotate(360deg);

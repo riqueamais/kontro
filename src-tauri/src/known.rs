@@ -1,9 +1,3 @@
-//! Os controles que o app ja viu.
-//!
-//! Guardar isso permite continuar mostrando o controle certo quando ele esta desligado,
-//! quando nao ha nenhum dispositivo para descobrir. O arquivo e o mesmo da versao em
-//! .NET, com os mesmos nomes de campo.
-
 use serde::{Deserialize, Serialize};
 
 use crate::device::discovery::Controle;
@@ -20,7 +14,6 @@ pub struct ControleSalvo {
     pub container_id: String,
     #[serde(rename = "XInputSlot")]
     pub xinput_slot: i32,
-    /// Nome dado pelo usuario. Quando existe, manda sobre o do sistema.
     pub apelido: String,
 }
 
@@ -60,11 +53,6 @@ impl ControleSalvo {
     }
 }
 
-/// O nome novo vale a pena?
-///
-/// Nome de Bluetooth e o bom: o HID devolve rotulo generico, igual para qualquer
-/// controle. Entao um nome vindo do Bluetooth sempre substitui, e um nome sem Bluetooth
-/// nunca derruba um que veio de la.
 fn melhor_nome(atual: &str, novo: &str, endereco_atual: u64, endereco_novo: u64) -> bool {
     if novo.trim().is_empty() || atual == novo {
         return false;
@@ -96,15 +84,9 @@ impl Conhecidos {
         conhecidos
     }
 
-    /// Junta copias do mesmo controle que ja tenham sido gravadas.
-    ///
-    /// A correcao na fusao evita criar novas, mas quem ja tem o arquivo sujo continuaria
-    /// sujo para sempre -- e sao registros que nunca aparecem na tela, entao ninguem
-    /// tem como limpar por fora.
     fn limpar(&mut self) -> bool {
         let antes = self.itens.len();
 
-        // versoes antigas chegaram a gravar o nome do sistema como apelido
         let mut mudou = false;
         for item in &mut self.itens {
             if item.apelido == item.name {
@@ -113,7 +95,6 @@ impl Conhecidos {
             }
         }
 
-        // o mais recente de cada container fica; sem container, cada um e unico
         self.itens.sort_by(|a, b| b.visto_em().cmp(&a.visto_em()));
         let mut vistos: Vec<String> = Vec::new();
         self.itens.retain(|i| {
@@ -139,12 +120,6 @@ impl Conhecidos {
         self.itens.len()
     }
 
-    /// Funde a descoberta com o que ja era conhecido. Devolve true se algo mudou.
-    ///
-    /// O casamento e por chave ou por container. So a chave nao basta: o mesmo controle
-    /// fisico ganha ids de interface diferentes conforme a via por onde aparece, e a
-    /// lista ia acumulando copias dele -- todas com o nome generico que o Windows da, e
-    /// nenhuma visivel para o usuario apagar.
     pub fn fundir(&mut self, descobertos: &[Controle]) -> bool {
         let mut mudou = false;
         let agora = tempo::para_texto(tempo::agora());
@@ -162,8 +137,6 @@ impl Conhecidos {
                         existente.name = d.nome.clone();
                         mudou = true;
                     }
-                    // o endereco Bluetooth so entra, nunca sai: perde-lo faria o controle
-                    // trocar de chave e virar um registro novo
                     if d.endereco != 0 {
                         existente.address = d.endereco;
                     }
@@ -195,11 +168,6 @@ impl Conhecidos {
         mudou
     }
 
-    /// Tira um controle da lista.
-    ///
-    /// Nao e um "nunca mais": a descoberta reencontra o aparelho na hora em que ele for
-    /// ligado de novo. O que se apaga e a lembranca de um controle que nao se usa mais --
-    /// que hoje fica ocupando espaco na tela para sempre.
     pub fn esquecer(&mut self, chave: &str) -> bool {
         let antes = self.itens.len();
         self.itens.retain(|i| i.como_controle().chave() != chave);
@@ -210,21 +178,16 @@ impl Conhecidos {
         true
     }
 
-    /// Devolve true quando o apelido mudou de fato.
     pub fn renomear(&mut self, chave: &str, nome: &str) -> bool {
         let Some(item) = self.itens.iter_mut().find(|i| i.como_controle().chave() == chave)
         else {
             return false;
         };
 
-        // Um apelido igual ao nome do sistema nao e apelido nenhum: guardar isso deixaria
-        // o arquivo com uma escolha que o usuario nao fez, e que passaria a segurar o nome
-        // caso o sistema viesse a informar um melhor depois.
         let novo = match nome.trim() {
             n if n == item.name => "",
             n => n,
         };
-        // apagar o apelido devolve o nome do sistema, que continua guardado
         if item.apelido == novo {
             return false;
         }

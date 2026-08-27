@@ -1,10 +1,6 @@
 .aviso {
-  /* A sombra desce, entao precisa de mais espaco embaixo do que em cima. As laterais
-     tambem contam: com desfoque 32 ela alcanca 16 de cada lado, e a folga tem de ser
-     maior que isso ou o desfoque corta numa reta. */
   padding: 28px 32px 56px;
 }
-
 .cartao {
   display: flex;
   align-items: center;
@@ -16,24 +12,18 @@
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
   animation: kontro-entrar-de-cima var(--motion-slow) var(--curva);
 }
-
-/* Sair e mais rapido que entrar: esperar uma saida lenta incomoda, esperar uma
-   entrada lenta nao. */
 .cartao.saindo {
   animation: kontro-sair-por-cima var(--motion-slow) var(--curva) forwards;
 }
-
 .cartao .pct {
   font-family: var(--font-display);
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
 }
-
 .cartao .texto {
   min-width: 0;
 }
-
 .cartao .nome {
   font-size: 15px;
   font-weight: 600;
@@ -42,20 +32,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .cartao .linha {
   margin-top: 3px;
   font-size: 12.5px;
   color: var(--text-secondary);
 }
-
 @keyframes kontro-entrar-de-cima {
   from {
     opacity: 0;
     transform: translateY(-12px);
   }
 }
-
 @keyframes kontro-sair-por-cima {
   to {
     opacity: 0;

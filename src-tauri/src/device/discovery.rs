@@ -1,9 +1,3 @@
-//! Quem esta ligado agora, seja qual for a marca ou a forma de ligacao.
-//!
-//! A descoberta nao reconhece modelo: pega o que se declara controle. Dispositivo HID
-//! com uso de gamepad, joystick ou multi-eixo entra pela primeira via; quem so existe
-//! para o XInput entra pela segunda. O nome exibido vem do proprio sistema.
-
 use windows::core::{Result, HSTRING};
 use windows::Devices::Enumeration::DeviceInformation;
 use windows::Devices::HumanInterfaceDevice::HidDevice;
@@ -11,26 +5,19 @@ use windows_collections::IIterable;
 
 use super::{hid, pnp, xinput};
 
-/// Interface que o Windows publica para todo controle atendido pelo XUSB.
 pub(crate) const GUID_XUSB: &str = "{EC87F1E3-C13B-4100-B5F7-8B84D54260CB}";
 
 #[derive(Debug, Clone, Default)]
 pub struct Controle {
-    /// Endereco Bluetooth. Zero quando o controle so aparece por cabo ou dongle.
     pub endereco: u64,
     pub nome: String,
     pub id_hid: String,
     pub id_instancia: String,
     pub container: String,
-    /// Slot do XInput, quando o controle so existe por ali. -1 para os demais.
     pub slot_xinput: i32,
 }
 
 impl Controle {
-    /// Identidade estavel.
-    ///
-    /// Com Bluetooth e o endereco; sem ele, o proprio id da interface, que ja carrega
-    /// fabricante, produto e a parte especifica daquela conexao.
     pub fn chave(&self) -> String {
         if self.endereco != 0 {
             return format!("{:012x}", self.endereco);
@@ -71,7 +58,6 @@ fn chave_do_hid(id: &str) -> String {
     }
 }
 
-/// Um bloco de doze hexadecimais delimitado por & ou _ dentro do id da interface.
 pub fn extrair_endereco(id: &str) -> u64 {
     let bytes: Vec<char> = id.chars().collect();
     let delimitador = |c: char| c == '&' || c == '_';
@@ -101,15 +87,7 @@ pub fn descobrir() -> Vec<Controle> {
     descobrir_com(&super::gatt::pareados())
 }
 
-/// A varredura, com a lista de pareados vinda de fora.
-///
-/// `pareados` so serve para dar nome: ela custa uma abertura de dispositivo Bluetooth
-/// por aparelho e o nome de um controle nao muda entre uma varredura e a seguinte. Quem
-/// chama guarda a lista e a renova quando ela envelhece -- e essa separacao e o que
-/// permite varrer de segundos em segundos sem acordar o radio a toa.
 pub fn descobrir_com(pareados: &[(u64, String)]) -> Vec<Controle> {
-    // Sem HID ainda pode haver controle: o XUSB e um mundo a parte, conferido mais
-    // abaixo. Desistir aqui era justamente o que escondia controle de dongle.
     let achados = gamepads_hid();
 
     let mut resultado: Vec<Controle> = Vec::new();
@@ -216,16 +194,6 @@ fn por_uso(uso: u16) -> Result<Vec<GamepadHid>> {
     Ok(saida)
 }
 
-/// Acrescenta controles que existem apenas para o XInput.
-///
-/// Quem usa o driver do Xbox 360 -- o caso dos dongles que emulam esse controle -- nao
-/// e dispositivo HID. A busca acima passa direto por ele, e sem isto esse controle
-/// simplesmente nao existe para o app.
-///
-/// A comparacao e por container, que representa o aparelho fisico: um controle atendido
-/// por HID e por XUSB publica as duas interfaces sob o mesmo container. Container de
-/// XUSB que nao apareceu no HID e, por definicao, controle que so o XInput enxerga --
-/// criterio que nao depende de contar dispositivos nem de adivinhar quem e quem.
 fn acrescentar_somente_xinput(encontrados: &mut Vec<Controle>, containers_hid: &[String]) {
     let slots = xinput::slots_conectados();
     if slots.is_empty() {
@@ -235,8 +203,6 @@ fn acrescentar_somente_xinput(encontrados: &mut Vec<Controle>, containers_hid: &
     let xusb = dispositivos_xusb();
 
     let somente: Vec<(String, String, String)> = if xusb.is_empty() {
-        // Sem lista de XUSB nao ha container para comparar. Ainda assim, se o XInput ve
-        // controle e o HID nao viu nenhum, nao existe com o que confundir.
         if !encontrados.is_empty() {
             return;
         }
@@ -254,8 +220,6 @@ fn acrescentar_somente_xinput(encontrados: &mut Vec<Controle>, containers_hid: &
         return;
     }
 
-    // na pratica os slots ocupados por controle HID vem primeiro na contagem do XInput,
-    // entao o que sobra na ponta pertence a estes
     let meus = &slots[slots.len() - somente.len()..];
     let mut reserva = nomes_disponiveis(encontrados);
 
@@ -272,7 +236,6 @@ fn acrescentar_somente_xinput(encontrados: &mut Vec<Controle>, containers_hid: &
     }
 }
 
-/// Devolve (container, nome, instancia) de cada interface do XUSB ativa.
 fn dispositivos_xusb() -> Vec<(String, String, String)> {
     (|| -> Result<Vec<(String, String, String)>> {
         let seletor = HSTRING::from(format!(
@@ -322,7 +285,6 @@ fn dispositivos_xusb() -> Vec<(String, String, String)> {
     .unwrap_or_default()
 }
 
-/// O XInput nao informa nome nenhum, e o nome da interface do XUSB costuma ser generico.
 fn nomes_disponiveis(ja_encontrados: &[Controle]) -> Vec<String> {
     let usados: Vec<String> = ja_encontrados.iter().map(|c| c.nome.to_lowercase()).collect();
     pnp::nos_com_bateria()

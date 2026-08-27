@@ -1,26 +1,12 @@
-//! O vocabulario do app.
-//!
-//! Estes tipos atravessam a fronteira para a interface, entao o que eles dizem e
-//! exatamente o que a tela pode afirmar. A regra que vale em todo o app esta aqui
-//! dentro: leitura carrega junto o quanto ela vale.
-
 use serde::{Deserialize, Serialize};
 
-/// Quanto vale a leitura que se conseguiu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Precisao {
     Nenhuma,
-    /// Quatro degraus, sem numero. E o que o XInput sabe.
     Aproximada,
-    /// Percentual real, de 0 a 100.
     Exata,
 }
 
-/// Como o controle esta ligado.
-///
-/// Sem fio nao e sinonimo de Bluetooth: dongle de radio e adaptador sem fio ligam sem
-/// cabo e sem Bluetooth nenhum, e a diferenca importa porque so o Bluetooth entrega
-/// percentual exato e avisa sozinho quando muda.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum LinkMode {
     #[default]
@@ -52,7 +38,6 @@ impl Leitura {
     }
 }
 
-/// Texto para uma leitura aproximada, que nao tem numero para mostrar.
 pub fn descrever_nivel(nivel: i32) -> &'static str {
     match nivel {
         0 => "quase acabando",
@@ -62,9 +47,6 @@ pub fn descrever_nivel(nivel: i32) -> &'static str {
     }
 }
 
-/// Texto da autonomia a partir dos minutos estimados.
-///
-/// Hora e minuto separados porque "4 h 20 min" se le num relance e "260 min" nao.
 pub fn descrever_autonomia(minutos: i64) -> String {
     if minutos >= 60 {
         let h = minutos / 60;
@@ -79,7 +61,6 @@ pub fn descrever_autonomia(minutos: i64) -> String {
     }
 }
 
-/// Quanto do anel preencher quando so ha degrau, e nao percentual.
 pub fn preenchimento_do_nivel(nivel: i32) -> i32 {
     match nivel {
         0 => 10,
@@ -89,7 +70,6 @@ pub fn preenchimento_do_nivel(nivel: i32) -> i32 {
     }
 }
 
-/// O estado que a interface desenha. Tudo o que a tela mostra sai daqui.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatteryState {
@@ -97,31 +77,21 @@ pub struct BatteryState {
     pub percent: Option<i32>,
     pub precisao: Precisao,
     pub nivel: Option<i32>,
-    /// Momento da leitura, em milissegundos desde a epoca. Nulo quando nunca houve.
     pub read_at: Option<i64>,
     pub charging: bool,
-    /// Verdadeiro quando o numero e a ultima leitura conhecida, nao um valor ao vivo.
     pub stale: bool,
     pub device_name: String,
     pub address: Option<String>,
     pub key: String,
     pub known_count: usize,
 
-    // --- derivados, calculados aqui para a interface nunca reimplementar a regra ---
-    /// Quanto do anel preencher. Nulo quando nao ha leitura alguma.
     pub preenchimento: Option<i32>,
-    /// O que escrever sobre a carga.
     pub texto_da_carga: String,
-    /// Como o controle esta ligado, em uma palavra.
     pub texto_da_ligacao: String,
-    /// Ha numero para mostrar dentro do anel.
     pub tem_numero: bool,
-    /// Ligado, porem sem carga alguma para informar.
     pub conectado_sem_carga: bool,
-    /// No cabo e sem percentual: o anel gira em vez de ficar vazio.
     pub girando: bool,
 
-    /// Quanto tempo de jogo ainda cabe, em texto. Nulo quando nao ha o que estimar.
     pub autonomia: Option<String>,
 }
 

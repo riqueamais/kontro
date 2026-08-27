@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 const CAIXA = 512;
 const CENTRO = CAIXA / 2;
 
-/** Quanto do circulo o arco que gira ocupa. */
 const ARCO_DO_GIRO = 96;
 
 function ponto(raio: number, graus: number) {

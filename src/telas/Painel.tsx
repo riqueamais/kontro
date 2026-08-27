@@ -9,7 +9,6 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
 import "./painel.css";
 
-/** Faixas de cor do anel, as mesmas gravadas nos icones. */
 export function Painel() {
   const estado = useEstado();
   const [serie, setSerie] = useState<Amostra[]>([]);
@@ -19,9 +18,6 @@ export function Painel() {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
   }, [estado?.key, estado?.percent]);
 
-  // O painel e um relance, nao uma janela para deixar aberta. Ele some de tres jeitos,
-  // e sao tres de proposito: o foco nem sempre chega a uma janela sem moldura, e um
-  // painel que fica preso na tela e pior que um painel que fecha demais.
   useEffect(() => {
     const janela = getCurrentWindow();
     const fechar = () => void janela.hide();
@@ -44,9 +40,6 @@ export function Painel() {
     };
   }, []);
 
-  // O painel pede a altura de que precisa depois de desenhado. Fixar isso na criacao
-  // da janela significa refazer a conta toda vez que o conteudo muda -- e quando a
-  // conta erra, os botoes aparecem cortados na borda.
   useEffect(() => {
     const alvo = painel.current;
     if (!alvo) return;

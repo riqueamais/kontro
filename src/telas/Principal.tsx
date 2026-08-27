@@ -41,21 +41,11 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   },
 ];
 
-/**
- * A janela do app: moldura propria, barra lateral e uma pagina de cada vez.
- *
- * Antes tudo morava numa rolagem so, e o estado do controle ficava no alto de uma lista
- * de ajustes -- quem abria para ver a carga rolava por cima das configuracoes, e quem
- * abria para configurar passava pela carga. Sao duas intencoes diferentes, e agora sao
- * duas telas.
- */
 export function Principal() {
   const [pagina, setPagina] = useState<Pagina>("resumo");
-
   return (
     <div className="app">
       <BarraDeTitulo />
-
       <div className="corpo">
         <nav className="trilho">
           {PAGINAS.map((p) => (
@@ -70,7 +60,6 @@ export function Principal() {
             </button>
           ))}
         </nav>
-
         <main className="pagina">{pagina === "resumo" ? <Resumo /> : <Configuracoes />}</main>
       </div>
     </div>

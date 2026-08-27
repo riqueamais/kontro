@@ -38,8 +38,6 @@ export function Saude({ chave, pulso }: { chave: string; pulso?: number | null }
         ),
       )
       .catch(() => {});
-    // `pulso` e a hora da ultima leitura: sem ele o veredito congelava no que fosse
-    // quando a janela abriu, e so mudava se o usuario trocasse de controle.
   }, [chave, pulso]);
 
   if (!saude) return null;

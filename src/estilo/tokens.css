@@ -1,5 +1,4 @@
 :root {
-  /* superficies -- o mesmo sistema "Anel" da versao anterior */
   --ink: #0b0e11;
   --surface: #0f1318;
   --surface-alt: #151a20;
@@ -18,12 +17,10 @@
 
   --ring-track: rgba(255, 255, 255, 0.13);
 
-  /* tipografia */
   --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: Consolas, ui-monospace, monospace;
 
-  /* espaco */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -35,7 +32,6 @@
   --radius-card: 12px;
   --radius-window: 16px;
 
-  /* movimento */
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-slow: 240ms;
