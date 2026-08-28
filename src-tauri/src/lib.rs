@@ -376,7 +376,7 @@ fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String
 fn avisar_versao_nova(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar() else {
+        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar(&app) else {
             return;
         };
 
@@ -384,7 +384,7 @@ fn avisar_versao_nova(app: &AppHandle) {
             .notification()
             .builder()
             .title(format!("Kontro {} disponivel", novidade.versao))
-            .body("Abra a pagina da release para baixar o instalador.")
+            .body("Abra as configuracoes do Kontro para instalar.")
             .show();
 
         let compartilhado = app.state::<Arc<Compartilhado>>();
@@ -475,7 +475,7 @@ fn ler_agora(envio: tauri::State<mpsc::Sender<Pedido>>) {
 #[derive(serde::Serialize)]
 struct VersaoNova {
     versao: String,
-    pagina: String,
+    notas: Option<String>,
     atual: String,
 }
 
@@ -483,7 +483,7 @@ struct VersaoNova {
 fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<VersaoNova> {
     compartilhado.novidade.lock().unwrap().clone().map(|n| VersaoNova {
         versao: n.versao,
-        pagina: n.pagina,
+        notas: n.notas,
         atual: env!("CARGO_PKG_VERSION").to_string(),
     })
 }
@@ -492,22 +492,25 @@ fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<
 struct Busca {
     estado: &'static str,
     versao: Option<String>,
-    pagina: Option<String>,
+    notas: Option<String>,
     atual: String,
     motivo: Option<String>,
 }
 
 #[tauri::command]
-fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Busca {
+fn procurar_atualizacao(
+    app: AppHandle,
+    compartilhado: tauri::State<Arc<Compartilhado>>,
+) -> Busca {
     let atual = env!("CARGO_PKG_VERSION").to_string();
 
-    match atualizacao::procurar() {
+    match atualizacao::procurar(&app) {
         atualizacao::Consulta::Nova(n) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
             Busca {
                 estado: "nova",
                 versao: Some(n.versao),
-                pagina: Some(n.pagina),
+                notas: n.notas,
                 atual,
                 motivo: None,
             }
@@ -517,7 +520,7 @@ fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Busc
             Busca {
                 estado: "em-dia",
                 versao: None,
-                pagina: None,
+                notas: None,
                 atual,
                 motivo: None,
             }
@@ -525,7 +528,7 @@ fn procurar_atualizacao(compartilhado: tauri::State<Arc<Compartilhado>>) -> Busc
         atualizacao::Consulta::Falhou(motivo) => Busca {
             estado: "falhou",
             versao: None,
-            pagina: None,
+            notas: None,
             atual,
             motivo: Some(motivo),
         },

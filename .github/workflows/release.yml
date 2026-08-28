@@ -121,6 +121,18 @@ jobs:
           # atualizacao dizendo "invalid type: null".
           $v = "${{ steps.ver.outputs.version }}"
 
+          # A anotacao da tag e onde a release foi escrita para gente ler, e ela serve
+          # duas vezes: como nota da release e como `notes` do manifesto, que e o texto
+          # que o proprio app mostra em Configuracoes ao encontrar versao nova.
+          #
+          # A conferencia do tipo e o que torna a escolha honesta: numa tag leve o
+          # `%(contents)` cai na mensagem do commit, que nunca esta vazia, e o galho de
+          # baixo jamais era alcancado.
+          $notas = ""
+          if ((git cat-file -t "${{ github.ref_name }}") -eq "tag") {
+            $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
+          }
+
           $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi, *.sig).FullName
 
           # O manifesto que o app consulta. O endereco fixo `latest/download/latest.json`
@@ -129,7 +141,7 @@ jobs:
           $assinatura = Get-Content "$($instalador.FullName).sig" -Raw
           $manifesto = @{
             version = $v
-            notes = "Veja a pagina da release para o que mudou."
+            notes = if ([string]::IsNullOrWhiteSpace($notas)) { "Veja a pagina da release para o que mudou." } else { $notas }
             pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
               "windows-x86_64" = @{
@@ -148,17 +160,6 @@ jobs:
 
           $arquivos += (Resolve-Path latest.json).Path
 
-          # A anotacao da tag e onde a release foi escrita para gente ler. Quando
-          # existir, ela manda; sem ela, a lista de commits do GitHub ao menos diz
-          # o que mudou.
-          #
-          # A conferencia do tipo e o que torna a escolha honesta: numa tag leve o
-          # `%(contents)` cai na mensagem do commit, que nunca esta vazia, e o galho de
-          # baixo jamais era alcancado.
-          $notas = ""
-          if ((git cat-file -t "${{ github.ref_name }}") -eq "tag") {
-            $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
-          }
           if ([string]::IsNullOrWhiteSpace($notas)) {
             gh release create "${{ github.ref_name }}" $arquivos `
               --title "Kontro ${{ github.ref_name }}" `

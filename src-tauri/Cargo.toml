@@ -1,6 +1,6 @@
 [package]
 name = "kontro"
-version = "2.7.0"
+version = "2.8.0"
 description = "Bateria do seu controle, em tempo real, na bandeja do sistema."
 authors = ["riqueamais"]
 edition = "2021"
@@ -27,7 +27,6 @@ usvg = "0.45"
 windows-collections = "0.3"
 windows-future = "0.3"
 tauri-plugin-notification = "2.0.0-rc.5"
-ureq = { version = "3.2.1", features = ["json"] }
 tauri-plugin-updater = "2.0.0-rc.4"
 tauri-plugin-process = "2.0.0-rc.1"
 tauri-plugin-single-instance = "2.0.0-rc.5"

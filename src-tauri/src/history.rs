@@ -36,6 +36,7 @@ const SALTO_QUE_QUEBRA_O_TRECHO_MS: i64 = 30 * 60 * 1000;
 const SUBIDA_QUE_DENUNCIA_TROCA: i32 = 15;
 const SUBIDA_INSTANTANEA_MS: i64 = 5 * 60 * 1000;
 const DURACAO_MINIMA_DE_SESSAO_MS: i64 = 10 * 60 * 1000;
+const QUEDA_QUE_SUSTENTA_UMA_PROJECAO: f64 = 5.0;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Sessao {
@@ -154,8 +155,9 @@ impl History {
         let trechos = descargas(serie);
         let fim_da_serie = serie.last()?.t;
 
-        if let Some(agora) = trechos.iter().find(|d| d.fim == fim_da_serie) {
-            return Some(agora.queda / agora.horas);
+        let de_agora = trechos.iter().find(|d| d.fim == fim_da_serie);
+        if let Some(d) = de_agora.filter(|d| d.queda >= QUEDA_QUE_SUSTENTA_UMA_PROJECAO) {
+            return Some(d.queda / d.horas);
         }
 
         let corte = tempo::agora() - SEMANA_MS;
@@ -412,6 +414,20 @@ mod testes {
 
         let taxa = historico(a).consumo_por_hora("c").expect("ha descarga na semana");
         assert!((9.0..12.0).contains(&taxa), "esperava a media da semana: {taxa}");
+    }
+
+    #[test]
+    fn um_ponto_de_queda_nao_sustenta_uma_projecao() {
+        let agora = tempo::agora();
+        let a = vec![
+            Amostra { t: agora - 16 * MINUTO, p: 84 },
+            Amostra { t: agora, p: 83 },
+        ];
+        assert_eq!(
+            historico(a).consumo_por_hora("c"),
+            None,
+            "dezesseis minutos parado viraram uma projecao de vinte e duas horas"
+        );
     }
 
     #[test]

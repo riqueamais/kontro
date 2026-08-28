@@ -24,18 +24,7 @@ pub fn escrever(caminho: &str) -> std::io::Result<()> {
 fn secao_versao(t: &mut String) {
     let _ = writeln!(t, "=== Versao ===");
     let _ = writeln!(t, "   instalada: {}", env!("CARGO_PKG_VERSION"));
-    match crate::atualizacao::procurar() {
-        crate::atualizacao::Consulta::Nova(n) => {
-            let _ = writeln!(t, "   publicada: {}  (mais nova)", n.versao);
-            let _ = writeln!(t, "   {}", n.pagina);
-        }
-        crate::atualizacao::Consulta::EmDia => {
-            let _ = writeln!(t, "   publicada: nenhuma mais nova");
-        }
-        crate::atualizacao::Consulta::Falhou(motivo) => {
-            let _ = writeln!(t, "   publicada: nao consegui verificar -- {motivo}");
-        }
-    }
+    let _ = writeln!(t, "   publicadas em github.com/riqueamais/kontro/releases");
     let _ = writeln!(t);
 }
 

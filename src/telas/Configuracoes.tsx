@@ -39,14 +39,14 @@ const MODOS: Record<OverlayMode, string> = {
 
 interface VersaoNova {
   versao: string;
-  pagina: string;
+  notas: string | null;
   atual: string;
 }
 
 interface Busca {
   estado: "nova" | "em-dia" | "falhou";
   versao: string | null;
-  pagina: string | null;
+  notas: string | null;
   atual: string;
   motivo: string | null;
 }
@@ -85,8 +85,8 @@ export function Configuracoes() {
         return;
       }
 
-      if (busca.estado === "nova" && busca.versao && busca.pagina) {
-        setNova({ versao: busca.versao, pagina: busca.pagina, atual: busca.atual });
+      if (busca.estado === "nova" && busca.versao) {
+        setNova({ versao: busca.versao, notas: busca.notas, atual: busca.atual });
         setPasso({ tipo: "parado" });
         return;
       }
@@ -357,10 +357,23 @@ function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
   if (passo.tipo === "baixando" || passo.tipo === "instalando") {
     return "O pacote é verificado antes de rodar.";
   }
-  return nova
-    ? `Você está na ${nova.atual}. O app baixa e instala sozinho.`
-    : "O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.";
+  if (!nova) return "O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.";
+
+  const resumo = primeiraLinha(nova.notas);
+  return resumo
+    ? `${resumo} Você está na ${nova.atual}; o app baixa e instala sozinho.`
+    : `Você está na ${nova.atual}. O app baixa e instala sozinho.`;
 }
+function primeiraLinha(notas: string | null): string {
+  const linha = (notas ?? "")
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .find((l) => l.length > 0 && !/^kontro/i.test(l));
+
+  if (!linha) return "";
+  return linha.length > 150 ? `${linha.slice(0, 147)}...` : linha;
+}
+
 function Linha({
   titulo,
   descricao,
