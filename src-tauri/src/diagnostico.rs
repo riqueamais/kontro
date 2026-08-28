@@ -1,8 +1,16 @@
 use std::fmt::Write;
 
 use crate::device::{discovery, gatt, hid, pnp, xinput};
+use crate::history::Sessao;
+use crate::model::BatteryState;
 
-pub fn escrever(caminho: &str) -> std::io::Result<()> {
+pub struct AoVivo<'a> {
+    pub principal: &'a str,
+    pub estados: &'a [BatteryState],
+    pub sessoes: &'a [Sessao],
+}
+
+pub fn escrever(caminho: &str, ao_vivo: Option<AoVivo>) -> std::io::Result<()> {
     let mut t = String::new();
 
     let _ = writeln!(t, "Kontro {} - diagnostico", env!("CARGO_PKG_VERSION"));
@@ -15,8 +23,13 @@ pub fn escrever(caminho: &str) -> std::io::Result<()> {
     secao_pnp(&mut t);
     secao_hid(&mut t);
     secao_descoberta(&mut t);
-    secao_vigia(&mut t);
-    secao_monitor(&mut t);
+    match ao_vivo {
+        Some(v) => secao_do_app(&mut t, &v),
+        None => {
+            secao_vigia(&mut t);
+            secao_monitor(&mut t);
+        }
+    }
 
     std::fs::write(caminho, t)
 }
@@ -110,8 +123,6 @@ fn secao_vigia(t: &mut String) {
 }
 
 fn secao_monitor(t: &mut String) {
-    use crate::model::LinkMode;
-
     let _ = writeln!(t, "=== O que o monitor conclui ===");
 
     let mut monitor = crate::monitor::Monitor::novo();
@@ -130,9 +141,25 @@ fn secao_monitor(t: &mut String) {
         return;
     };
 
-    for estado in &panorama.todos {
-        let principal = if estado.key == panorama.principal.key { "  <- principal" } else { "" };
-        let _ = writeln!(t, "   {}{principal}", estado.device_name);
+    let sessoes: Vec<Sessao> = monitor.historico().sessoes(&panorama.principal.key);
+    secao_do_app(
+        t,
+        &AoVivo {
+            principal: &panorama.principal.key,
+            estados: &panorama.todos,
+            sessoes: &sessoes,
+        },
+    );
+}
+
+fn secao_do_app(t: &mut String, v: &AoVivo) {
+    use crate::model::LinkMode;
+
+    let _ = writeln!(t, "=== O que o monitor conclui ===");
+
+    for estado in v.estados {
+        let marca = if estado.key == v.principal { "  <- principal" } else { "" };
+        let _ = writeln!(t, "   {}{marca}", estado.device_name);
         let _ = writeln!(t, "      chave={}", estado.key);
         let _ = writeln!(
             t,
@@ -155,11 +182,13 @@ fn secao_monitor(t: &mut String) {
             let _ = writeln!(t, "      autonomia: {a}");
         }
 
-        let sessoes = monitor.historico().sessoes(&estado.key);
-        if sessoes.is_empty() {
+        if estado.key != v.principal {
+            continue;
+        }
+        if v.sessoes.is_empty() {
             let _ = writeln!(t, "      sessoes: nenhuma registrada");
         }
-        for s in sessoes.iter().take(6) {
+        for s in v.sessoes.iter().take(6) {
             let minutos = (s.fim - s.inicio) / 60_000;
             let _ = writeln!(
                 t,

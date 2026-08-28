@@ -58,7 +58,7 @@ pub fn executar() {
             .unwrap_or_else(|| "kontro-diagnostico.txt".to_string());
 
         device::iniciar_apartamento();
-        match diagnostico::escrever(&destino) {
+        match diagnostico::escrever(&destino, None) {
             Ok(()) => println!("diagnostico salvo em {destino}"),
             Err(e) => eprintln!("nao consegui salvar o diagnostico: {e}"),
         }
@@ -149,6 +149,7 @@ pub fn executar() {
             mostrar_janela,
             esconder_janela,
             quantidade_de_telas,
+            salvar_diagnostico,
             ajustar_altura_do_painel
         ])
         .setup(move |app| {
@@ -533,6 +534,32 @@ fn procurar_atualizacao(
             motivo: Some(motivo),
         },
     }
+}
+
+#[tauri::command]
+fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result<String, String> {
+    let destino = paths::arquivo("diagnostico.txt");
+    let estados = compartilhado.todos.lock().unwrap().clone();
+    let principal = compartilhado.estado.lock().unwrap().key.clone();
+    let sessoes = compartilhado.sessoes.lock().unwrap().clone();
+
+    paths::garantir_dir();
+    diagnostico::escrever(
+        &destino.to_string_lossy(),
+        Some(diagnostico::AoVivo {
+            principal: &principal,
+            estados: &estados,
+            sessoes: &sessoes,
+        }),
+    )
+    .map_err(|e| e.to_string())?;
+
+    let _ = std::process::Command::new("explorer")
+        .arg("/select,")
+        .arg(&destino)
+        .spawn();
+
+    Ok(destino.to_string_lossy().to_string())
 }
 
 #[tauri::command]

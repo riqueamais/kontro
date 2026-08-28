@@ -64,6 +64,9 @@ export function Configuracoes() {
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
   const [telas, setTelas] = useState(1);
+  const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
+    "parado",
+  );
 
   useEffect(() => {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
@@ -315,6 +318,25 @@ export function Configuracoes() {
           </button>
         )}
       </Linha>
+      <h2>Problemas</h2>
+      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
+        <button
+          className="ciclo"
+          disabled={diagnostico === "gravando"}
+          onClick={async () => {
+            setDiagnostico("gravando");
+            try {
+              await invoke<string>("salvar_diagnostico");
+              setDiagnostico("pronto");
+            } catch {
+              setDiagnostico("falhou");
+            }
+          }}
+        >
+          {diagnostico === "gravando" ? "Gravando..." : "Salvar"}
+        </button>
+      </Linha>
+
       <Linha
         titulo="Avisar sobre versões novas"
         descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
@@ -364,6 +386,19 @@ function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
     ? `${resumo} Você está na ${nova.atual}; o app baixa e instala sozinho.`
     : `Você está na ${nova.atual}. O app baixa e instala sozinho.`;
 }
+function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"): string {
+  switch (passo) {
+    case "gravando":
+      return "Perguntando a cada fonte o que ela sabe da carga...";
+    case "pronto":
+      return "Salvo como diagnostico.txt, e a pasta abriu. É o arquivo para anexar ao relatar um problema.";
+    case "falhou":
+      return "Não deu para gravar o arquivo.";
+    default:
+      return "Grava o que o app enxerga de cada fonte de carga: Bluetooth, HID, XInput e o que o Windows guarda.";
+  }
+}
+
 function primeiraLinha(notas: string | null): string {
   const linha = (notas ?? "")
     .split(/\r?\n/)

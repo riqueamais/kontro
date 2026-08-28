@@ -39,6 +39,7 @@ const DURACAO_MINIMA_DE_SESSAO_MS: i64 = 10 * 60 * 1000;
 const QUEDA_QUE_SUSTENTA_UMA_PROJECAO: f64 = 5.0;
 
 #[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Sessao {
     pub inicio: i64,
     pub fim: i64,
@@ -54,6 +55,7 @@ struct Descarga {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Saude {
     pub estado: &'static str,
     pub dias: i64,

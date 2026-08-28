@@ -12,35 +12,13 @@ export interface Saude {
   trocadaEm: number | null;
 }
 
-interface SaudeCrua {
-  estado: Saude["estado"];
-  dias: number;
-  consumo_recente: number | null;
-  consumo_antes: number | null;
-  variacao: number | null;
-  trocada_em: number | null;
-}
-
 const DIAS_PARA_COMPARAR = 14;
 
 export function Saude({ chave, pulso }: { chave: string; pulso?: number | null }) {
   const [saude, setSaude] = useState<Saude | null>(null);
 
   useEffect(() => {
-    invoke<SaudeCrua | null>("saude_da_bateria")
-      .then((c) =>
-        setSaude(
-          c && {
-            estado: c.estado,
-            dias: c.dias,
-            consumoRecente: c.consumo_recente,
-            consumoAntes: c.consumo_antes,
-            variacao: c.variacao,
-            trocadaEm: c.trocada_em,
-          },
-        ),
-      )
-      .catch(() => {});
+    invoke<Saude | null>("saude_da_bateria").then(setSaude).catch(() => {});
   }, [chave, pulso]);
 
   if (!saude) return null;
