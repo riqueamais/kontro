@@ -202,77 +202,56 @@ divisão e tempo de vida do Rust com comentário.
 
 ---
 
+## Resolvido nas 2.6.0 a 2.9.0
+
+- **A troca de bateria** passou a ser percebida. A série de um controle não é a série de
+  uma bateria: com 87% de carga nova o app projetava tempo de jogo na taxa da bateria que
+  tinha morrido, e a saúde compararia duas baterias diferentes. Uma subida de quinze pontos
+  em menos de cinco minutos não é carga nenhuma — é troca.
+- **O rádio parou de ser acordado à toa.** A cada dois segundos, por controle guardado,
+  o ciclo abria uma conexão Bluetooth só para conferir se estava ligado — inclusive para
+  controle desligado. A prova já vinha na varredura: interface presente com endereço é
+  conexão de agora. Junto apareceu um ponto cego, com dois controles de Bluetooth o
+  segundo ficava sem fonte de carga alguma.
+- **A enumeração do PnP** deixou de se repetir dentro da mesma leitura.
+- **As sessões de uso** entraram no resumo e no diagnóstico.
+- **A autonomia** deixou de projetar horas a partir de um ponto de queda.
+- **A verificação de atualização** virou uma só, a do instalador, que é a que confere
+  assinatura. E a nota da release passou a viajar dentro do manifesto, então o app mostra
+  o que a versão nova traz em vez de mandar procurar a página.
+- **O diagnóstico** ganhou botão em Configurações, sem levantar um segundo monitor.
+- **As permissões** deixaram de ser as mesmas para as quatro janelas.
+- **`Saude` e `Sessao`** passaram a sair em camelCase como o resto.
+- **A pílula com vários controles** foi conferida na tela: divisória, tamanhos e
+  espaçamento corretos, sem corte.
+
+---
+
 ## Em aberto
 
-### 23. A autonomia confia demais num trecho curto
+### 23. Limiar e aviso por controle
 
-Apareceu nos dados reais: com 83% e uma queda de um ponto em dezesseis minutos, o app
-anunciou "~22 h 14 min de jogo". A conta fecha -- 3,75 %/h -- mas dezesseis minutos de
-controle parado na mesa não sustentam uma projeção de vinte e duas horas. `descargas`
-aceita qualquer trecho com quinze minutos e um ponto de queda, e o trecho de agora ganha
-do histórico sem precisar provar nada.
+Hoje é um par de números para todos. Quem tem um controle que segura muito e outro que não
+segura nada quer limiares diferentes.
 
-Provável correção: o trecho de agora só manda sozinho quando já caiu o bastante para
-significar alguma coisa -- cinco pontos, por exemplo. Abaixo disso, a média da semana é
-mais honesta.
+**Não foi feito de propósito.** A ideia é minha, não veio de uso real; quem mantém o app
+tem um controle só, então a tela para dois nunca seria exercitada; e o custo é superfície
+de configuração nova numa parte que hoje é simples. Vale esperar alguém pedir.
 
-### 24. Conferir a pílula com dois controles na tela
+### 24. Estimativa de tempo até carregar
 
-O desenho foi verificado por aritmética — dois controles ocupam 219 px numa janela de 284,
-quatro ocupam 359 numa de 452, não há corte em nenhuma contagem — mas ninguém olhou se
-fica bonito. Falta uma tela livre e um segundo controle.
+No cabo o GATT some e não existe percentual para acompanhar a subida. Daria para inventar
+a partir do último nível conhecido, e seria chute com cara de conta — o oposto do que o
+resto do app faz. Fica registrado como recusado, não como pendente.
 
-### 25. Dois mecanismos de atualização
+### 25. O `interface Config` do TypeScript reescreve `Settings` à mão
 
-`atualizacao.rs` consulta o mesmo `latest.json` que o `tauri-plugin-updater` consulta, e
-reimplementa a comparação de versão que o plugin já faz. A tela usa o caminho Rust para
-saber se há novidade e depois chama `check()` do plugin para instalar — duas requisições.
-Não foi mexido de propósito: é o caminho de atualização, está funcionando, e a
-consolidação merece um passo isolado.
+Agora num lugar só, mas nada garante que os dois não divirjam. Um campo novo no Rust não
+quebra a compilação do front.
 
-### 26. `Novidade.pagina` nunca é mostrada
+### 26. A saúde da bateria nunca produziu um veredito
 
-Calculada, atravessa a fronteira em `VersaoNova`, e nenhuma tela renderiza o link.
-
-### 27. Contrato de serialização inconsistente
-
-`BatteryState` sai em camelCase e `Saude` em snake_case, e por isso `Saude.tsx` carrega um
-`SaudeCrua` só para traduzir nomes. O `interface Config` do TypeScript ainda reescreve
-`Settings` à mão em PascalCase — agora num lugar só, mas sem nada garantindo que os dois
-não divirjam.
-
-### 28. Capabilities largas
-
-`updater:*` e `process:allow-restart` continuam liberados para as quatro janelas,
-inclusive a sobreposição e o aviso. Vale uma capability restrita à `principal`.
-
-### 29. `gatt::conectado` a cada dois segundos
-
-É uma ida ao WinRT por controle conhecido, por ciclo. O certo é ouvir
-`ConnectionStatusChanged` no `BluetoothLEDevice` que o `VinculoGatt` já segura.
-
-### 30. Enumeração completa do PnP repetida
-
-`pnp::nos_com_bateria()` enumera todos os nós de dispositivo da máquina, e
-`ler_sem_bluetooth` pode chamá-la duas vezes por controle por leitura. Enumerar uma vez
-por ciclo e passar a lista adiante.
-
-### 31. Limiar e aviso por controle
-
-Hoje é um par de números para todos. Quem tem um controle que segura muito e outro que
-não segura nada quer limiares diferentes.
-
-### 32. Registro de sessão
-
-"Desligou com 68% às 22:14, depois de 3 h 20" — o histórico já tem os dados, falta a tela.
-
-### 33. Diagnóstico pela interface
-
-`--diagnose` só existe na linha de comando, e o executável é do subsistema gráfico. Um
-botão em Configurações que grava o arquivo e abre a pasta resolve para quem for reportar
-um problema.
-
-### 34. Estimativa de tempo até carregar
-
-No cabo o app não tem o que dizer. Com o histórico de subida dá para estimar quanto falta
-para encher.
+Ela precisa de catorze dias de série que ao mesmo tempo tenha descargas na última semana.
+Com o histórico não sendo gravado, isso era impossível — e a troca de bateria recomeçou a
+contagem. Vale conferir a primeira saída de verdade contra os dados brutos quando ela
+aparecer, em vez de confiar de primeira.
