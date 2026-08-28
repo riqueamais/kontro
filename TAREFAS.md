@@ -177,9 +177,40 @@ errada", é a diferença entre uma fonte que mente e uma regra que escolheu mal.
 
 ---
 
+## Resolvido na 2.5.0
+
+### 20. A autonomia contava noite desligada como consumo
+
+`consumo_por_hora` voltava por todas as amostras não crescentes sem olhar o tempo entre
+elas, enquanto `descargas` — que alimenta a saúde — já quebrava em buracos de meia hora.
+A regra estava escrita e aplicada em só um dos dois lugares. Ficou dormente enquanto o
+histórico não chegava ao disco; com a série atravessando sessões, um controle que caiu de
+80% para 60% ao longo de um dia desligado renderia "~72 h de jogo". A conta passa a sair
+de `descargas`, e nos primeiros minutos de sessão vale a média da semana em vez do
+silêncio de antes.
+
+### 21. A pílula mostra os outros controles ligados
+
+Ela só mostrava o de menor carga — critério certo para a bandeja, onde cabe um — e em jogo
+local escondia o que se quer saber com dois na mesa.
+
+### 22. Os comentários saíram do resto do código
+
+A limpeza tinha parado no sistema de ícones. Saíram de Rust, TypeScript e CSS, com um
+analisador que acompanha o estado do texto para não confundir URL em string, barra de
+divisão e tempo de vida do Rust com comentário.
+
+---
+
 ## Em aberto
 
-### 20. Dois mecanismos de atualização
+### 23. Conferir a pílula com dois controles na tela
+
+O desenho foi verificado por aritmética — dois controles ocupam 219 px numa janela de 284,
+quatro ocupam 359 numa de 452, não há corte em nenhuma contagem — mas ninguém olhou se
+fica bonito. Falta uma tela livre e um segundo controle.
+
+### 24. Dois mecanismos de atualização
 
 `atualizacao.rs` consulta o mesmo `latest.json` que o `tauri-plugin-updater` consulta, e
 reimplementa a comparação de versão que o plugin já faz. A tela usa o caminho Rust para
@@ -187,49 +218,49 @@ saber se há novidade e depois chama `check()` do plugin para instalar — duas 
 Não foi mexido de propósito: é o caminho de atualização, está funcionando, e a
 consolidação merece um passo isolado.
 
-### 21. `Novidade.pagina` nunca é mostrada
+### 25. `Novidade.pagina` nunca é mostrada
 
 Calculada, atravessa a fronteira em `VersaoNova`, e nenhuma tela renderiza o link.
 
-### 22. Contrato de serialização inconsistente
+### 26. Contrato de serialização inconsistente
 
 `BatteryState` sai em camelCase e `Saude` em snake_case, e por isso `Saude.tsx` carrega um
 `SaudeCrua` só para traduzir nomes. O `interface Config` do TypeScript ainda reescreve
 `Settings` à mão em PascalCase — agora num lugar só, mas sem nada garantindo que os dois
 não divirjam.
 
-### 23. Capabilities largas
+### 27. Capabilities largas
 
 `updater:*` e `process:allow-restart` continuam liberados para as quatro janelas,
 inclusive a sobreposição e o aviso. Vale uma capability restrita à `principal`.
 
-### 24. `gatt::conectado` a cada dois segundos
+### 28. `gatt::conectado` a cada dois segundos
 
 É uma ida ao WinRT por controle conhecido, por ciclo. O certo é ouvir
 `ConnectionStatusChanged` no `BluetoothLEDevice` que o `VinculoGatt` já segura.
 
-### 25. Enumeração completa do PnP repetida
+### 29. Enumeração completa do PnP repetida
 
 `pnp::nos_com_bateria()` enumera todos os nós de dispositivo da máquina, e
 `ler_sem_bluetooth` pode chamá-la duas vezes por controle por leitura. Enumerar uma vez
 por ciclo e passar a lista adiante.
 
-### 26. Limiar e aviso por controle
+### 30. Limiar e aviso por controle
 
 Hoje é um par de números para todos. Quem tem um controle que segura muito e outro que
 não segura nada quer limiares diferentes.
 
-### 27. Registro de sessão
+### 31. Registro de sessão
 
 "Desligou com 68% às 22:14, depois de 3 h 20" — o histórico já tem os dados, falta a tela.
 
-### 28. Diagnóstico pela interface
+### 32. Diagnóstico pela interface
 
 `--diagnose` só existe na linha de comando, e o executável é do subsistema gráfico. Um
 botão em Configurações que grava o arquivo e abre a pasta resolve para quem for reportar
 um problema.
 
-### 29. Estimativa de tempo até carregar
+### 33. Estimativa de tempo até carregar
 
 No cabo o app não tem o que dizer. Com o histórico de subida dá para estimar quanto falta
 para encher.
