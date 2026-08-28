@@ -21,6 +21,7 @@ const DESCANSO_DA_DESCOBERTA_MS: i64 = 600;
 const VALIDADE_DOS_PAREADOS_MS: i64 = 60_000;
 
 const INTERVALO_DE_GRAVACAO_MS: i64 = 30_000;
+const ESPERA_ENTRE_VINCULOS_MS: i64 = 5_000;
 
 #[derive(Debug, Clone)]
 pub struct Panorama {
@@ -83,6 +84,7 @@ pub struct Monitor {
 
     em_observacao: Option<(String, i32, i64)>,
     conectado_desde: Option<i64>,
+    tentativa_de_vinculo: i64,
 
     ultima_gravacao: i64,
 
@@ -129,6 +131,7 @@ impl Monitor {
             pareados_em: 0,
             em_observacao: None,
             conectado_desde: None,
+            tentativa_de_vinculo: 0,
             ultima_gravacao: agora,
             ultimo: None,
         }
@@ -156,8 +159,10 @@ impl Monitor {
 
         for controle in &controles {
             let presenca = presenca_de(&self.presentes, controle).cloned();
-            let no_gatt = controle.endereco != 0 && gatt::conectado(controle.endereco);
-            let modo = modo_de(presenca.as_ref(), no_gatt, algum_no_cabo);
+            let endereco = controle.endereco;
+            let modo = modo_de(presenca.as_ref(), algum_no_cabo, || {
+                endereco != 0 && gatt::conectado(endereco)
+            });
             self.marcar_via(&controle.chave(), modo, agora);
 
             if modo == LinkMode::Bluetooth && !vinculado {
@@ -166,7 +171,8 @@ impl Monitor {
                 self.confirmar_em_observacao(agora);
             }
 
-            if modo != LinkMode::Offline && modo != LinkMode::Bluetooth {
+            let dele = self.vinculo.as_ref().map(|v| v.endereco()) == Some(endereco);
+            if modo != LinkMode::Offline && !dele {
                 self.ler_sem_bluetooth(controle, agora);
             }
 
@@ -244,6 +250,10 @@ impl Monitor {
         if self.vinculo.as_ref().map(|v| v.endereco()) == Some(controle.endereco) {
             return;
         }
+        if agora - self.tentativa_de_vinculo < ESPERA_ENTRE_VINCULOS_MS {
+            return;
+        }
+        self.tentativa_de_vinculo = agora;
         self.soltar_vinculo();
 
         let Ok((vinculo, inicial)) = gatt::abrir(controle.endereco, self.envio.clone()) else {
@@ -320,9 +330,11 @@ impl Monitor {
         let mut momento = None;
         let mut incerto = false;
         let mut leitura = hid::ler(&controle.id_hid);
+        let mut nos: Option<Vec<pnp::NoDeBateria>> = None;
 
         if !leitura.tem() {
-            if let Some(c) = pnp::por_instancia(&controle.id_instancia, Some(piso)) {
+            let lista = nos.get_or_insert_with(pnp::nos_com_bateria);
+            if let Some(c) = pnp::por_instancia(lista, &controle.id_instancia, Some(piso)) {
                 if let Some(valor) = aceitar_guardada(&c, &anterior) {
                     leitura = Leitura::exata(valor);
                     momento = c.medido_em;
@@ -341,7 +353,8 @@ impl Monitor {
             }
         }
         if !leitura.tem() {
-            if let Some(c) = pnp::por_container(&controle.container, Some(piso)) {
+            let lista = nos.get_or_insert_with(pnp::nos_com_bateria);
+            if let Some(c) = pnp::por_container(lista, &controle.container, Some(piso)) {
                 if let Some(valor) = aceitar_guardada(&c, &anterior) {
                     leitura = Leitura::exata(valor);
                     momento = c.medido_em;
@@ -519,13 +532,14 @@ impl Monitor {
     }
 }
 
-fn modo_de(presenca: Option<&Presenca>, no_gatt: bool, algum_no_cabo: bool) -> LinkMode {
-    if no_gatt {
-        return LinkMode::Bluetooth;
-    }
+fn modo_de(
+    presenca: Option<&Presenca>,
+    algum_no_cabo: bool,
+    responde_no_gatt: impl FnOnce() -> bool,
+) -> LinkMode {
     let Some(presenca) = presenca else { return LinkMode::Offline };
-    if presenca.endereco != 0 {
-        return LinkMode::Wireless;
+    if presenca.endereco != 0 || responde_no_gatt() {
+        return LinkMode::Bluetooth;
     }
     if algum_no_cabo {
         LinkMode::Cable
@@ -609,26 +623,39 @@ mod testes {
 
     #[test]
     fn desligar_o_controle_nao_e_ligar_no_cabo() {
-        assert_eq!(modo_de(None, false, true), LinkMode::Offline);
+        assert_eq!(modo_de(None, true, || false), LinkMode::Offline);
     }
 
     #[test]
     fn quem_chegou_por_bluetooth_nunca_esta_no_cabo() {
         let p = presente("408e2c82242f", "c1", 0x408e2c82242f);
-        assert_eq!(modo_de(Some(&p), false, true), LinkMode::Wireless);
+        assert_eq!(modo_de(Some(&p), true, || false), LinkMode::Bluetooth);
     }
 
     #[test]
-    fn o_gatt_respondendo_manda_em_tudo() {
-        let p = presente("hid:x", "c1", 0);
-        assert_eq!(modo_de(Some(&p), true, true), LinkMode::Bluetooth);
+    fn a_interface_de_bluetooth_dispensa_perguntar_ao_radio() {
+        let p = presente("408e2c82242f", "c1", 0x408e2c82242f);
+        let modo = modo_de(Some(&p), true, || panic!("perguntou ao radio sem precisar"));
+        assert_eq!(modo, LinkMode::Bluetooth);
     }
 
     #[test]
-    fn sem_endereco_a_palavra_e_do_xinput() {
+    fn controle_desligado_dispensa_perguntar_ao_radio() {
+        let modo = modo_de(None, true, || panic!("perguntou ao radio por um controle que saiu"));
+        assert_eq!(modo, LinkMode::Offline);
+    }
+
+    #[test]
+    fn sem_endereco_na_interface_o_radio_ainda_responde() {
         let p = presente("hid:x", "c1", 0);
-        assert_eq!(modo_de(Some(&p), false, true), LinkMode::Cable);
-        assert_eq!(modo_de(Some(&p), false, false), LinkMode::Wireless);
+        assert_eq!(modo_de(Some(&p), true, || true), LinkMode::Bluetooth);
+    }
+
+    #[test]
+    fn sem_endereco_e_sem_radio_a_palavra_e_do_xinput() {
+        let p = presente("hid:x", "c1", 0);
+        assert_eq!(modo_de(Some(&p), true, || false), LinkMode::Cable);
+        assert_eq!(modo_de(Some(&p), false, || false), LinkMode::Wireless);
     }
 
     #[test]

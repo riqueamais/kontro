@@ -64,30 +64,35 @@ pub struct CargaGuardada {
     pub medido_em: Option<i64>,
 }
 
-impl From<NoDeBateria> for CargaGuardada {
-    fn from(no: NoDeBateria) -> Self {
+impl From<&NoDeBateria> for CargaGuardada {
+    fn from(no: &NoDeBateria) -> Self {
         CargaGuardada { percent: no.percent, medido_em: no.medido_em }
     }
 }
 
-pub fn por_instancia(instancia: &str, desde: Option<i64>) -> Option<CargaGuardada> {
+pub fn por_instancia(
+    nos: &[NoDeBateria],
+    instancia: &str,
+    desde: Option<i64>,
+) -> Option<CargaGuardada> {
     if instancia.is_empty() {
         return None;
     }
-    nos_com_bateria()
-        .into_iter()
-        .find(|no| {
-            no.instancia.to_lowercase().contains(&instancia.to_lowercase()) && recente(no, desde)
-        })
+    let alvo = instancia.to_lowercase();
+    nos.iter()
+        .find(|no| no.instancia.to_lowercase().contains(&alvo) && recente(no, desde))
         .map(CargaGuardada::from)
 }
 
-pub fn por_container(container: &str, desde: Option<i64>) -> Option<CargaGuardada> {
+pub fn por_container(
+    nos: &[NoDeBateria],
+    container: &str,
+    desde: Option<i64>,
+) -> Option<CargaGuardada> {
     if container.is_empty() {
         return None;
     }
-    nos_com_bateria()
-        .into_iter()
+    nos.iter()
         .find(|no| no.container.eq_ignore_ascii_case(container) && recente(no, desde))
         .map(CargaGuardada::from)
 }
