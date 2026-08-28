@@ -9,6 +9,7 @@ export interface Saude {
   consumoRecente: number | null;
   consumoAntes: number | null;
   variacao: number | null;
+  trocadaEm: number | null;
 }
 
 interface SaudeCrua {
@@ -17,6 +18,7 @@ interface SaudeCrua {
   consumo_recente: number | null;
   consumo_antes: number | null;
   variacao: number | null;
+  trocada_em: number | null;
 }
 
 const DIAS_PARA_COMPARAR = 14;
@@ -34,6 +36,7 @@ export function Saude({ chave, pulso }: { chave: string; pulso?: number | null }
             consumoRecente: c.consumo_recente,
             consumoAntes: c.consumo_antes,
             variacao: c.variacao,
+            trocadaEm: c.trocada_em,
           },
         ),
       )
@@ -68,7 +71,7 @@ function titulo(s: Saude): string {
     case "estavel":
       return "Consumo estável";
     default:
-      return "Ainda medindo";
+      return s.trocadaEm ? "Bateria nova" : "Ainda medindo";
   }
 }
 
@@ -83,11 +86,15 @@ function duracao(s: Saude): number {
 function detalhe(s: Saude): string {
   if (s.estado === "medindo") {
     const faltam = Math.max(0, DIAS_PARA_COMPARAR - s.dias);
-    if (s.dias === 0) return "Preciso de duas semanas de uso para comparar.";
+    const desde = s.trocadaEm
+      ? `Contando desde a troca, em ${new Date(s.trocadaEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}. `
+      : "";
+
+    if (s.dias === 0) return `${desde}Preciso de duas semanas de uso para comparar.`;
     if (faltam > 0) {
-      return `${s.dias} ${s.dias === 1 ? "dia" : "dias"} de histórico. Faltam ${faltam} para eu poder comparar.`;
+      return `${desde}${s.dias} ${s.dias === 1 ? "dia" : "dias"} de histórico. Faltam ${faltam} para eu poder comparar.`;
     }
-    return "Ainda não houve descarga suficiente nas duas janelas para comparar.";
+    return `${desde}Ainda não houve descarga suficiente nas duas janelas para comparar.`;
   }
 
   const recente = (s.consumoRecente ?? 0).toFixed(1).replace(".", ",");

@@ -33,6 +33,8 @@ const DIAS_PARA_COMPARAR: i64 = 14;
 const HORAS_MINIMAS_POR_JANELA: f64 = 2.0;
 const VARIACAO_QUE_IMPORTA: f64 = 15.0;
 const SALTO_QUE_QUEBRA_O_TRECHO_MS: i64 = 30 * 60 * 1000;
+const SUBIDA_QUE_DENUNCIA_TROCA: i32 = 15;
+const SUBIDA_INSTANTANEA_MS: i64 = 5 * 60 * 1000;
 
 #[derive(Debug, Clone, Copy)]
 struct Descarga {
@@ -48,6 +50,7 @@ pub struct Saude {
     pub consumo_recente: Option<f64>,
     pub consumo_antes: Option<f64>,
     pub variacao: Option<i32>,
+    pub trocada_em: Option<i64>,
 }
 
 impl History {
@@ -138,7 +141,7 @@ impl History {
     }
 
     pub fn consumo_por_hora(&self, chave: &str) -> Option<f64> {
-        let serie = self.serie(chave);
+        let serie = desde_a_troca(self.serie(chave));
         let trechos = descargas(serie);
         let fim_da_serie = serie.last()?.t;
 
@@ -151,7 +154,9 @@ impl History {
     }
 
     pub fn saude(&self, chave: &str) -> Saude {
-        let serie = self.serie(chave);
+        let inteira = self.serie(chave);
+        let trocada_em = ultima_troca(inteira);
+        let serie = desde_a_troca(inteira);
         let agora = tempo::agora();
 
         let dias = serie
@@ -165,6 +170,7 @@ impl History {
             consumo_recente: None,
             consumo_antes: None,
             variacao: None,
+            trocada_em,
         };
 
         if dias < DIAS_PARA_COMPARAR {
@@ -195,6 +201,7 @@ impl History {
             consumo_recente: Some(recente),
             consumo_antes: Some(antes),
             variacao: Some(variacao.round() as i32),
+            trocada_em,
         }
     }
 
@@ -207,6 +214,23 @@ impl History {
 
 fn quantas(por_controle: &HashMap<String, Vec<Amostra>>) -> usize {
     por_controle.values().map(|s| s.len()).sum()
+}
+
+fn ultima_troca(serie: &[Amostra]) -> Option<i64> {
+    serie
+        .windows(2)
+        .rev()
+        .find(|par| {
+            par[1].p - par[0].p >= SUBIDA_QUE_DENUNCIA_TROCA
+                && par[1].t - par[0].t <= SUBIDA_INSTANTANEA_MS
+        })
+        .map(|par| par[1].t)
+}
+
+fn desde_a_troca(serie: &[Amostra]) -> &[Amostra] {
+    let Some(quando) = ultima_troca(serie) else { return serie };
+    let corte = serie.iter().position(|a| a.t >= quando).unwrap_or(0);
+    &serie[corte..]
 }
 
 fn descargas(serie: &[Amostra]) -> Vec<Descarga> {
@@ -337,6 +361,57 @@ mod testes {
     fn sem_descarga_nenhuma_nao_ha_o_que_dizer() {
         let a = sessao(3, 2, 60, 90);
         assert_eq!(historico(a).consumo_por_hora("c"), None);
+    }
+
+    fn com_troca(momento_h_atras: i64, para: i32) -> Amostra {
+        Amostra { t: tempo::agora() - momento_h_atras * HORA + MINUTO, p: para }
+    }
+
+    fn duas_baterias(com_a_troca: bool) -> Vec<Amostra> {
+        let mut a = Vec::new();
+        for dia in [29i64, 27, 25, 23, 21, 19, 17, 15, 13, 11] {
+            a.extend(sessao(dia * 24, 4, 100, 60));
+        }
+        if com_a_troca {
+            a.push(com_troca(11 * 24 - 4, 100));
+        }
+        for dia in [9i64, 5, 4, 3, 2, 1] {
+            a.extend(sessao(dia * 24, 4, 100, 80));
+        }
+        a
+    }
+
+    #[test]
+    fn a_bateria_nova_recomeca_a_medicao() {
+        let s = historico(duas_baterias(true)).saude("c");
+        assert_eq!(s.estado, "medindo", "comparou uma bateria com a outra");
+        assert!(s.dias < DIAS_PARA_COMPARAR, "a idade veio da bateria que saiu: {}", s.dias);
+        assert!(s.trocada_em.is_some());
+    }
+
+    #[test]
+    fn sem_troca_o_mesmo_historico_da_veredito() {
+        let s = historico(duas_baterias(false)).saude("c");
+        assert_eq!(s.estado, "melhorando", "sem a troca ha o que comparar");
+        assert_eq!(s.trocada_em, None);
+    }
+
+    #[test]
+    fn carregar_devagar_nao_e_trocar() {
+        let mut a = sessao(30, 3, 90, 60);
+        a.extend(sessao(20, 2, 60, 95));
+        assert_eq!(ultima_troca(&historico(a).por_controle["c"]), None);
+    }
+
+    #[test]
+    fn o_consumo_ignora_a_bateria_que_saiu() {
+        let mut a = sessao(30, 3, 60, 12);
+        a.push(com_troca(27, 90));
+        a.extend(sessao(20, 2, 90, 80));
+        a.extend(sessao(9, 3, 80, 60));
+
+        let taxa = historico(a).consumo_por_hora("c").expect("ha descarga medida");
+        assert!(taxa < 9.0, "a media pegou a bateria velha: {taxa}");
     }
 
     #[test]
