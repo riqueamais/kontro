@@ -6,17 +6,21 @@ import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
-import { Sessoes } from "../componentes/Sessoes";
+import type { Saude as DadosDeSaude } from "../componentes/Saude";
+import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
 import { Amostra, Estado, Sessao, corDoAnel, quandoLeu, useEstado } from "../estado";
 
 export function Resumo() {
   const estado = useEstado();
   const [serie, setSerie] = useState<Amostra[]>([]);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
+  const [saude, setSaude] = useState<DadosDeSaude | null>(null);
+  const [sessao, setSessao] = useState<Sessao | null>(null);
 
   useEffect(() => {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
     invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
+    invoke<DadosDeSaude | null>("saude_da_bateria").then(setSaude).catch(() => {});
   }, [estado?.key, estado?.percent]);
 
   if (!estado) return null;
@@ -54,9 +58,22 @@ export function Resumo() {
       </section>
 
       <section className="cartao">
-        <Historico serie={serie} cor={corDoAnel(estado)} altura={84} />
-        <Saude chave={estado.key} pulso={estado.readAt} />
-        <Sessoes sessoes={sessoes} />
+        <Historico
+          serie={serie}
+          trocadaEm={saude?.trocadaEm}
+          janela={
+            sessao
+              ? { inicio: sessao.inicio, fim: sessao.fim, titulo: rotuloDaSessao(sessao) }
+              : null
+          }
+          aoSairDaJanela={() => setSessao(null)}
+        />
+        <Saude saude={saude} />
+        <Sessoes
+          sessoes={sessoes}
+          escolhida={sessao?.inicio}
+          aoEscolher={(s) => setSessao((atual) => (atual?.inicio === s.inicio ? null : s))}
+        />
       </section>
 
       <ListaDeControles principal={estado.key} sempre />

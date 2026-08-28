@@ -1,6 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
-
 import "./saude.css";
 
 export interface Saude {
@@ -10,34 +7,40 @@ export interface Saude {
   consumoAntes: number | null;
   variacao: number | null;
   trocadaEm: number | null;
+  cargaCheiaMinutos: number | null;
 }
 
 const DIAS_PARA_COMPARAR = 14;
 
-export function Saude({ chave, pulso }: { chave: string; pulso?: number | null }) {
-  const [saude, setSaude] = useState<Saude | null>(null);
-
-  useEffect(() => {
-    invoke<Saude | null>("saude_da_bateria").then(setSaude).catch(() => {});
-  }, [chave, pulso]);
-
+export function Saude({ saude }: { saude: Saude | null }) {
   if (!saude) return null;
 
   return (
     <div className={`saude ${saude.estado}`}>
       <div className="veredito">{titulo(saude)}</div>
       <div className="explica">{detalhe(saude)}</div>
+      {saude.cargaCheiaMinutos && (
+        <div className="carga-cheia">
+          Uma carga cheia dura <strong>{duracaoLonga(saude.cargaCheiaMinutos)}</strong> neste
+          controle.
+        </div>
+      )}
       {saude.estado === "medindo" && (
         <div className="trilho" aria-hidden="true">
           <span
-            style={{
-              width: `${Math.min(100, (saude.dias / DIAS_PARA_COMPARAR) * 100)}%`,
-            }}
+            style={{ width: `${Math.min(100, (saude.dias / DIAS_PARA_COMPARAR) * 100)}%` }}
           />
         </div>
       )}
     </div>
   );
+}
+
+function duracaoLonga(minutos: number): string {
+  if (minutos < 60) return `${minutos} min`;
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return m > 0 ? `${h} h ${m} min` : `${h} h`;
 }
 
 function titulo(s: Saude): string {

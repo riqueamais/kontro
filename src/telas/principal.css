@@ -62,7 +62,7 @@
   min-height: 0;
 }
 
-.trilho {
+.corpo > .trilho {
   display: flex;
   flex-direction: column;
   gap: 2px;

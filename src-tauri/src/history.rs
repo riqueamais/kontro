@@ -63,6 +63,7 @@ pub struct Saude {
     pub consumo_antes: Option<f64>,
     pub variacao: Option<i32>,
     pub trocada_em: Option<i64>,
+    pub carga_cheia_minutos: Option<i64>,
 }
 
 impl History {
@@ -204,6 +205,8 @@ impl History {
             .map(|a| (agora - a.t) / DIA_MS)
             .unwrap_or(0);
 
+        let carga_cheia_minutos = self.autonomia_em_minutos(chave, 100);
+
         let medindo = Saude {
             estado: "medindo",
             dias,
@@ -211,6 +214,7 @@ impl History {
             consumo_antes: None,
             variacao: None,
             trocada_em,
+            carga_cheia_minutos,
         };
 
         if dias < DIAS_PARA_COMPARAR {
@@ -242,6 +246,7 @@ impl History {
             consumo_antes: Some(antes),
             variacao: Some(variacao.round() as i32),
             trocada_em,
+            carga_cheia_minutos,
         }
     }
 
@@ -487,6 +492,20 @@ mod testes {
 
         let taxa = historico(a).consumo_por_hora("c").expect("ha descarga medida");
         assert!(taxa < 9.0, "a media pegou a bateria velha: {taxa}");
+    }
+
+    #[test]
+    fn diz_quanto_dura_uma_carga_cheia() {
+        let a = sessao(4, 3, 90, 60);
+        let s = historico(a).saude("c");
+        let minutos = s.carga_cheia_minutos.expect("ha consumo medido");
+        assert!((520..=640).contains(&minutos), "dez pontos por hora dariam ~10 h: {minutos}");
+    }
+
+    #[test]
+    fn sem_consumo_medido_nao_inventa_a_carga_cheia() {
+        let a = sessao(3, 2, 60, 90);
+        assert_eq!(historico(a).saude("c").carga_cheia_minutos, None);
     }
 
     #[test]

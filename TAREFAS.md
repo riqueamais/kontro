@@ -227,6 +227,42 @@ divisão e tempo de vida do Rust com comentário.
 
 ---
 
+## Resolvido na 2.10.0
+
+### O gráfico mentia por três motivos
+
+Ele ligava todos os pontos numa linha só, atravessando os dias em que o controle ficou
+desligado como se fossem medição contínua. Auto-escalava o eixo vertical para o intervalo
+dos dados, então uma variação de dois pontos preenchia a altura toda e parecia uma queda
+enorme. E trocava de cor conforme a carga de agora, pintando a história inteira de vermelho
+porque o controle está fraco hoje -- cor seguindo o valor atual, não a série.
+
+Agora: eixo de tempo real com a janela escolhida (7 ou 30 dias), eixo vertical fixo de 0 a
+100, linha quebrada onde a série quebra, cor estável, e a troca de bateria marcada.
+
+### Dois estilos vazavam entre janelas
+
+Os CSS das quatro janelas viram um arquivo só, aplicado a todas. `aviso.css` declarava
+`.cartao { display: flex }` sem escopo, e isso mandava no cartão da janela principal --
+era por isso que o gráfico, a saúde e as sessões apareciam lado a lado espremidos. E
+`.trilho` é ao mesmo tempo a barra lateral do app e a barrinha de progresso da saúde: a
+barrinha herdava `padding` e `border-right` da barra lateral e virava uma caixa vazia.
+
+Ambos escopados. Vale conferir isso ao criar qualquer classe nova com nome genérico.
+
+### Clicar numa sessão abre ela no gráfico
+
+O uso é em rajadas, então numa janela de sete dias a maior parte fica vazia e a descarga
+vira uma linha quase vertical. A lista responde "quando"; o gráfico agora responde "como
+drenou", com eixo em minutos e a taxa daquela sessão embaixo.
+
+### Quanto dura uma carga cheia
+
+O número que responde "essa pilha presta?" a partir de uma sessão medida, em vez das duas
+semanas que a saúde exige.
+
+---
+
 ## Em aberto
 
 ### 23. Limiar e aviso por controle

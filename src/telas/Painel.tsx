@@ -103,7 +103,7 @@ export function Painel() {
         </div>
       </div>
 
-      <Historico serie={serie} cor={corDoAnel(estado)} />
+      <Historico serie={serie} compacto />
 
       <ListaDeControles principal={estado.key} />
 

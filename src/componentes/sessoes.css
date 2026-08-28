@@ -49,3 +49,22 @@
   color: var(--text-tertiary);
   white-space: nowrap;
 }
+
+button.sessao {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+button.sessao:hover {
+  background: var(--surface-alt);
+}
+
+button.sessao.escolhida {
+  background: var(--surface-alt);
+  border-color: var(--stroke-strong);
+}
