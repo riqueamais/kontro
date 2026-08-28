@@ -25,7 +25,7 @@ use tauri_plugin_notification::NotificationExt;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::history::Amostra;
+use crate::history::{Amostra, Sessao};
 use crate::model::BatteryState;
 use crate::settings::{CloseAction, Settings};
 
@@ -33,6 +33,7 @@ pub struct Compartilhado {
     estado: Mutex<BatteryState>,
     todos: Mutex<Vec<BatteryState>>,
     serie: Mutex<Vec<Amostra>>,
+    sessoes: Mutex<Vec<Sessao>>,
     saude: Mutex<Option<history::Saude>>,
     sobreposicao_a_mao: Mutex<Option<bool>>,
     config: Mutex<Settings>,
@@ -107,6 +108,7 @@ pub fn executar() {
             None,
         )),
         serie: Mutex::new(Vec::new()),
+        sessoes: Mutex::new(Vec::new()),
         saude: Mutex::new(None),
         sobreposicao_a_mao: Mutex::new(None),
         todos: Mutex::new(Vec::new()),
@@ -137,6 +139,7 @@ pub fn executar() {
             renomear_controle,
             esquecer_controle,
             serie_do_historico,
+            sessoes_do_controle,
             saude_da_bateria,
             configuracoes,
             salvar_configuracoes,
@@ -253,6 +256,10 @@ fn iniciar_ciclo(
                 {
                     let mut saude = compartilhado.saude.lock().unwrap();
                     *saude = Some(monitor.historico().saude(&principal.key));
+                }
+                {
+                    let mut sessoes = compartilhado.sessoes.lock().unwrap();
+                    *sessoes = monitor.historico().sessoes(&principal.key);
                 }
 
                 let _ = app.emit("kontro://estado", &principal);
@@ -408,6 +415,11 @@ fn esquecer_controle(chave: String, envio: tauri::State<mpsc::Sender<Pedido>>) {
 #[tauri::command]
 fn serie_do_historico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<Amostra> {
     compartilhado.serie.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn sessoes_do_controle(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<Sessao> {
+    compartilhado.sessoes.lock().unwrap().clone()
 }
 
 #[tauri::command]

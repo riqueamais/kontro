@@ -31,6 +31,13 @@ export interface Amostra {
   p: number;
 }
 
+export interface Sessao {
+  inicio: number;
+  fim: number;
+  de: number;
+  ate: number;
+}
+
 export function useEstado(): Estado | null {
   const [estado, setEstado] = useState<Estado | null>(null);
 
@@ -155,7 +162,7 @@ export function quandoLeu(estado: Estado): string {
 
 /// Quantos dias de calendario separam a data de hoje. Comparar timestamps daria "ontem"
 /// para uma leitura de vinte minutos atras feita pouco depois da meia-noite.
-function diasAtras(quando: Date): number {
+export function diasAtras(quando: Date): number {
   const meiaNoite = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   return Math.round((meiaNoite(new Date()) - meiaNoite(quando)) / 86_400_000);
 }

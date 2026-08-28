@@ -165,6 +165,22 @@ fn secao_monitor(t: &mut String) {
         if let Some(a) = &estado.autonomia {
             let _ = writeln!(t, "      autonomia: {a}");
         }
+
+        let sessoes = monitor.historico().sessoes(&estado.key);
+        if sessoes.is_empty() {
+            let _ = writeln!(t, "      sessoes: nenhuma registrada");
+        }
+        for s in sessoes.iter().take(6) {
+            let minutos = (s.fim - s.inicio) / 60_000;
+            let _ = writeln!(
+                t,
+                "      sessao {} -> {}   {}% -> {}%   {minutos} min",
+                crate::tempo::para_texto(s.inicio),
+                crate::tempo::para_texto(s.fim),
+                s.de,
+                s.ate
+            );
+        }
     }
     let _ = writeln!(t);
 }

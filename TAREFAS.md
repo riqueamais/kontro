@@ -204,13 +204,25 @@ divisão e tempo de vida do Rust com comentário.
 
 ## Em aberto
 
-### 23. Conferir a pílula com dois controles na tela
+### 23. A autonomia confia demais num trecho curto
+
+Apareceu nos dados reais: com 83% e uma queda de um ponto em dezesseis minutos, o app
+anunciou "~22 h 14 min de jogo". A conta fecha -- 3,75 %/h -- mas dezesseis minutos de
+controle parado na mesa não sustentam uma projeção de vinte e duas horas. `descargas`
+aceita qualquer trecho com quinze minutos e um ponto de queda, e o trecho de agora ganha
+do histórico sem precisar provar nada.
+
+Provável correção: o trecho de agora só manda sozinho quando já caiu o bastante para
+significar alguma coisa -- cinco pontos, por exemplo. Abaixo disso, a média da semana é
+mais honesta.
+
+### 24. Conferir a pílula com dois controles na tela
 
 O desenho foi verificado por aritmética — dois controles ocupam 219 px numa janela de 284,
 quatro ocupam 359 numa de 452, não há corte em nenhuma contagem — mas ninguém olhou se
 fica bonito. Falta uma tela livre e um segundo controle.
 
-### 24. Dois mecanismos de atualização
+### 25. Dois mecanismos de atualização
 
 `atualizacao.rs` consulta o mesmo `latest.json` que o `tauri-plugin-updater` consulta, e
 reimplementa a comparação de versão que o plugin já faz. A tela usa o caminho Rust para
@@ -218,49 +230,49 @@ saber se há novidade e depois chama `check()` do plugin para instalar — duas 
 Não foi mexido de propósito: é o caminho de atualização, está funcionando, e a
 consolidação merece um passo isolado.
 
-### 25. `Novidade.pagina` nunca é mostrada
+### 26. `Novidade.pagina` nunca é mostrada
 
 Calculada, atravessa a fronteira em `VersaoNova`, e nenhuma tela renderiza o link.
 
-### 26. Contrato de serialização inconsistente
+### 27. Contrato de serialização inconsistente
 
 `BatteryState` sai em camelCase e `Saude` em snake_case, e por isso `Saude.tsx` carrega um
 `SaudeCrua` só para traduzir nomes. O `interface Config` do TypeScript ainda reescreve
 `Settings` à mão em PascalCase — agora num lugar só, mas sem nada garantindo que os dois
 não divirjam.
 
-### 27. Capabilities largas
+### 28. Capabilities largas
 
 `updater:*` e `process:allow-restart` continuam liberados para as quatro janelas,
 inclusive a sobreposição e o aviso. Vale uma capability restrita à `principal`.
 
-### 28. `gatt::conectado` a cada dois segundos
+### 29. `gatt::conectado` a cada dois segundos
 
 É uma ida ao WinRT por controle conhecido, por ciclo. O certo é ouvir
 `ConnectionStatusChanged` no `BluetoothLEDevice` que o `VinculoGatt` já segura.
 
-### 29. Enumeração completa do PnP repetida
+### 30. Enumeração completa do PnP repetida
 
 `pnp::nos_com_bateria()` enumera todos os nós de dispositivo da máquina, e
 `ler_sem_bluetooth` pode chamá-la duas vezes por controle por leitura. Enumerar uma vez
 por ciclo e passar a lista adiante.
 
-### 30. Limiar e aviso por controle
+### 31. Limiar e aviso por controle
 
 Hoje é um par de números para todos. Quem tem um controle que segura muito e outro que
 não segura nada quer limiares diferentes.
 
-### 31. Registro de sessão
+### 32. Registro de sessão
 
 "Desligou com 68% às 22:14, depois de 3 h 20" — o histórico já tem os dados, falta a tela.
 
-### 32. Diagnóstico pela interface
+### 33. Diagnóstico pela interface
 
 `--diagnose` só existe na linha de comando, e o executável é do subsistema gráfico. Um
 botão em Configurações que grava o arquivo e abre a pasta resolve para quem for reportar
 um problema.
 
-### 33. Estimativa de tempo até carregar
+### 34. Estimativa de tempo até carregar
 
 No cabo o app não tem o que dizer. Com o histórico de subida dá para estimar quanto falta
 para encher.

@@ -35,6 +35,15 @@ const VARIACAO_QUE_IMPORTA: f64 = 15.0;
 const SALTO_QUE_QUEBRA_O_TRECHO_MS: i64 = 30 * 60 * 1000;
 const SUBIDA_QUE_DENUNCIA_TROCA: i32 = 15;
 const SUBIDA_INSTANTANEA_MS: i64 = 5 * 60 * 1000;
+const DURACAO_MINIMA_DE_SESSAO_MS: i64 = 10 * 60 * 1000;
+
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct Sessao {
+    pub inicio: i64,
+    pub fim: i64,
+    pub de: i32,
+    pub ate: i32,
+}
 
 #[derive(Debug, Clone, Copy)]
 struct Descarga {
@@ -151,6 +160,33 @@ impl History {
 
         let corte = tempo::agora() - SEMANA_MS;
         taxa(trechos.iter().filter(|d| d.fim >= corte))
+    }
+
+    pub fn sessoes(&self, chave: &str) -> Vec<Sessao> {
+        let serie = self.serie(chave);
+        let mut saida = Vec::new();
+        let mut i = 0;
+
+        while i < serie.len() {
+            let inicio = i;
+            while i + 1 < serie.len()
+                && serie[i + 1].t - serie[i].t <= SALTO_QUE_QUEBRA_O_TRECHO_MS
+            {
+                i += 1;
+            }
+            if serie[i].t - serie[inicio].t >= DURACAO_MINIMA_DE_SESSAO_MS {
+                saida.push(Sessao {
+                    inicio: serie[inicio].t,
+                    fim: serie[i].t,
+                    de: serie[inicio].p,
+                    ate: serie[i].p,
+                });
+            }
+            i += 1;
+        }
+
+        saida.reverse();
+        saida
     }
 
     pub fn saude(&self, chave: &str) -> Saude {
@@ -301,6 +337,27 @@ mod testes {
         let mut por_controle = HashMap::new();
         por_controle.insert("c".to_string(), amostras);
         History { por_controle, sujo: false }
+    }
+
+    #[test]
+    fn cada_sessao_e_um_periodo_com_o_controle_ligado() {
+        let mut a = sessao(30, 2, 80, 60);
+        a.extend(sessao(4, 3, 100, 55));
+
+        let s = historico(a).sessoes("c");
+        assert_eq!(s.len(), 2, "as duas viraram uma so");
+        assert_eq!((s[0].de, s[0].ate), (100, 55), "a mais recente vem primeiro");
+        assert_eq!((s[1].de, s[1].ate), (80, 60));
+    }
+
+    #[test]
+    fn um_piscar_de_conexao_nao_e_sessao() {
+        let agora = tempo::agora();
+        let a = vec![
+            Amostra { t: agora - 3 * HORA, p: 70 },
+            Amostra { t: agora - 3 * HORA + 5 * MINUTO, p: 69 },
+        ];
+        assert!(historico(a).sessoes("c").is_empty());
     }
 
     #[test]

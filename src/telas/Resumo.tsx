@@ -6,14 +6,17 @@ import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
-import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
+import { Sessoes } from "../componentes/Sessoes";
+import { Amostra, Estado, Sessao, corDoAnel, quandoLeu, useEstado } from "../estado";
 
 export function Resumo() {
   const estado = useEstado();
   const [serie, setSerie] = useState<Amostra[]>([]);
+  const [sessoes, setSessoes] = useState<Sessao[]>([]);
 
   useEffect(() => {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
+    invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
   }, [estado?.key, estado?.percent]);
 
   if (!estado) return null;
@@ -53,6 +56,7 @@ export function Resumo() {
       <section className="cartao">
         <Historico serie={serie} cor={corDoAnel(estado)} altura={84} />
         <Saude chave={estado.key} pulso={estado.readAt} />
+        <Sessoes sessoes={sessoes} />
       </section>
 
       <ListaDeControles principal={estado.key} sempre />
