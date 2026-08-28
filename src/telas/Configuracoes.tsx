@@ -402,8 +402,8 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
 function primeiraLinha(notas: string | null): string {
   const linha = (notas ?? "")
     .split(/\r?\n/)
-    .map((l) => l.trim())
-    .find((l) => l.length > 0 && !/^kontro/i.test(l));
+    .map((l) => l.replace(/^﻿/, "").trim())
+    .find((l) => l.length > 0 && !/^kontro[\s\d.]*$/i.test(l));
 
   if (!linha) return "";
   return linha.length > 150 ? `${linha.slice(0, 147)}...` : linha;
