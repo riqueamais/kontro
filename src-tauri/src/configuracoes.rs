@@ -33,6 +33,33 @@ impl Limiares {
     pub const PADRAO: Limiares = Limiares { critico: 10, aviso: 20 };
 }
 
+pub const ENUMS_DA_CONFIG: &[(&str, &[&str])] = &[
+    ("CloseAction", &["MinimizeToTray", "Exit"]),
+    ("OverlayMode", &["Desligada", "EmJogo", "Sempre"]),
+    (
+        "OverlayCorner",
+        &["SuperiorEsquerdo", "SuperiorDireito", "InferiorEsquerdo", "InferiorDireito"],
+    ),
+];
+
+pub const CAMPOS_DA_CONFIG: &[(&str, &str)] = &[
+    ("StartWithWindows", "boolean"),
+    ("StartMinimized", "boolean"),
+    ("CloseAction", "CloseAction"),
+    ("NotificationsEnabled", "boolean"),
+    ("WarnThreshold", "number"),
+    ("CriticalThreshold", "number"),
+    ("ConnectToastEnabled", "boolean"),
+    ("OverlayMode", "OverlayMode"),
+    ("OverlayCorner", "OverlayCorner"),
+    ("OverlayMonitor", "number"),
+    ("OverlayScale", "number"),
+    ("OverlayOpacity", "number"),
+    ("AutoCheckUpdates", "boolean"),
+    ("OverlayShortcutEnabled", "boolean"),
+    ("FirstRunDone", "boolean"),
+];
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct Settings {
@@ -130,6 +157,36 @@ mod testes {
         cfg.ajustar();
         assert_eq!(cfg.overlay_scale, 2.0);
         assert_eq!(cfg.overlay_opacity, 0.3);
+    }
+
+    #[test]
+    fn a_descricao_da_config_cobre_exatamente_os_campos_gravados() {
+        let json = serde_json::to_value(Settings::default()).unwrap();
+        let mut reais: Vec<String> = json.as_object().unwrap().keys().cloned().collect();
+        let mut descritos: Vec<String> =
+            CAMPOS_DA_CONFIG.iter().map(|(nome, _)| nome.to_string()).collect();
+        reais.sort();
+        descritos.sort();
+
+        assert_eq!(
+            descritos, reais,
+            "campo novo em Settings sem entrada em CAMPOS_DA_CONFIG: o front nao veria"
+        );
+    }
+
+    #[test]
+    fn os_valores_descritos_dos_enums_ainda_sao_aceitos() {
+        for (tipo, valores) in ENUMS_DA_CONFIG {
+            for valor in *valores {
+                let mut base = serde_json::to_value(Settings::default()).unwrap();
+                base[*tipo] = serde_json::Value::String(valor.to_string());
+
+                assert!(
+                    serde_json::from_value::<Settings>(base).is_ok(),
+                    "{tipo}::{valor} nao e mais aceito, mas continua descrito"
+                );
+            }
+        }
     }
 
     #[test]

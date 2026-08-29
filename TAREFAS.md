@@ -263,6 +263,147 @@ semanas que a saúde exige.
 
 ---
 
+## Resolvido na 2.11.0
+
+Levantamento feito sobre o commit `26949f8`, cobrindo funcionalidade, código repetido e
+padrão de nomes de uma vez.
+
+### 27. O instalador saía com lixo, e o lixo dobrava a cada release
+
+**Sintoma:** o `copyright` e a `longDescription` do `tauri.conf.json` eram sequências
+ilegíveis. Os dois campos vão para o recurso de versão do `.exe` e para o instalador
+NSIS — é o que aparece nas propriedades do arquivo.
+
+**Causa:** o passo que carimba a versão fazia round-trip por
+`ConvertFrom-Json | ConvertTo-Json`, reescrevendo o arquivo inteiro. Leitura sem encoding
+declarado decodifica UTF-8 como ANSI, então as duas únicas linhas acentuadas do arquivo
+voltavam com uma camada a mais de codificação. Uma camada por release, medida commit a
+commit: 39, 41, 46, 57, 81, 256, 525, 1123, 2454 caracteres.
+
+**Correção:** textos restaurados; o carimbo troca só a linha da versão, com
+`System.Text.UTF8Encoding` explícito nas duas pontas; e a conferência recusa a release se
+o `Ã` reaparecer no arquivo.
+
+### 28. A cor do anel ignorava os limiares configurados
+
+O `DESIGN.md` já mandava, em letras maiúsculas: "a cor deve seguir o valor configurado,
+não os números acima cravados". Mas 30 e 60 estavam cravados em dois lugares — no
+`bandeja.rs` e no `estado.ts`. Quem punha o aviso em 40% recebia a notificação de carga
+baixa com o anel ainda verde.
+
+Agora saem de `Settings::limiares()` e de `useLimiares()`. Os limiares entraram também na
+assinatura que decide redesenhar o ícone: sem isso, mudar o limiar não repintava a
+bandeja até a carga mudar.
+
+### 29. O principal.css continuava global
+
+A 2.10.0 registrou o vazamento de `.cartao` e escopou o `aviso.css` — mas só do lado de
+quem sofria. `.cartao`, `.linha`, `.ciclo`, `.aba` e `.corpo` seguiam soltos no
+`principal.css`, e o `lista.css` ainda soltava `.item`, `.confirmar` e `.ciclo.perigo`.
+
+A regra agora vale para as sete folhas e é mecânica: **todo seletor começa pela raiz do
+próprio arquivo**. A janela principal se escopa por `body[data-janela="principal"]`, que
+o `App.tsx` já carimbava.
+
+### 30. Carregar era lido como trocar a bateria — e era isso que travava a saúde
+
+Resposta para a tarefa 26. A série guardava só hora e porcentagem; a via e o estado de
+carga, que o app mede a cada ciclo e mostra na tela, eram descartados antes do disco.
+
+Nos dados desta máquina: 12% às 23:10, 51% às 00:19 e 87% às 00:20 — o controle no cabo.
+`ultima_troca` respondia "pilha nova", `desde_a_troca` cortava 8 dos 10 dias de série, e a
+Saúde dizia "1 dia de histórico, faltam 13" com o app rodando havia dez dias.
+
+Agora a amostra carrega a via. Subida com o cabo na mão não é troca. E subida encadeada
+também não: uma pilha nova é uma descontinuidade única, enquanto uma carga sobe ponto a
+ponto — critério que vale também para a série antiga, que não tem via gravada.
+
+**Medido depois:** série útil de 1,9 para 9,9 dias, descargas aceitas de 1 para 4,
+`Saude.dias` de 1 para 9. O veredito ainda não sai porque faltam as duas semanas, e não
+mais porque a conta joga os dados fora.
+
+### 31. O corte de 30 minutos não correspondia ao ritmo das leituras
+
+`SALTO_QUE_QUEBRA_O_TRECHO_MS` significava "o controle estava desligado". Medindo os
+intervalos reais entre amostras: mediana 11 min, p75 33 min, p90 94 min. Com o GATT
+avisando só na mudança, meia hora calado durante o jogo é uso, não ausência — e a maior
+descarga da série inteira era picotada em quatro pedaços curtos demais para contar.
+
+O desligamento agora é gravado como ponto na série, e a quebra sai do fato. O relógio
+virou rede de segurança de 6 h, para o caso de o app morrer sem gravar o marcador, e a
+regra dos 30 min continua valendo só onde não há via gravada — ou seja, na série antiga.
+
+### 32. A marca tinha três cópias
+
+O README dizia que todos os ícones saem de `geometria.rs` e que nenhum é editado à mão.
+Valia para os PNG, os ICO e os SVG; não valia para o app. O path do controle existia em
+três cópias — `geometria.rs`, `Glifo.tsx` e, inline, `Marca.tsx` — e os raios, escalas,
+opacidades e cores em duas.
+
+`--gerar` agora escreve também `src/estilo/geometria.gerada.ts`. Conferido: depois da
+troca os PNG e os ICO saem byte a byte iguais; só os SVG mudaram, e só porque `0.10`
+passou a sair como `0.1`.
+
+### 33. O `interface Config` do TypeScript
+
+Tarefa 25. Agora sai de `CAMPOS_DA_CONFIG`, no mesmo arquivo do `Settings`, e vira
+`src/config.gerada.ts`. Um teste compara a lista com as chaves que o serde realmente
+grava, então campo novo em `Settings` sem entrada na lista quebra o teste em vez de
+passar despercebido. Adicionar uma *variante* de enum ainda não é pego — só renomear uma.
+
+### 34. Padrão de nomes
+
+Os arquivos eram metade em inglês enquanto o miolo deles era português. `autostart`,
+`history`, `known`, `model`, `paths`, `settings`, `tray`, `device` e `discovery` viraram
+`inicio_automatico`, `historico`, `conhecidos`, `modelo`, `caminhos`, `configuracoes`,
+`bandeja`, `dispositivo` e `descoberta`.
+
+`BatteryState` era o pior ponto: `mode`, `percent`, `read_at`, `charging`, `stale`,
+`device_name` e `known_count` em inglês ao lado de `precisao`, `nivel` e
+`texto_da_carga` — e isso vazava inteiro para o front, porque a serialização é
+automática. Virou `EstadoDoControle`, e `LinkMode` virou
+`Via { Desligado, Bluetooth, Cabo, SemFio }`.
+
+`montar` recebia doze argumentos posicionais, dois deles `bool` vizinhos: trocar
+`charging` e `stale` de lugar compilava e passava nos testes. Agora recebe um `Bruto` com
+`Default`, e cada chamada nomeia o que preenche.
+
+`Settings` e `ControleSalvo` ficam em inglês de propósito: eles não são tipos do app, são
+o formato de `settings.json` e `controllers.json`. Renomear os campos renomearia as chaves
+dos arquivos que já estão na máquina de quem usa.
+
+### 35. Limpeza
+
+- `detalhe(estado)` existia idêntica em `Painel` e `Resumo`; quatro arquivos formatavam
+  data em pt-BR por conta própria. Foram para `src/formato.ts`. Junto saiu uma
+  inconsistência: a lista de sessões escrevia "2 h 15" e a saúde, "2 h 15 min".
+- O leitor de propriedade do WinRT tinha três cópias — duas dentro do `descoberta.rs` e a
+  original no `pnp.rs`, que já fazia exatamente aquilo.
+- `igual_a` não comparava `autonomia`: a estimativa podia mudar sem a tela receber o
+  evento.
+- `impl Orquestrador` estava aberto duas vezes no mesmo arquivo.
+- `posicionar_painel` somava constante nomeada com número mágico (`FOLGA - 12.0`). Agora
+  as duas metades têm nome: sangria da janela menos margem do cartão.
+- "Avisar sobre versões novas" estava na seção **Problemas**, embaixo do diagnóstico.
+- `Anel` era o único componente que se estilizava inline; foi para `anel.css`, levando o
+  keyframe do giro, que morava no `base.css` global sem precisar.
+- Saíram os 18 comentários que restavam no front, e os do `Cargo.toml` e do
+  `vite.config.ts`.
+- `Assets` virou `assets`, para combinar com `docs`, `public` e `src`.
+
+### 36. O que passou a ser verificado sozinho
+
+Não havia CI de verificação: o workflow só rodava no push de tag, então `cargo test`,
+`tsc` e a formatação nunca rodavam antes da release.
+
+Agora o `verificar.yml` roda em todo push e PR: `cargo fmt --check`, `cargo test`,
+`npm run build`, e regera os artefatos para conferir que ninguém editou um `*.gerada.ts`
+à mão. O `rustfmt.toml` fixa o estilo denso que o código já usava — sem ele, `cargo fmt`
+reformatava 113 trechos e ninguém podia rodá-lo. E o `.gitattributes` acabou com a mistura
+de CRLF e LF que vinha sujando os diffs.
+
+---
+
 ## Em aberto
 
 ### 23. Limiar e aviso por controle
@@ -280,14 +421,29 @@ No cabo o GATT some e não existe percentual para acompanhar a subida. Daria par
 a partir do último nível conhecido, e seria chute com cara de conta — o oposto do que o
 resto do app faz. Fica registrado como recusado, não como pendente.
 
-### 25. O `interface Config` do TypeScript reescreve `Settings` à mão
+### 26. O primeiro veredito da saúde
 
-Agora num lugar só, mas nada garante que os dois não divirjam. Um campo novo no Rust não
-quebra a compilação do front.
+A causa de ele nunca aparecer está resolvida na tarefa 30. O que falta é ver o primeiro
+veredito de verdade e conferir contra os dados brutos, em vez de confiar de primeira. Com
+a série desta máquina em 9 dias e o corte em 14, é questão de esperar.
 
-### 26. A saúde da bateria nunca produziu um veredito
+### 37. A descarga final não é representativa, e entra na média
 
-Ela precisa de catorze dias de série que ao mesmo tempo tenha descargas na última semana.
-Com o histórico não sendo gravado, isso era impossível — e a troca de bateria recomeçou a
-contagem. Vale conferir a primeira saída de verdade contra os dados brutos quando ela
-aparecer, em vez de confiar de primeira.
+Nos dados desta máquina, o controle cai em degraus de 5 pontos que aceleram no fim: 57%
+às 22:21 e 12% às 23:10, quarenta e cinco pontos em quarenta e nove minutos. É o colapso
+de fim de carga, e é real — mas 34,6 %/h não descreve o consumo do controle, que nas
+sessões anteriores fica entre 5 e 9 %/h.
+
+O teto de 60 %/h de `descargas` deixa passar. A média da semana dilui, e `de_agora` só
+vale para o trecho que fecha a série, então o estrago é limitado. **Não foi mexido:**
+qualquer guarda aqui seria calibrada em uma semana de dados de um controle só, que é
+exatamente o tipo de heurística que este app evita. Vale rever quando houver série de mais
+de um aparelho.
+
+### 38. Cores duplicadas entre o Rust e o CSS
+
+`VERDE`, `AMBAR`, `VERMELHO`, `CINZA` e `FUNDO` vivem no `geometria.rs` e, com os mesmos
+valores, no `tokens.css`. O módulo gerado já expõe os do Rust, e a `Marca` usa de lá — mas
+o `tokens.css` continua com a cópia dele, porque é a camada CSS do sistema de design, e
+gerar token de tema a partir do gerador de ícones inverte a hierarquia. São cinco valores;
+se divergirem, aparece na tela.

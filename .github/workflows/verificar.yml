@@ -1,0 +1,54 @@
+name: verificar
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Instalar dependencias do front
+        run: npm ci
+
+      - name: Formatacao do Rust
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Testes do Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
+
+      - name: Tipos e build do front
+        run: npm run build
+
+      - name: Os artefatos gerados estao em dia
+        shell: pwsh
+        run: |
+          # Icones, geometria e a interface Config saem do Rust. Se regerar produz
+          # diferenca, alguem editou a mao ou esqueceu de rodar `--gerar`.
+          cargo run --manifest-path src-tauri/Cargo.toml -- --gerar .
+          $sujo = git status --porcelain
+          if ($sujo) {
+            Write-Host $sujo
+            git diff -- . ':(exclude)*.png' ':(exclude)*.ico'
+            Write-Error "Rode ``cargo run -- --gerar .`` e inclua o resultado no commit."
+            exit 1
+          }

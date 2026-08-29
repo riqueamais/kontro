@@ -46,11 +46,8 @@ fn chave_do_hid(id: &str) -> String {
     if id.is_empty() {
         return "desconhecido".to_string();
     }
-    let limpo: String = id
-        .chars()
-        .filter(|c| c.is_alphanumeric())
-        .map(|c| c.to_ascii_lowercase())
-        .collect();
+    let limpo: String =
+        id.chars().filter(|c| c.is_alphanumeric()).map(|c| c.to_ascii_lowercase()).collect();
     if limpo.len() <= 40 {
         limpo
     } else {

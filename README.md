@@ -79,24 +79,46 @@ Sinalizadores úteis durante o desenvolvimento:
 
 | Sinalizador | O que faz |
 |---|---|
-| `--gerar-icones [raiz]` | Redesenha todos os ícones do repositório a partir da geometria |
+| `--gerar [raiz]` | Redesenha tudo que é derivado do Rust: ícones, geometria e a interface `Config` do front |
 | `--icon-preview <png> [tamanho] [--claro]` | Renderiza os estados do ícone da bandeja, ampliados |
 | `--diagnose <txt>` | Despeja o que a descoberta enxerga: HID por usage, Bluetooth pareado, o que o monitor conclui |
 | `--show` | Abre o painel já na inicialização |
 | `--painel` | Abre direto o painel da bandeja |
 | `--minimizado` | Sobe só para a bandeja, sem janela |
 
-### Ícones
+### O que é gerado, e o que é escrito à mão
 
-Todos os ícones saem de `src-tauri/src/geometria.rs`. Nenhum é editado à mão:
+Nada que exista em dois lugares é digitado duas vezes. Um comando redesenha tudo que
+deriva do Rust:
 
 ```bash
-cargo run --release -- --gerar-icones .
+cargo run --release -- --gerar .
 ```
 
-O comando redesenha `src-tauri/icons/`, os ícones de `docs/`, o `setup.ico` do instalador,
-o favicon da interface e os vetores de referência em `assets/svg/`. Se algo aparecer no
-`git status` depois de rodar, é porque a geometria mudou e os arquivos estavam atrasados.
+| sai de | vira |
+|---|---|
+| `geometria.rs` | `src-tauri/icons/`, ícones de `docs/`, `setup.ico`, `public/favicon.svg`, `assets/svg/` |
+| `geometria.rs` | `src/estilo/geometria.gerada.ts` — o path da marca e os raios que `Glifo` e `Marca` desenham |
+| `configuracoes.rs` | `src/config.gerada.ts` — a interface `Config` que o front usa |
+
+Se algo aparecer no `git status` depois de rodar, é porque a fonte mudou e os arquivos
+estavam atrasados. A CI roda o mesmo comando e recusa o push quando isso acontece.
+
+Arquivos `*.gerada.ts` não se editam: a próxima execução sobrescreve. Um campo novo em
+`Settings` sem entrada em `CAMPOS_DA_CONFIG` quebra o teste, e não a interface em silêncio.
+
+### Convenções
+
+- **Nomes**: tudo em português, arquivos inclusive. Ficam em inglês só as siglas de
+  protocolo (`gatt`, `hid`, `pnp`, `xinput`) e os dois tipos que espelham arquivo em
+  disco — `Settings` e `ControleSalvo` — porque o nome dos campos deles é o nome das
+  chaves em `settings.json` e `controllers.json`.
+- **Sem comentários.** O nome diz o que faz; o porquê vai na mensagem de commit e no
+  `TAREFAS.md`.
+- **CSS**: cada folha leva o nome da classe raiz que ela escopa, e *todo* seletor dela
+  começa por essa raiz. As quatro janelas compartilham um bundle só, então classe de nome
+  genérico sem escopo vaza de uma janela para as outras — já vazou.
+- **Formatação**: `cargo fmt` com o `rustfmt.toml` do repositório. A CI confere.
 
 ## Publicando uma versão
 

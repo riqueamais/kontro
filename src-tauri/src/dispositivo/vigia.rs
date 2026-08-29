@@ -1,9 +1,7 @@
 use std::sync::mpsc::Sender;
 
 use windows::core::HSTRING;
-use windows::Devices::Enumeration::{
-    DeviceInformation, DeviceInformationUpdate, DeviceWatcher,
-};
+use windows::Devices::Enumeration::{DeviceInformation, DeviceInformationUpdate, DeviceWatcher};
 use windows::Devices::HumanInterfaceDevice::HidDevice;
 use windows::Foundation::TypedEventHandler;
 
@@ -44,13 +42,12 @@ pub fn observar(canal: Sender<()>) -> Vigia {
         ));
 
         let saiu = canal.clone();
-        let _ = observador.Removed(&TypedEventHandler::<
-            DeviceWatcher,
-            DeviceInformationUpdate,
-        >::new(move |_, _| {
-            let _ = saiu.send(());
-            Ok(())
-        }));
+        let _ = observador.Removed(
+            &TypedEventHandler::<DeviceWatcher, DeviceInformationUpdate>::new(move |_, _| {
+                let _ = saiu.send(());
+                Ok(())
+            }),
+        );
 
         if observador.Start().is_ok() {
             observadores.push(observador);

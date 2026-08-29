@@ -1,16 +1,20 @@
 use tauri::window::Monitor;
-use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
-            WebviewWindowBuilder};
+use tauri::{
+    AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
+    WebviewWindowBuilder,
+};
 
 use crate::configuracoes::{OverlayCorner, Settings};
 use crate::tela;
 
 pub const LARGURA_DO_PAINEL: f64 = 392.0;
 
-const FOLGA_LATERAL_DO_PAINEL: f64 = 32.0;
-const FOLGA_INFERIOR_DO_PAINEL: f64 = 56.0;
+const SANGRIA_LATERAL_DO_PAINEL: f64 = 32.0;
+const SANGRIA_INFERIOR_DO_PAINEL: f64 = 56.0;
+const MARGEM_LATERAL_DO_PAINEL: f64 = 12.0;
+const MARGEM_INFERIOR_DO_PAINEL: f64 = 8.0;
 
-const FOLGA_SUPERIOR_DO_AVISO: f64 = 28.0;
+const SANGRIA_SUPERIOR_DO_AVISO: f64 = 28.0;
 
 pub const PRINCIPAL: &str = "principal";
 pub const PAINEL: &str = "painel";
@@ -23,7 +27,7 @@ const LARGURA_DA_SOBREPOSICAO: f64 = 200.0;
 const ALTURA_DA_SOBREPOSICAO: f64 = 72.0;
 
 const LARGURA_POR_ACOMPANHANTE: f64 = 84.0;
-const MARGEM_AVISO_TOPO: f64 = 24.0;
+const MARGEM_DO_AVISO: f64 = 24.0;
 
 pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
     criar_principal(app)?;
@@ -34,15 +38,18 @@ pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let janela =
-        WebviewWindowBuilder::new(app, PRINCIPAL, WebviewUrl::App("index.html?janela=principal".into()))
-            .title("Kontro")
-            .inner_size(840.0, 600.0)
-            .min_inner_size(720.0, 520.0)
-            .decorations(false)
-            .visible(false)
-            .center()
-            .build()?;
+    let janela = WebviewWindowBuilder::new(
+        app,
+        PRINCIPAL,
+        WebviewUrl::App("index.html?janela=principal".into()),
+    )
+    .title("Kontro")
+    .inner_size(840.0, 600.0)
+    .min_inner_size(720.0, 520.0)
+    .decorations(false)
+    .visible(false)
+    .center()
+    .build()?;
 
     arredondar_cantos(&janela);
     vestir_icone(&janela);
@@ -175,11 +182,8 @@ pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings, ligados: usize) 
 
 pub fn posicionar_aviso(app: &AppHandle) {
     let Some(janela) = app.get_webview_window(AVISO) else { return };
-    let monitor = janela
-        .current_monitor()
-        .ok()
-        .flatten()
-        .or_else(|| janela.primary_monitor().ok().flatten());
+    let monitor =
+        janela.current_monitor().ok().flatten().or_else(|| janela.primary_monitor().ok().flatten());
     let Some(monitor) = monitor else { return };
 
     let escala = monitor.scale_factor();
@@ -189,7 +193,7 @@ pub fn posicionar_aviso(app: &AppHandle) {
     let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
 
     let x = posicao.x + (tamanho.width - tam_janela.width) / 2.0;
-    let y = posicao.y + MARGEM_AVISO_TOPO - FOLGA_SUPERIOR_DO_AVISO;
+    let y = posicao.y + MARGEM_DO_AVISO - SANGRIA_SUPERIOR_DO_AVISO;
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }
 
@@ -209,8 +213,10 @@ pub fn posicionar_painel(app: &AppHandle) {
     let canto = area.position.to_logical::<f64>(escala);
     let util = area.size.to_logical::<f64>(escala);
 
-    let x = canto.x + util.width - tam_janela.width + FOLGA_LATERAL_DO_PAINEL - 12.0;
-    let y = canto.y + util.height - tam_janela.height + FOLGA_INFERIOR_DO_PAINEL - 8.0;
+    let x = canto.x + util.width - tam_janela.width + SANGRIA_LATERAL_DO_PAINEL
+        - MARGEM_LATERAL_DO_PAINEL;
+    let y = canto.y + util.height - tam_janela.height + SANGRIA_INFERIOR_DO_PAINEL
+        - MARGEM_INFERIOR_DO_PAINEL;
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }
 

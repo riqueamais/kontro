@@ -62,15 +62,11 @@ function Linha({
   }, [editando]);
   const salvar = () => {
     const nome = campo.current?.value ?? "";
-    // O painel se esconde quando perde o foco, e isso dispara o onBlur. Sem esta guarda,
-    // sair do painel com o campo aberto gravaria um apelido que ninguem digitou.
     if (nome !== controle.nome) {
       void invoke("renomear_controle", { chave: controle.chave, nome });
     }
     aoSair();
   };
-  // Esquecer um controle que esta ligado nao adianta: a descoberta o encontra de novo no
-  // ciclo seguinte, e ele reaparece como se nada tivesse acontecido.
   const removivel = podeEsquecer && controle.via === "Desligado";
   return (
     <div className={`item${principal ? " principal" : ""}`}>
@@ -94,7 +90,6 @@ function Linha({
             onBlur={salvar}
             onKeyDown={(e) => {
               if (e.key === "Enter") salvar();
-              // Esc desiste sem gravar; sem isso a unica saida seria salvar
               if (e.key === "Escape") aoSair();
             }}
           />

@@ -2,8 +2,9 @@ use std::sync::mpsc::Sender;
 
 use windows::core::Result;
 use windows::Devices::Bluetooth::GenericAttributeProfile::{
-    GattCharacteristic, GattCharacteristicUuids, GattClientCharacteristicConfigurationDescriptorValue,
-    GattCommunicationStatus, GattServiceUuids, GattValueChangedEventArgs,
+    GattCharacteristic, GattCharacteristicUuids,
+    GattClientCharacteristicConfigurationDescriptorValue, GattCommunicationStatus,
+    GattServiceUuids, GattValueChangedEventArgs,
 };
 use windows::Devices::Bluetooth::{BluetoothCacheMode, BluetoothLEDevice};
 use windows::Foundation::TypedEventHandler;
@@ -34,8 +35,7 @@ impl Drop for VinculoGatt {
 
 pub fn conectado(endereco: u64) -> bool {
     (|| -> Result<bool> {
-        let dev = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
-        .join()?;
+        let dev = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?.join()?;
         Ok(dev.ConnectionStatus()?
             == windows::Devices::Bluetooth::BluetoothConnectionStatus::Connected)
     })()
@@ -43,11 +43,13 @@ pub fn conectado(endereco: u64) -> bool {
 }
 
 pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Option<i32>)> {
-    let dispositivo = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?
-        .join()?;
+    let dispositivo = BluetoothLEDevice::FromBluetoothAddressAsync(endereco)?.join()?;
 
     let servicos = dispositivo
-        .GetGattServicesForUuidWithCacheModeAsync(GattServiceUuids::Battery()?, BluetoothCacheMode::Uncached)?
+        .GetGattServicesForUuidWithCacheModeAsync(
+            GattServiceUuids::Battery()?,
+            BluetoothCacheMode::Uncached,
+        )?
         .join()?;
     if servicos.Status()? != GattCommunicationStatus::Success {
         return Err(crate::dispositivo::sem_resposta());
@@ -87,10 +89,7 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
         )?
         .join();
 
-    Ok((
-        VinculoGatt { endereco, _dispositivo: dispositivo, caracteristica, inscricao },
-        inicial,
-    ))
+    Ok((VinculoGatt { endereco, _dispositivo: dispositivo, caracteristica, inscricao }, inicial))
 }
 
 pub fn reler(vinculo: &VinculoGatt) -> Option<i32> {
@@ -98,9 +97,8 @@ pub fn reler(vinculo: &VinculoGatt) -> Option<i32> {
 }
 
 fn ler(caracteristica: &GattCharacteristic) -> Result<i32> {
-    let resultado = caracteristica
-        .ReadValueWithCacheModeAsync(BluetoothCacheMode::Uncached)?
-        .join()?;
+    let resultado =
+        caracteristica.ReadValueWithCacheModeAsync(BluetoothCacheMode::Uncached)?.join()?;
     if resultado.Status()? != GattCommunicationStatus::Success {
         return Err(crate::dispositivo::sem_resposta());
     }
@@ -119,14 +117,12 @@ pub fn pareados() -> Vec<(u64, String)> {
 
     (|| -> Result<Vec<(u64, String)>> {
         let seletor = BluetoothLEDevice::GetDeviceSelectorFromPairingState(true)?;
-        let achados = DeviceInformation::FindAllAsyncAqsFilter(&seletor)?
-        .join()?;
+        let achados = DeviceInformation::FindAllAsyncAqsFilter(&seletor)?.join()?;
 
         let mut saida = Vec::new();
         for info in achados {
             let id = info.Id()?;
-            if let Ok(dev) = BluetoothLEDevice::FromIdAsync(&id)?
-        .join() {
+            if let Ok(dev) = BluetoothLEDevice::FromIdAsync(&id)?.join() {
                 let nome = dev.Name().map(|n| n.to_string()).unwrap_or_default();
                 if let Ok(endereco) = dev.BluetoothAddress() {
                     if !nome.trim().is_empty() {

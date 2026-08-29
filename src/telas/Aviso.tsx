@@ -74,8 +74,6 @@ export function Aviso() {
 
 function legenda(assunto: Assunto, estado: Estado): string {
   if (assunto === "Desconectou") {
-    // A ultima carga conhecida vale como referencia -- "desligou com 68%" e uma
-    // informacao util -- desde que fique claro que e memoria, nao medida.
     return estado.preenchimento !== null
       ? `desconectado · ${estado.textoDaCarga} na última leitura`
       : "desconectado";

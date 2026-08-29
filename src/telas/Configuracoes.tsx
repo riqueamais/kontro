@@ -318,6 +318,12 @@ export function Configuracoes() {
           </button>
         )}
       </Linha>
+      <Linha
+        titulo="Avisar sobre versões novas"
+        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
+      >
+        <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
+      </Linha>
       <h2>Problemas</h2>
       <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
         <button
@@ -336,20 +342,11 @@ export function Configuracoes() {
           {diagnostico === "gravando" ? "Gravando..." : "Salvar"}
         </button>
       </Linha>
-
-      <Linha
-        titulo="Avisar sobre versões novas"
-        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
-      >
-        <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
-      </Linha>
     </>
   );
 }
 const tamanhos = () => TAMANHOS.map(([v]) => v);
 const opacidades = () => OPACIDADES.map(([v]) => v);
-/// O nome do degrau em que o valor esta, ou o proprio numero quando ele nao e nenhum
-/// deles -- que e o que acontece com um arquivo vindo de fora.
 function rotulo(degraus: [number, string][], valor: number): string {
   return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
 }

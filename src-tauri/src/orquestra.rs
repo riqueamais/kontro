@@ -4,9 +4,9 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
+use crate::configuracoes::{OverlayMode, Settings};
 use crate::janelas;
 use crate::modelo::{EstadoDoControle, Via};
-use crate::configuracoes::{OverlayMode, Settings};
 use crate::tela;
 use crate::tempo;
 
@@ -66,8 +66,7 @@ impl Orquestrador {
 
         let ligada = cfg.overlay_mode != OverlayMode::Desligada;
         let tem_leitura = estado.via != Via::Desligado;
-        let momento_de_jogo =
-            cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
+        let momento_de_jogo = cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
 
         let ajustando = app
             .get_webview_window(janelas::PRINCIPAL)
@@ -76,10 +75,7 @@ impl Orquestrador {
 
         let critico = !estado.carregando
             && !estado.leitura_antiga
-            && estado
-                .preenchimento
-                .map(|p| p <= cfg.critical_threshold)
-                .unwrap_or(false);
+            && estado.preenchimento.map(|p| p <= cfg.critical_threshold).unwrap_or(false);
 
         let mostrar = match mao {
             Some(escolha) => ligada && escolha,
@@ -143,9 +139,7 @@ impl Orquestrador {
         self.conexao_a_avisar = None;
         mostrar_aviso(app, estado, AvisoDeLigacao::Conectou);
     }
-}
 
-impl Orquestrador {
     fn limiares(&mut self, app: &AppHandle, estado: &EstadoDoControle, cfg: &Settings) {
         if !cfg.notifications_enabled || estado.via == Via::Desligado {
             return;
@@ -164,11 +158,7 @@ impl Orquestrador {
         }
         self.ultimo_percentual.insert(estado.chave.clone(), pct);
 
-        let nome = if estado.nome.trim().is_empty() {
-            "O controle"
-        } else {
-            estado.nome.as_str()
-        };
+        let nome = if estado.nome.trim().is_empty() { "O controle" } else { estado.nome.as_str() };
 
         for limite in [cfg.critical_threshold, cfg.warn_threshold] {
             if pct > limite || avisados.contains(&limite) {
@@ -177,11 +167,8 @@ impl Orquestrador {
             avisados.push(limite);
 
             let corpo = format!("{nome} está com {pct}% de carga.");
-            let titulo = if limite == cfg.critical_threshold {
-                "Carga crítica"
-            } else {
-                "Carga baixa"
-            };
+            let titulo =
+                if limite == cfg.critical_threshold { "Carga crítica" } else { "Carga baixa" };
 
             let _ = app.notification().builder().title(titulo).body(corpo).show();
             break;

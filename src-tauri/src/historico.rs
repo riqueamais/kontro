@@ -227,10 +227,7 @@ impl History {
         let serie = desde_a_troca(inteira);
         let agora = tempo::agora();
 
-        let dias = serie
-            .first()
-            .map(|a| (agora - a.t) / DIA_MS)
-            .unwrap_or(0);
+        let dias = serie.first().map(|a| (agora - a.t) / DIA_MS).unwrap_or(0);
 
         let carga_cheia_minutos = self.autonomia_em_minutos(chave, 100);
 
@@ -292,11 +289,8 @@ fn quebra(anterior: &Amostra, seguinte: &Amostra) -> bool {
     if anterior.desligado() {
         return true;
     }
-    let limite = if anterior.via.is_some() {
-        SALTO_DE_SEGURANCA_MS
-    } else {
-        SALTO_SEM_VIA_GRAVADA_MS
-    };
+    let limite =
+        if anterior.via.is_some() { SALTO_DE_SEGURANCA_MS } else { SALTO_SEM_VIA_GRAVADA_MS };
     seguinte.t - anterior.t > limite
 }
 
@@ -423,10 +417,7 @@ mod testes {
     #[test]
     fn um_piscar_de_conexao_nao_e_sessao() {
         let agora = tempo::agora();
-        let a = vec![
-            amostra(agora - 3 * HORA, 70),
-            amostra(agora - 3 * HORA + 5 * MINUTO, 69),
-        ];
+        let a = vec![amostra(agora - 3 * HORA, 70), amostra(agora - 3 * HORA + 5 * MINUTO, 69)];
         assert!(historico(a).sessoes("c").is_empty());
     }
 
@@ -487,10 +478,7 @@ mod testes {
     #[test]
     fn um_ponto_de_queda_nao_sustenta_uma_projecao() {
         let agora = tempo::agora();
-        let a = vec![
-            amostra(agora - 16 * MINUTO, 84),
-            amostra(agora, 83),
-        ];
+        let a = vec![amostra(agora - 16 * MINUTO, 84), amostra(agora, 83)];
         assert_eq!(
             historico(a).consumo_por_hora("c"),
             None,

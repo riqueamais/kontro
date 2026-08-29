@@ -2,6 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
+import { Config } from "./config.gerada";
+
+export type { CloseAction, Config, OverlayCorner, OverlayMode } from "./config.gerada";
+
 export type Via = "Desligado" | "Bluetooth" | "Cabo" | "SemFio";
 export type Precisao = "Nenhuma" | "Aproximada" | "Exata";
 
@@ -108,32 +112,6 @@ export function useLimiares(): Limiares {
 
 export function qualJanela(): string {
   return new URLSearchParams(window.location.search).get("janela") ?? "principal";
-}
-
-export type CloseAction = "MinimizeToTray" | "Exit";
-export type OverlayMode = "Desligada" | "EmJogo" | "Sempre";
-export type OverlayCorner =
-  | "SuperiorEsquerdo"
-  | "SuperiorDireito"
-  | "InferiorEsquerdo"
-  | "InferiorDireito";
-
-export interface Config {
-  StartWithWindows: boolean;
-  StartMinimized: boolean;
-  CloseAction: CloseAction;
-  NotificationsEnabled: boolean;
-  WarnThreshold: number;
-  CriticalThreshold: number;
-  ConnectToastEnabled: boolean;
-  OverlayMode: OverlayMode;
-  OverlayCorner: OverlayCorner;
-  OverlayMonitor: number;
-  OverlayScale: number;
-  OverlayOpacity: number;
-  AutoCheckUpdates: boolean;
-  OverlayShortcutEnabled: boolean;
-  FirstRunDone: boolean;
 }
 
 export function useConfig(): Config | null {

@@ -50,7 +50,6 @@ export function Sobreposicao() {
     </div>
   );
 }
-/// O que escrever ao lado do anel, no menor numero de caracteres que ainda diz algo.
 function resumir(estado: Estado): string {
   if (estado.girando) return "cabo";
   if (estado.precisao === "Aproximada" && estado.nivel !== null) {

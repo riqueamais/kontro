@@ -48,14 +48,17 @@ Path do controle (use direto em `Geometry.Parse`):
 Gradiente do anel no ícone do app: `#5FE083` -> `#35D7A8`, diagonal (120,80) -> (400,440).
 Na bandeja **não** use gradiente: cor plana, porque em 16px o gradiente vira lama.
 
-Limiares de cor do anel (espelham as configurações do app):
+Limiares de cor do anel: **são os mesmos que o usuário configurou para os avisos**, e
+não uma segunda escala paralela. O anel fica âmbar exatamente quando o app diz "carga
+baixa", e vermelho exatamente quando ele diz "carga crítica".
 
-    carga >= 60      AccentGreen
-    30 <= carga < 60 Amber
-    carga < 30       Red
+    carga >= WarnThreshold          AccentGreen
+    CriticalThreshold <= carga < W  Amber
+    carga < CriticalThreshold       Red
 
-Os limiares de *aviso* são configuráveis pelo usuário; a cor deve seguir o valor
-configurado, não os números acima cravados. Use os limiares de `Settings`.
+Com o padrão (avisar em 20%, crítico em 10%) o anel fica verde até 20%. Quem quiser o
+verde só acima de 60% sobe o limiar de aviso — a cor acompanha. Em Rust isso é
+`Settings::limiares()`; no front, `useLimiares()`. Nenhum dos dois crava número.
 
 ## 3. Ícones da bandeja
 

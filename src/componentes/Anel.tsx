@@ -20,12 +20,10 @@ function arco(raio: number, inicio: number, varredura: number) {
 }
 
 interface Props {
-  /** Percentual de preenchimento. Ignorado quando girando. */
   valor: number | null;
   cor: string;
   espessura: number;
   tamanho: number;
-  /** Giro continuo no lugar da carga: na energia, nao ha numero a mostrar. */
   girando?: boolean;
   children?: React.ReactNode;
 }
@@ -33,8 +31,6 @@ interface Props {
 export function Anel({ valor, cor, espessura, tamanho, girando, children }: Props) {
   const raio = (CAIXA - espessura) / 2;
 
-  // A transicao entre percentuais e animada aqui, e nao no CSS, porque o arco muda de
-  // forma e nao so de tamanho -- interpolar o atributo `d` daria um caminho invalido.
   const [suave, setSuave] = useState(valor ?? 0);
   useEffect(() => {
     if (girando) return;
@@ -50,7 +46,6 @@ export function Anel({ valor, cor, espessura, tamanho, girando, children }: Prop
     };
     quadro = requestAnimationFrame(passo);
     return () => cancelAnimationFrame(quadro);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valor, girando]);
 
   const cheio = !girando && suave >= 99.9;

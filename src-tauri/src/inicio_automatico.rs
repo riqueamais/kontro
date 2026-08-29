@@ -10,9 +10,8 @@ const NOME: windows::core::PCWSTR = w!("Kontro");
 pub fn ligado() -> bool {
     let Some(chave) = abrir(KEY_READ.0) else { return false };
     let mut tamanho = 0u32;
-    let existe = unsafe {
-        RegQueryValueExW(chave, NOME, None, None, None, Some(&mut tamanho)).is_ok()
-    };
+    let existe =
+        unsafe { RegQueryValueExW(chave, NOME, None, None, None, Some(&mut tamanho)).is_ok() };
     unsafe {
         let _ = RegCloseKey(chave);
     }
@@ -27,8 +26,7 @@ pub fn definir(ligar: bool) -> bool {
             Some(comando) => {
                 let mut unidades: Vec<u16> = comando.encode_utf16().collect();
                 unidades.push(0);
-                let bytes: Vec<u8> =
-                    unidades.iter().flat_map(|u| u.to_le_bytes()).collect();
+                let bytes: Vec<u8> = unidades.iter().flat_map(|u| u.to_le_bytes()).collect();
                 unsafe { RegSetValueExW(chave, NOME, None, REG_SZ, Some(&bytes)).is_ok() }
             }
             None => false,

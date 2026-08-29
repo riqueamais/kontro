@@ -1,10 +1,14 @@
 use tauri::image::Image;
 
+use crate::configuracoes::Limiares;
 use crate::geometria as g;
 use crate::modelo::{EstadoDoControle, Via};
-use crate::configuracoes::Limiares;
 
-pub fn desenhar(estado: &EstadoDoControle, tamanho: u32, limiares: Limiares) -> Option<Image<'static>> {
+pub fn desenhar(
+    estado: &EstadoDoControle,
+    tamanho: u32,
+    limiares: Limiares,
+) -> Option<Image<'static>> {
     rasterizar(&montar_svg(estado, limiares), tamanho)
 }
 
@@ -43,7 +47,6 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
     };
 
     let miolo = match (estado.via, estado.preenchimento) {
-
         (Via::Desligado, _) => format!(
             r##"{trilho}{}<path d="{}" stroke="{cor_glifo}" stroke-width="{}" stroke-linecap="round"/>"##,
             desenhar_glifo(g::GLIFO_APAGADO),
@@ -117,10 +120,8 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
         tiny_skia::Color::from_rgba8(0x20, 0x20, 0x20, 255)
     });
 
-    let pintura = tiny_skia::PixmapPaint {
-        quality: tiny_skia::FilterQuality::Nearest,
-        ..Default::default()
-    };
+    let pintura =
+        tiny_skia::PixmapPaint { quality: tiny_skia::FilterQuality::Nearest, ..Default::default() };
 
     for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
         let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO);
@@ -214,11 +215,7 @@ fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
 
     let mut mapa = tiny_skia::Pixmap::new(tamanho, tamanho)?;
     let escala = tamanho as f32 / g::CAIXA;
-    resvg::render(
-        &arvore,
-        tiny_skia::Transform::from_scale(escala, escala),
-        &mut mapa.as_mut(),
-    );
+    resvg::render(&arvore, tiny_skia::Transform::from_scale(escala, escala), &mut mapa.as_mut());
 
     Some(Image::new_owned(mapa.take(), tamanho, tamanho))
 }

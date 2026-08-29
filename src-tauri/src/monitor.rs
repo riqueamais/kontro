@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 
+use crate::conhecidos::Conhecidos;
 use crate::dispositivo::descoberta::{self, Controle};
 use crate::dispositivo::gatt::{self, AvisoGatt, VinculoGatt};
 use crate::dispositivo::vigia::{self, Vigia};
 use crate::dispositivo::{gaming, hid, pnp, xinput};
 use crate::historico::History;
-use crate::conhecidos::Conhecidos;
 use crate::modelo::{Bruto, EstadoDoControle, Leitura, Precisao, Via};
 use crate::tempo;
 
@@ -204,8 +204,7 @@ impl Monitor {
         let mexeram = self.avisos_do_vigia.try_iter().count() > 0;
         let desde = agora - self.ultima_descoberta;
 
-        if desde > INTERVALO_DE_DESCOBERTA_MS || (mexeram && desde > DESCANSO_DA_DESCOBERTA_MS)
-        {
+        if desde > INTERVALO_DE_DESCOBERTA_MS || (mexeram && desde > DESCANSO_DA_DESCOBERTA_MS) {
             self.descobrir(agora);
         }
     }
@@ -563,9 +562,7 @@ fn escolher_principal(estados: &[EstadoDoControle]) -> Option<&EstadoDoControle>
 
     let candidatos = if ligados.is_empty() { estados.iter().collect() } else { ligados };
 
-    candidatos
-        .into_iter()
-        .min_by_key(|e| (e.preenchimento.is_none(), e.preenchimento.unwrap_or(0)))
+    candidatos.into_iter().min_by_key(|e| (e.preenchimento.is_none(), e.preenchimento.unwrap_or(0)))
 }
 
 fn no_cabo() -> bool {
@@ -684,10 +681,8 @@ mod testes {
 
     #[test]
     fn o_icone_mostra_quem_esta_pior() {
-        let lista = [
-            estado("cheio", Some(90), Via::Bluetooth),
-            estado("vazio", Some(12), Via::SemFio),
-        ];
+        let lista =
+            [estado("cheio", Some(90), Via::Bluetooth), estado("vazio", Some(12), Via::SemFio)];
         assert_eq!(escolher_principal(&lista).unwrap().chave, "vazio");
     }
 

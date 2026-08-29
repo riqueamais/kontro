@@ -1,33 +1,34 @@
 mod atalho;
 mod atualizacao;
-mod inicio_automatico;
-mod dispositivo;
+mod bandeja;
+mod caminhos;
+mod configuracoes;
+mod conhecidos;
 mod diagnostico;
+mod dispositivo;
 mod geometria;
+mod gerados;
 mod historico;
 mod icones;
+mod inicio_automatico;
 mod janelas;
-mod conhecidos;
 mod modelo;
 mod monitor;
 mod orquestra;
-mod caminhos;
-mod configuracoes;
 mod tela;
 mod tempo;
-mod bandeja;
 
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use tauri::menu::{Menu, MenuItem};
-use tauri_plugin_notification::NotificationExt;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_notification::NotificationExt;
 
+use crate::configuracoes::{CloseAction, Limiares, Settings};
 use crate::historico::{Amostra, Sessao};
 use crate::modelo::EstadoDoControle;
-use crate::configuracoes::{CloseAction, Limiares, Settings};
 
 pub struct Compartilhado {
     estado: Mutex<EstadoDoControle>,
@@ -52,10 +53,8 @@ const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
 pub fn executar() {
     let argumentos: Vec<String> = std::env::args().collect();
     if let Some(i) = argumentos.iter().position(|a| a == "--diagnose") {
-        let destino = argumentos
-            .get(i + 1)
-            .cloned()
-            .unwrap_or_else(|| "kontro-diagnostico.txt".to_string());
+        let destino =
+            argumentos.get(i + 1).cloned().unwrap_or_else(|| "kontro-diagnostico.txt".to_string());
 
         dispositivo::iniciar_apartamento();
         match diagnostico::escrever(&destino, None) {
@@ -79,11 +78,11 @@ pub fn executar() {
         return;
     }
 
-    if let Some(i) = argumentos.iter().position(|a| a == "--gerar-icones") {
+    if let Some(i) = argumentos.iter().position(|a| a == "--gerar") {
         let raiz = argumentos.get(i + 1).cloned().unwrap_or_else(|| ".".into());
-        match icones::gerar(&raiz) {
-            Ok(()) => println!("icones redesenhados a partir de {raiz}"),
-            Err(e) => eprintln!("nao consegui gravar os icones: {e}"),
+        match gerados::tudo(&raiz) {
+            Ok(()) => println!("artefatos redesenhados a partir de {raiz}"),
+            Err(e) => eprintln!("nao consegui gravar os artefatos: {e}"),
         }
         return;
     }
@@ -293,13 +292,7 @@ fn iniciar_ciclo(
 }
 
 fn ligados(compartilhado: &Compartilhado) -> usize {
-    compartilhado
-        .todos
-        .lock()
-        .unwrap()
-        .iter()
-        .filter(|e| e.via != modelo::Via::Desligado)
-        .count()
+    compartilhado.todos.lock().unwrap().iter().filter(|e| e.via != modelo::Via::Desligado).count()
 }
 
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
@@ -328,7 +321,12 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
             _ => {}
         })
         .on_tray_icon_event(|icone, evento| {
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = evento {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = evento
+            {
                 let app = icone.app_handle();
                 if let Some(painel) = app.get_webview_window(janelas::PAINEL) {
                     if painel.is_visible().unwrap_or(false) {
@@ -354,10 +352,7 @@ fn atualizar_bandeja(
 ) {
     let Some(bandeja) = app.tray_by_id("kontro") else { return };
 
-    let dica = format!(
-        "{} - {} - {}",
-        estado.nome, estado.texto_da_carga, estado.texto_da_ligacao
-    );
+    let dica = format!("{} - {} - {}", estado.nome, estado.texto_da_carga, estado.texto_da_ligacao);
     let _ = bandeja.set_tooltip(Some(dica));
 
     let tamanho = bandeja::tamanho_do_icone();
@@ -500,40 +495,21 @@ struct Busca {
 }
 
 #[tauri::command]
-fn procurar_atualizacao(
-    app: AppHandle,
-    compartilhado: tauri::State<Arc<Compartilhado>>,
-) -> Busca {
+fn procurar_atualizacao(app: AppHandle, compartilhado: tauri::State<Arc<Compartilhado>>) -> Busca {
     let atual = env!("CARGO_PKG_VERSION").to_string();
 
     match atualizacao::procurar(&app) {
         atualizacao::Consulta::Nova(n) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
-            Busca {
-                estado: "nova",
-                versao: Some(n.versao),
-                notas: n.notas,
-                atual,
-                motivo: None,
-            }
+            Busca { estado: "nova", versao: Some(n.versao), notas: n.notas, atual, motivo: None }
         }
         atualizacao::Consulta::EmDia => {
             *compartilhado.novidade.lock().unwrap() = None;
-            Busca {
-                estado: "em-dia",
-                versao: None,
-                notas: None,
-                atual,
-                motivo: None,
-            }
+            Busca { estado: "em-dia", versao: None, notas: None, atual, motivo: None }
         }
-        atualizacao::Consulta::Falhou(motivo) => Busca {
-            estado: "falhou",
-            versao: None,
-            notas: None,
-            atual,
-            motivo: Some(motivo),
-        },
+        atualizacao::Consulta::Falhou(motivo) => {
+            Busca { estado: "falhou", versao: None, notas: None, atual, motivo: Some(motivo) }
+        }
     }
 }
 
@@ -547,18 +523,11 @@ fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result
     caminhos::garantir_dir();
     diagnostico::escrever(
         &destino.to_string_lossy(),
-        Some(diagnostico::AoVivo {
-            principal: &principal,
-            estados: &estados,
-            sessoes: &sessoes,
-        }),
+        Some(diagnostico::AoVivo { principal: &principal, estados: &estados, sessoes: &sessoes }),
     )
     .map_err(|e| e.to_string())?;
 
-    let _ = std::process::Command::new("explorer")
-        .arg("/select,")
-        .arg(&destino)
-        .spawn();
+    let _ = std::process::Command::new("explorer").arg("/select,").arg(&destino).spawn();
 
     Ok(destino.to_string_lossy().to_string())
 }

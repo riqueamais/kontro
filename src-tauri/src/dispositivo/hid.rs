@@ -45,7 +45,8 @@ fn por_recurso(dispositivo: &HidDevice) -> Option<Leitura> {
 
     for descricao in descricoes {
         let id = descricao.ReportId().ok()?;
-        let Ok(relatorio) = dispositivo.GetFeatureReportByIdAsync(id).and_then(|op| op.join()) else {
+        let Ok(relatorio) = dispositivo.GetFeatureReportByIdAsync(id).and_then(|op| op.join())
+        else {
             continue;
         };
         let Ok(controle) =
@@ -92,9 +93,8 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
     }
 
     let relatorio = resposta.ok()?.ok()?;
-    let controle = relatorio
-        .GetNumericControl(PAGINA_CONTROLES_GENERICOS, USO_CARGA_DA_BATERIA)
-        .ok()?;
+    let controle =
+        relatorio.GetNumericControl(PAGINA_CONTROLES_GENERICOS, USO_CARGA_DA_BATERIA).ok()?;
     escalar(controle.Value().ok()?, minimo.into(), maximo.into())
 }
 

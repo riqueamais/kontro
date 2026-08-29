@@ -66,13 +66,7 @@ pub fn pad_com_sticks_vazados() -> String {
 
 fn circulo((cx, cy): (f32, f32)) -> String {
     let r = STICK_RAIO;
-    format!(
-        "M{} {} a{r} {r} 0 1 0 {} 0 a{r} {r} 0 1 0 -{} 0 Z",
-        cx - r,
-        cy,
-        r * 2.0,
-        r * 2.0
-    )
+    format!("M{} {} a{r} {r} 0 1 0 {} 0 a{r} {r} 0 1 0 -{} 0 Z", cx - r, cy, r * 2.0, r * 2.0)
 }
 
 pub fn arco(varredura: f32) -> String {

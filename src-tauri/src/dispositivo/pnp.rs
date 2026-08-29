@@ -108,10 +108,7 @@ pub fn texto(props: &IMapView<HSTRING, IInspectable>, chave: &str) -> String {
     valor(props, chave).and_then(|v| como_texto(&v)).unwrap_or_default()
 }
 
-fn valor(
-    props: &IMapView<HSTRING, IInspectable>,
-    chave: &str,
-) -> Option<IInspectable> {
+fn valor(props: &IMapView<HSTRING, IInspectable>, chave: &str) -> Option<IInspectable> {
     let chave = HSTRING::from(chave);
     if !props.HasKey(&chave).unwrap_or(false) {
         return None;

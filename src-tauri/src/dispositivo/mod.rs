@@ -1,10 +1,10 @@
+pub mod descoberta;
 pub mod gaming;
 pub mod gatt;
 pub mod hid;
 pub mod pnp;
-pub mod xinput;
-pub mod descoberta;
 pub mod vigia;
+pub mod xinput;
 
 pub fn sem_resposta() -> windows::core::Error {
     windows::core::Error::from_hresult(windows::core::HRESULT(0x8000_4005_u32 as i32))

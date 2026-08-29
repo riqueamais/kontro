@@ -50,9 +50,7 @@ fn descrever(erro: &tauri_plugin_updater::Error) -> String {
     match erro {
         Error::Reqwest(_) | Error::Io(_) => "não foi possível falar com o GitHub".into(),
         Error::ReleaseNotFound => "o GitHub respondeu sem uma release legível".into(),
-        Error::Serialization(_) | Error::Semver(_) => {
-            "a resposta do GitHub veio ilegível".into()
-        }
+        Error::Serialization(_) | Error::Semver(_) => "a resposta do GitHub veio ilegível".into(),
         Error::TargetNotFound(_) | Error::TargetsNotFound(_) => {
             "a release publicada não traz pacote para este sistema".into()
         }

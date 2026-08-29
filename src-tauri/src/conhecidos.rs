@@ -128,7 +128,8 @@ impl Conhecidos {
             let chave = d.chave();
             let achado = self.itens.iter_mut().find(|i| {
                 i.como_controle().chave() == chave
-                    || (!d.container.is_empty() && i.container_id.eq_ignore_ascii_case(&d.container))
+                    || (!d.container.is_empty()
+                        && i.container_id.eq_ignore_ascii_case(&d.container))
             });
 
             match achado {
@@ -179,8 +180,7 @@ impl Conhecidos {
     }
 
     pub fn renomear(&mut self, chave: &str, nome: &str) -> bool {
-        let Some(item) = self.itens.iter_mut().find(|i| i.como_controle().chave() == chave)
-        else {
+        let Some(item) = self.itens.iter_mut().find(|i| i.como_controle().chave() == chave) else {
             return false;
         };
 
