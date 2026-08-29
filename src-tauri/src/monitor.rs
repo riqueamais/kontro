@@ -82,7 +82,7 @@ pub struct Monitor {
     pareados: Vec<(u64, String)>,
     pareados_em: i64,
 
-    em_observacao: Option<(String, i32, i64)>,
+    em_observacao: Option<(String, i32, i64, LinkMode)>,
     conectado_desde: Option<i64>,
     tentativa_de_vinculo: i64,
 
@@ -145,7 +145,7 @@ impl Monitor {
         while let Ok(aviso) = self.recebimento.try_recv() {
             let AvisoGatt::Carga { endereco, percent } = aviso;
             let chave = format!("{endereco:012x}");
-            self.gravar(&chave, percent, agora, false);
+            self.gravar(&chave, percent, agora, false, LinkMode::Bluetooth);
         }
 
         let controles: Vec<Controle> =
@@ -173,7 +173,7 @@ impl Monitor {
 
             let dele = self.vinculo.as_ref().map(|v| v.endereco()) == Some(endereco);
             if modo != LinkMode::Offline && !dele {
-                self.ler_sem_bluetooth(controle, agora);
+                self.ler_sem_bluetooth(controle, modo, agora);
             }
 
             estados.push(self.montar_um(controle, modo, agora));
@@ -263,7 +263,7 @@ impl Monitor {
         self.conectado_desde = Some(agora);
 
         if let Some(pct) = inicial {
-            self.gravar(&controle.chave(), pct, agora, true);
+            self.gravar(&controle.chave(), pct, agora, true, LinkMode::Bluetooth);
         }
     }
 
@@ -272,14 +272,14 @@ impl Monitor {
         self.conectado_desde = None;
     }
 
-    fn gravar(&mut self, chave: &str, percent: i32, agora: i64, provisorio: bool) {
+    fn gravar(&mut self, chave: &str, percent: i32, agora: i64, provisorio: bool, via: LinkMode) {
         if !(0..=100).contains(&percent) {
             return;
         }
         let registro = self.leituras.entry(chave.to_string()).or_default();
 
         if provisorio {
-            self.em_observacao = Some((chave.to_string(), percent, agora));
+            self.em_observacao = Some((chave.to_string(), percent, agora, via));
 
             if registro.precisao == Precisao::Exata && registro.percent.is_some() {
                 return;
@@ -300,18 +300,18 @@ impl Monitor {
         registro.em = Some(agora);
         registro.provisorio = false;
         registro.incerto = false;
-        self.historico.adicionar(chave, percent, agora);
+        self.historico.adicionar(chave, percent, agora, via);
     }
 
     fn confirmar_em_observacao(&mut self, agora: i64) {
-        let Some((chave, percent, quando)) = self.em_observacao.clone() else { return };
+        let Some((chave, percent, quando, via)) = self.em_observacao.clone() else { return };
         if agora - quando < ESPERA_DE_CONFIRMACAO_MS {
             return;
         }
-        self.gravar(&chave, percent, agora, false);
+        self.gravar(&chave, percent, agora, false, via);
     }
 
-    fn ler_sem_bluetooth(&mut self, controle: &Controle, agora: i64) {
+    fn ler_sem_bluetooth(&mut self, controle: &Controle, modo: LinkMode, agora: i64) {
         let chave = controle.chave();
         {
             let registro = self.leituras.entry(chave.clone()).or_default();
@@ -384,7 +384,7 @@ impl Monitor {
             registro.percent = Some(leitura.valor);
             registro.nivel = None;
             if !incerto {
-                self.historico.adicionar(&chave, leitura.valor, em);
+                self.historico.adicionar(&chave, leitura.valor, em, modo);
             }
         } else {
             registro.nivel = Some(leitura.valor);
@@ -400,8 +400,14 @@ impl Monitor {
         if registro.via == modo {
             return;
         }
+        let saiu_do_ar = modo == LinkMode::Offline && registro.via != LinkMode::Offline;
+        let ultimo = registro.percent.filter(|_| registro.precisao == Precisao::Exata);
         registro.via = modo;
         registro.via_desde = agora;
+
+        if let (true, Some(percent)) = (saiu_do_ar, ultimo) {
+            self.historico.marcar_desligado(chave, percent, agora);
+        }
     }
 
     fn talvez_salvar(&mut self, agora: i64) {
@@ -493,7 +499,7 @@ impl Monitor {
         if let Some(vinculo) = &self.vinculo {
             let endereco = vinculo.endereco();
             if let Some(pct) = gatt::reler(vinculo) {
-                self.gravar(&format!("{endereco:012x}"), pct, agora, false);
+                self.gravar(&format!("{endereco:012x}"), pct, agora, false, LinkMode::Bluetooth);
             }
         }
 

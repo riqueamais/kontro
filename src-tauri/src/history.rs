@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::model::LinkMode;
 use crate::{paths, tempo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,12 +11,25 @@ struct AmostraEmDisco {
     t: String,
     #[serde(rename = "P")]
     p: i32,
+    #[serde(rename = "V", default, skip_serializing_if = "Option::is_none")]
+    v: Option<LinkMode>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Amostra {
     pub t: i64,
     pub p: i32,
+    pub via: Option<LinkMode>,
+}
+
+impl Amostra {
+    fn desligado(&self) -> bool {
+        self.via == Some(LinkMode::Offline)
+    }
+
+    fn no_cabo(&self) -> bool {
+        self.via == Some(LinkMode::Cable)
+    }
 }
 
 #[derive(Debug, Default)]
@@ -32,7 +46,8 @@ const DIA_MS: i64 = 24 * 60 * 60 * 1000;
 const DIAS_PARA_COMPARAR: i64 = 14;
 const HORAS_MINIMAS_POR_JANELA: f64 = 2.0;
 const VARIACAO_QUE_IMPORTA: f64 = 15.0;
-const SALTO_QUE_QUEBRA_O_TRECHO_MS: i64 = 30 * 60 * 1000;
+const SALTO_SEM_VIA_GRAVADA_MS: i64 = 30 * 60 * 1000;
+const SALTO_DE_SEGURANCA_MS: i64 = 6 * 60 * 60 * 1000;
 const SUBIDA_QUE_DENUNCIA_TROCA: i32 = 15;
 const SUBIDA_INSTANTANEA_MS: i64 = 5 * 60 * 1000;
 const DURACAO_MINIMA_DE_SESSAO_MS: i64 = 10 * 60 * 1000;
@@ -80,7 +95,7 @@ impl History {
             .map(|(chave, serie)| {
                 let mut convertida: Vec<Amostra> = serie
                     .into_iter()
-                    .filter_map(|a| tempo::de_texto(&a.t).map(|t| Amostra { t, p: a.p }))
+                    .filter_map(|a| tempo::de_texto(&a.t).map(|t| Amostra { t, p: a.p, via: a.v }))
                     .filter(|a| a.t >= corte)
                     .collect();
                 convertida.sort_by_key(|a| a.t);
@@ -112,22 +127,36 @@ impl History {
         }
     }
 
-    pub fn adicionar(&mut self, chave: &str, percent: i32, quando: i64) {
+    pub fn adicionar(&mut self, chave: &str, percent: i32, quando: i64, via: LinkMode) {
         let serie = self.por_controle.entry(chave.to_string()).or_default();
 
         if let Some(u) = serie.last().copied() {
             if quando <= u.t && u.p == percent {
                 return;
             }
-            let mudou = u.p != percent;
+            let mudou = u.p != percent || u.desligado();
             let vencido = quando - u.t > DEZ_MINUTOS_MS;
             if !mudou && !vencido {
                 return;
             }
         }
 
-        serie.push(Amostra { t: quando, p: percent });
+        serie.push(Amostra { t: quando, p: percent, via: Some(via) });
         serie.sort_by_key(|a| a.t);
+        self.sujo = true;
+    }
+
+    pub fn marcar_desligado(&mut self, chave: &str, percent: i32, quando: i64) {
+        let serie = self.por_controle.entry(chave.to_string()).or_default();
+
+        match serie.last() {
+            None => return,
+            Some(u) if u.desligado() => return,
+            Some(u) if quando <= u.t => return,
+            _ => {}
+        }
+
+        serie.push(Amostra { t: quando, p: percent, via: Some(LinkMode::Offline) });
         self.sujo = true;
     }
 
@@ -140,7 +169,7 @@ impl History {
             .map(|(chave, serie)| {
                 let convertida = serie
                     .iter()
-                    .map(|a| AmostraEmDisco { t: tempo::para_texto(a.t), p: a.p })
+                    .map(|a| AmostraEmDisco { t: tempo::para_texto(a.t), p: a.p, v: a.via })
                     .collect();
                 (chave, convertida)
             })
@@ -174,9 +203,7 @@ impl History {
 
         while i < serie.len() {
             let inicio = i;
-            while i + 1 < serie.len()
-                && serie[i + 1].t - serie[i].t <= SALTO_QUE_QUEBRA_O_TRECHO_MS
-            {
+            while i + 1 < serie.len() && !quebra(&serie[i], &serie[i + 1]) {
                 i += 1;
             }
             if serie[i].t - serie[inicio].t >= DURACAO_MINIMA_DE_SESSAO_MS {
@@ -261,15 +288,40 @@ fn quantas(por_controle: &HashMap<String, Vec<Amostra>>) -> usize {
     por_controle.values().map(|s| s.len()).sum()
 }
 
+fn quebra(anterior: &Amostra, seguinte: &Amostra) -> bool {
+    if anterior.desligado() {
+        return true;
+    }
+    let limite = if anterior.via.is_some() {
+        SALTO_DE_SEGURANCA_MS
+    } else {
+        SALTO_SEM_VIA_GRAVADA_MS
+    };
+    seguinte.t - anterior.t > limite
+}
+
+fn troca_de_bateria(serie: &[Amostra], i: usize) -> bool {
+    let (antes, depois) = (serie[i], serie[i + 1]);
+
+    if depois.p - antes.p < SUBIDA_QUE_DENUNCIA_TROCA {
+        return false;
+    }
+    if depois.t - antes.t > SUBIDA_INSTANTANEA_MS {
+        return false;
+    }
+    if antes.no_cabo() || depois.no_cabo() {
+        return false;
+    }
+    let vinha_subindo = i > 0 && antes.p > serie[i - 1].p;
+    let segue_subindo = i + 2 < serie.len() && serie[i + 2].p > depois.p;
+    !vinha_subindo && !segue_subindo
+}
+
 fn ultima_troca(serie: &[Amostra]) -> Option<i64> {
-    serie
-        .windows(2)
+    (0..serie.len().saturating_sub(1))
         .rev()
-        .find(|par| {
-            par[1].p - par[0].p >= SUBIDA_QUE_DENUNCIA_TROCA
-                && par[1].t - par[0].t <= SUBIDA_INSTANTANEA_MS
-        })
-        .map(|par| par[1].t)
+        .find(|&i| troca_de_bateria(serie, i))
+        .map(|i| serie[i + 1].t)
 }
 
 fn desde_a_troca(serie: &[Amostra]) -> &[Amostra] {
@@ -283,8 +335,7 @@ fn descargas(serie: &[Amostra]) -> Vec<Descarga> {
     let mut i = 0;
 
     while i + 1 < serie.len() {
-        if serie[i + 1].p >= serie[i].p || serie[i + 1].t - serie[i].t > SALTO_QUE_QUEBRA_O_TRECHO_MS
-        {
+        if serie[i + 1].p >= serie[i].p || quebra(&serie[i], &serie[i + 1]) {
             i += 1;
             continue;
         }
@@ -293,7 +344,7 @@ fn descargas(serie: &[Amostra]) -> Vec<Descarga> {
         let mut fim = i + 1;
         while fim + 1 < serie.len()
             && serie[fim + 1].p <= serie[fim].p
-            && serie[fim + 1].t - serie[fim].t <= SALTO_QUE_QUEBRA_O_TRECHO_MS
+            && !quebra(&serie[fim], &serie[fim + 1])
         {
             fim += 1;
         }
@@ -330,13 +381,23 @@ mod testes {
     const MINUTO: i64 = 60_000;
     const HORA: i64 = 60 * MINUTO;
 
+    fn amostra(t: i64, p: i32) -> Amostra {
+        Amostra { t, p, via: None }
+    }
+
+    fn com_via(t: i64, p: i32, via: LinkMode) -> Amostra {
+        Amostra { t, p, via: Some(via) }
+    }
+
     fn sessao(comeca_h_atras: i64, duracao_h: i64, de: i32, ate: i32) -> Vec<Amostra> {
         let agora = tempo::agora();
         let passos = duracao_h * 6;
         (0..=passos)
-            .map(|i| Amostra {
-                t: agora - comeca_h_atras * HORA + i * 10 * MINUTO,
-                p: de + ((ate - de) as i64 * i / passos) as i32,
+            .map(|i| {
+                amostra(
+                    agora - comeca_h_atras * HORA + i * 10 * MINUTO,
+                    de + ((ate - de) as i64 * i / passos) as i32,
+                )
             })
             .collect()
     }
@@ -363,8 +424,8 @@ mod testes {
     fn um_piscar_de_conexao_nao_e_sessao() {
         let agora = tempo::agora();
         let a = vec![
-            Amostra { t: agora - 3 * HORA, p: 70 },
-            Amostra { t: agora - 3 * HORA + 5 * MINUTO, p: 69 },
+            amostra(agora - 3 * HORA, 70),
+            amostra(agora - 3 * HORA + 5 * MINUTO, 69),
         ];
         assert!(historico(a).sessoes("c").is_empty());
     }
@@ -427,8 +488,8 @@ mod testes {
     fn um_ponto_de_queda_nao_sustenta_uma_projecao() {
         let agora = tempo::agora();
         let a = vec![
-            Amostra { t: agora - 16 * MINUTO, p: 84 },
-            Amostra { t: agora, p: 83 },
+            amostra(agora - 16 * MINUTO, 84),
+            amostra(agora, 83),
         ];
         assert_eq!(
             historico(a).consumo_por_hora("c"),
@@ -444,7 +505,7 @@ mod testes {
     }
 
     fn com_troca(momento_h_atras: i64, para: i32) -> Amostra {
-        Amostra { t: tempo::agora() - momento_h_atras * HORA + MINUTO, p: para }
+        amostra(tempo::agora() - momento_h_atras * HORA + MINUTO, para)
     }
 
     fn duas_baterias(com_a_troca: bool) -> Vec<Amostra> {
@@ -474,6 +535,88 @@ mod testes {
         let s = historico(duas_baterias(false)).saude("c");
         assert_eq!(s.estado, "melhorando", "sem a troca ha o que comparar");
         assert_eq!(s.trocada_em, None);
+    }
+
+    #[test]
+    fn carregar_no_cabo_nao_e_trocar() {
+        let agora = tempo::agora();
+        let a = vec![
+            com_via(agora - 20 * MINUTO, 12, LinkMode::Cable),
+            com_via(agora - 18 * MINUTO, 40, LinkMode::Cable),
+        ];
+        assert_eq!(
+            ultima_troca(&historico(a).por_controle["c"]),
+            None,
+            "a subida aconteceu com o cabo na mao, e o app estava vendo"
+        );
+    }
+
+    #[test]
+    fn a_subida_encadeada_de_uma_carga_nao_e_troca() {
+        let agora = tempo::agora();
+        let a = vec![
+            amostra(agora - 130 * MINUTO, 12),
+            amostra(agora - 61 * MINUTO, 51),
+            amostra(agora - 60 * MINUTO, 87),
+            amostra(agora - 50 * MINUTO, 86),
+        ];
+        assert_eq!(
+            ultima_troca(&historico(a).por_controle["c"]),
+            None,
+            "12 -> 51 -> 87 e uma carga subindo, nao uma pilha nova no meio dela"
+        );
+    }
+
+    #[test]
+    fn desligar_quebra_a_sessao_mesmo_sem_buraco_no_relogio() {
+        let agora = tempo::agora();
+        let a = vec![
+            com_via(agora - 60 * MINUTO, 70, LinkMode::Bluetooth),
+            com_via(agora - 50 * MINUTO, 70, LinkMode::Offline),
+            com_via(agora - 45 * MINUTO, 65, LinkMode::Bluetooth),
+            com_via(agora - 5 * MINUTO, 60, LinkMode::Bluetooth),
+        ];
+        let s = historico(a).sessoes("c");
+        assert_eq!(s.len(), 2, "o desligamento gravado separa as duas");
+        assert_eq!((s[0].de, s[0].ate), (65, 60));
+    }
+
+    #[test]
+    fn com_a_via_gravada_meia_hora_sem_leitura_nao_quebra_a_sessao() {
+        let agora = tempo::agora();
+        let a = vec![
+            com_via(agora - 60 * MINUTO, 70, LinkMode::Bluetooth),
+            com_via(agora - 15 * MINUTO, 65, LinkMode::Bluetooth),
+        ];
+        let s = historico(a).sessoes("c");
+        assert_eq!(s.len(), 1, "o GATT so avisa quando muda: 45 min calado e uso, nao ausencia");
+        assert_eq!(s[0].fim - s[0].inicio, 45 * MINUTO);
+    }
+
+    #[test]
+    fn sem_via_gravada_o_relogio_continua_valendo() {
+        let agora = tempo::agora();
+        let a = vec![amostra(agora - 60 * MINUTO, 70), amostra(agora - 15 * MINUTO, 65)];
+        assert!(
+            historico(a).sessoes("c").is_empty(),
+            "serie antiga nao tem a via, entao ela mantem a regra dos 30 min"
+        );
+    }
+
+    #[test]
+    fn o_marcador_de_desligado_nao_se_repete() {
+        let agora = tempo::agora();
+        let mut h = historico(vec![com_via(agora - 30 * MINUTO, 70, LinkMode::Bluetooth)]);
+        h.marcar_desligado("c", 70, agora - 20 * MINUTO);
+        h.marcar_desligado("c", 70, agora - 10 * MINUTO);
+        assert_eq!(h.serie("c").len(), 2);
+    }
+
+    #[test]
+    fn nao_ha_o_que_marcar_num_controle_sem_serie() {
+        let mut h = History::default();
+        h.marcar_desligado("c", 70, tempo::agora());
+        assert!(h.serie("c").is_empty());
     }
 
     #[test]

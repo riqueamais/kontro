@@ -4,7 +4,8 @@ import { Amostra } from "../estado";
 import "./historico.css";
 
 const DIA = 86_400_000;
-const INTERVALO_QUE_QUEBRA = 30 * 60_000;
+const SALTO_SEM_VIA_GRAVADA = 30 * 60_000;
+const SALTO_DE_SEGURANCA = 6 * 60 * 60_000;
 
 const LARGURA = 520;
 const ALTO = { topo: 10, direita: 10, base: 20, esquerda: 32, altura: 150 };
@@ -174,7 +175,7 @@ function segmentar(serie: Amostra[], inicio: number, fim: number): Amostra[][] {
   for (const a of serie) {
     if (a.t < inicio || a.t > fim) continue;
     const anterior = atual[atual.length - 1];
-    if (anterior && a.t - anterior.t > INTERVALO_QUE_QUEBRA) {
+    if (anterior && quebra(anterior, a)) {
       trechos.push(atual);
       atual = [];
     }
@@ -182,6 +183,12 @@ function segmentar(serie: Amostra[], inicio: number, fim: number): Amostra[][] {
   }
   if (atual.length) trechos.push(atual);
   return trechos;
+}
+
+function quebra(anterior: Amostra, seguinte: Amostra): boolean {
+  if (anterior.via === "Offline") return true;
+  const limite = anterior.via ? SALTO_DE_SEGURANCA : SALTO_SEM_VIA_GRAVADA;
+  return seguinte.t - anterior.t > limite;
 }
 
 function caminho(

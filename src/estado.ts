@@ -29,6 +29,7 @@ export interface Estado {
 export interface Amostra {
   t: number;
   p: number;
+  via: LinkMode | null;
 }
 
 export interface Sessao {
