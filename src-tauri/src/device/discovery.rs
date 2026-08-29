@@ -161,32 +161,11 @@ fn por_uso(uso: u16) -> Result<Vec<GamepadHid>> {
     for info in achados {
         let id = info.Id()?.to_string();
         let propriedades = info.Properties()?;
-        let texto = |chave: &str| -> String {
-            let chave = HSTRING::from(chave);
-            propriedades
-                .HasKey(&chave)
-                .ok()
-                .and_then(|tem| tem.then(|| propriedades.Lookup(&chave).ok()).flatten())
-                .and_then(|v| {
-                    use windows::core::Interface;
-                    let pv: windows::Foundation::IPropertyValue = v.cast().ok()?;
-                    match pv.Type().ok()? {
-                        windows::Foundation::PropertyType::String => {
-                            pv.GetString().ok().map(|s| s.to_string())
-                        }
-                        windows::Foundation::PropertyType::Guid => {
-                            pv.GetGuid().ok().map(|g| format!("{g:?}"))
-                        }
-                        _ => None,
-                    }
-                })
-                .unwrap_or_default()
-        };
 
         saida.push(GamepadHid {
             endereco: extrair_endereco(&id),
-            id_instancia: texto(pnp::CHAVE_INSTANCIA),
-            container: texto(pnp::CHAVE_CONTAINER),
+            id_instancia: pnp::texto(&propriedades, pnp::CHAVE_INSTANCIA),
+            container: pnp::texto(&propriedades, pnp::CHAVE_CONTAINER),
             nome: info.Name()?.to_string(),
             id_hid: id,
         });
@@ -253,31 +232,10 @@ fn dispositivos_xusb() -> Vec<(String, String, String)> {
         let mut saida = Vec::new();
         for info in achados {
             let propriedades = info.Properties()?;
-            let texto = |chave: &str| -> String {
-                use windows::core::Interface;
-                let chave = HSTRING::from(chave);
-                propriedades
-                    .HasKey(&chave)
-                    .ok()
-                    .and_then(|tem| tem.then(|| propriedades.Lookup(&chave).ok()).flatten())
-                    .and_then(|v| {
-                        let pv: windows::Foundation::IPropertyValue = v.cast().ok()?;
-                        match pv.Type().ok()? {
-                            windows::Foundation::PropertyType::String => {
-                                pv.GetString().ok().map(|s| s.to_string())
-                            }
-                            windows::Foundation::PropertyType::Guid => {
-                                pv.GetGuid().ok().map(|g| format!("{g:?}"))
-                            }
-                            _ => None,
-                        }
-                    })
-                    .unwrap_or_default()
-            };
             saida.push((
-                texto(pnp::CHAVE_CONTAINER),
+                pnp::texto(&propriedades, pnp::CHAVE_CONTAINER),
                 info.Name()?.to_string(),
-                texto(pnp::CHAVE_INSTANCIA),
+                pnp::texto(&propriedades, pnp::CHAVE_INSTANCIA),
             ));
         }
         Ok(saida)

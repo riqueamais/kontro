@@ -1,3 +1,4 @@
+import { diaEMes, duracao } from "../formato";
 import "./saude.css";
 
 export interface Saude {
@@ -21,7 +22,7 @@ export function Saude({ saude }: { saude: Saude | null }) {
       <div className="explica">{detalhe(saude)}</div>
       {saude.cargaCheiaMinutos && (
         <div className="carga-cheia">
-          Uma carga cheia dura <strong>{duracaoLonga(saude.cargaCheiaMinutos)}</strong> neste
+          Uma carga cheia dura <strong>{duracao(saude.cargaCheiaMinutos)}</strong> neste
           controle.
         </div>
       )}
@@ -36,19 +37,12 @@ export function Saude({ saude }: { saude: Saude | null }) {
   );
 }
 
-function duracaoLonga(minutos: number): string {
-  if (minutos < 60) return `${minutos} min`;
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  return m > 0 ? `${h} h ${m} min` : `${h} h`;
-}
-
 function titulo(s: Saude): string {
   switch (s.estado) {
     case "piorando":
-      return `Durando ${duracao(s)}% menos`;
+      return `Durando ${quantoMudou(s)}% menos`;
     case "melhorando":
-      return `Durando ${duracao(s)}% mais`;
+      return `Durando ${quantoMudou(s)}% mais`;
     case "estavel":
       return "Consumo estável";
     default:
@@ -56,7 +50,7 @@ function titulo(s: Saude): string {
   }
 }
 
-function duracao(s: Saude): number {
+function quantoMudou(s: Saude): number {
   const recente = s.consumoRecente ?? 0;
   const antes = s.consumoAntes ?? 0;
   if (recente <= 0 || antes <= 0) return 0;
@@ -68,7 +62,7 @@ function detalhe(s: Saude): string {
   if (s.estado === "medindo") {
     const faltam = Math.max(0, DIAS_PARA_COMPARAR - s.dias);
     const desde = s.trocadaEm
-      ? `Contando desde a troca, em ${new Date(s.trocadaEm).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}. `
+      ? `Contando desde a troca, em ${diaEMes(new Date(s.trocadaEm))}. `
       : "";
 
     if (s.dias === 0) return `${desde}Preciso de duas semanas de uso para comparar.`;

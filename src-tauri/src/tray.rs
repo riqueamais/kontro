@@ -14,17 +14,21 @@ pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
     let raio = g::ANEL_RAIO;
     let grossura = g::ANEL_LARGURA;
 
-    let cor_glifo = "#FFFFFF";
+    let cor_glifo = g::BRANCO;
 
     let fundo = format!(
-        r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="{}"/><circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="8"/>"##,
+        r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="{}"/><circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{}"/>"##,
         g::FUNDO_RAIO,
         g::FUNDO,
-        g::FUNDO_RAIO - 4.0
+        g::FUNDO_RAIO - g::BORDA_LARGURA / 2.0,
+        g::BRANCO,
+        g::BORDA_OPACIDADE,
+        g::BORDA_LARGURA
     );
 
     let trilho = format!(
-        r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="0.22" stroke-width="{grossura}"/>"##
+        r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="{}" stroke-width="{grossura}"/>"##,
+        g::TRILHO_OPACIDADE
     );
 
     let desenhar_glifo = |opacidade: f32| {
@@ -41,8 +45,10 @@ pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
     let miolo = match (estado.mode, estado.preenchimento) {
 
         (LinkMode::Offline, _) => format!(
-            r##"{trilho}{}<path d="M120 392 L392 120" stroke="{cor_glifo}" stroke-width="46" stroke-linecap="round"/>"##,
-            desenhar_glifo(0.7)
+            r##"{trilho}{}<path d="{}" stroke="{cor_glifo}" stroke-width="{}" stroke-linecap="round"/>"##,
+            desenhar_glifo(g::GLIFO_APAGADO),
+            g::RISCO,
+            g::RISCO_LARGURA
         ),
 
         (LinkMode::Cable, None) => format!(
@@ -150,8 +156,11 @@ pub fn svg_do_app(tamanho: u32) -> String {
 
     let borda = if tamanho >= 32 {
         format!(
-            r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="8"/>"##,
-            centro - 4.0
+            r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{}"/>"##,
+            centro - g::BORDA_LARGURA / 2.0,
+            g::BRANCO,
+            g::BORDA_OPACIDADE,
+            g::BORDA_LARGURA
         )
     } else {
         String::new()
@@ -159,14 +168,22 @@ pub fn svg_do_app(tamanho: u32) -> String {
 
     format!(
         r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">
-<defs><linearGradient id="marca" x1="120" y1="80" x2="400" y2="440" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{verde}"/><stop offset="1" stop-color="#35D7A8"/></linearGradient></defs>
+<defs><linearGradient id="marca" x1="{g1}" y1="{g2}" x2="{g3}" y2="{g4}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="{verde}"/><stop offset="1" stop-color="{teal}"/></linearGradient></defs>
 <circle cx="{centro}" cy="{centro}" r="{centro}" fill="{fundo}"/>
 {borda}
-<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="#FFFFFF" stroke-opacity="0.13" stroke-width="{grossura}"/>
+<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{branco}" stroke-opacity="{trilho}" stroke-width="{grossura}"/>
 <path d="{arco}" fill="none" stroke="url(#marca)" stroke-width="{grossura}" stroke-linecap="round"/>
-<g transform="translate({centro},{pad_y}) scale({escala}) translate({desloca_x},{desloca_y})"><path d="{pad}" fill="#F4F7F9"/><circle cx="{ex}" cy="{ey}" r="{sr}" fill="{fundo}"/><circle cx="{dx}" cy="{dy}" r="{sr}" fill="{fundo}"/></g>
+<g transform="translate({centro},{pad_y}) scale({escala}) translate({desloca_x},{desloca_y})"><path d="{pad}" fill="{claro}"/><circle cx="{ex}" cy="{ey}" r="{sr}" fill="{fundo}"/><circle cx="{dx}" cy="{dy}" r="{sr}" fill="{fundo}"/></g>
 </svg>"##,
         verde = g::VERDE,
+        teal = g::TEAL,
+        branco = g::BRANCO,
+        claro = g::GLIFO_CLARO,
+        trilho = g::APP_TRILHO_OPACIDADE,
+        g1 = g::GRADIENTE.0,
+        g2 = g::GRADIENTE.1,
+        g3 = g::GRADIENTE.2,
+        g4 = g::GRADIENTE.3,
         fundo = g::FUNDO,
         arco = g::arco_em(g::APP_ANEL_VARREDURA, raio),
         pad_y = g::APP_PAD_CENTRO_Y,

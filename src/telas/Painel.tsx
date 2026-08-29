@@ -6,7 +6,8 @@ import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
-import { Amostra, Estado, corDoAnel, quandoLeu, useEstado, useLimiares } from "../estado";
+import { Amostra, corDoAnel, useEstado, useLimiares } from "../estado";
+import { detalhe, quandoLeu } from "../formato";
 import "./painel.css";
 
 export function Painel() {
@@ -116,14 +117,4 @@ export function Painel() {
       </div>
     </div>
   );
-}
-
-function detalhe(estado: Estado) {
-  if (estado.mode === "Offline") return estado.deviceName;
-  if (estado.conectadoSemCarga)
-    return `conectado ${estado.textoDaLigacao} · não informa bateria`;
-  if (estado.precisao === "Aproximada")
-    return `${estado.textoDaCarga} · sem percentual neste controle`;
-  // a autonomia e o que o usuario quer saber de fato; a via so importa quando nao ha
-  return estado.autonomia ?? estado.textoDaLigacao;
 }

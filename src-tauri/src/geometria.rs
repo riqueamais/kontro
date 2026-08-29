@@ -30,9 +30,25 @@ pub const PAD_ESCALA_BANDEJA: f32 = 0.5;
 pub const PAD_CENTRO_Y_BANDEJA: f32 = 268.0;
 
 pub const VERDE: &str = "#5FE083";
+pub const TEAL: &str = "#35D7A8";
 pub const AMBAR: &str = "#F2C14E";
 pub const VERMELHO: &str = "#F2564E";
 pub const CINZA: &str = "#8D979F";
+pub const BRANCO: &str = "#FFFFFF";
+pub const GLIFO_CLARO: &str = "#F4F7F9";
+
+pub const GRADIENTE: (f32, f32, f32, f32) = (120.0, 80.0, 400.0, 440.0);
+
+pub const BORDA_LARGURA: f32 = 8.0;
+pub const BORDA_OPACIDADE: f32 = 0.10;
+pub const APP_TRILHO_OPACIDADE: f32 = 0.13;
+pub const TRILHO_OPACIDADE: f32 = 0.22;
+pub const GLIFO_APAGADO: f32 = 0.7;
+
+pub const GLIFO_CAIXA: &str = "50 158 412 260";
+
+pub const RISCO: &str = "M120 392 L392 120";
+pub const RISCO_LARGURA: f32 = 46.0;
 
 pub fn cor_do_nivel(percent: i32, vermelho_abaixo: i32, ambar_abaixo: i32) -> &'static str {
     if percent < vermelho_abaixo {

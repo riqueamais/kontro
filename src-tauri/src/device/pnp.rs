@@ -104,6 +104,10 @@ fn recente(no: &NoDeBateria, desde: Option<i64>) -> bool {
     }
 }
 
+pub fn texto(props: &IMapView<HSTRING, IInspectable>, chave: &str) -> String {
+    valor(props, chave).and_then(|v| como_texto(&v)).unwrap_or_default()
+}
+
 fn valor(
     props: &IMapView<HSTRING, IInspectable>,
     chave: &str,

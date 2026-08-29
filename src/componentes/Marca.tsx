@@ -1,70 +1,86 @@
-import { PAD_COM_STICKS_VAZADOS } from "./Glifo";
+import {
+  APP,
+  BANDEJA,
+  CAIXA,
+  CORES,
+  GRADIENTE,
+  PAD,
+  PAD_CENTRO_Y,
+  PAD_COM_STICKS_VAZADOS,
+} from "../estilo/geometria.gerada";
+
+const CENTRO = CAIXA / 2;
 
 export function Marca({ tamanho = 16 }: { tamanho?: number }) {
   const miudo = tamanho < 24;
-  const raio = miudo ? 194 : 202;
-  const grossura = miudo ? 56 : 30;
-  const escala = miudo ? 0.5 : 0.6;
-  const centroY = miudo ? 268 : 274;
-  const volta = 2 * Math.PI * raio;
-  const cheio = volta * 0.72;
+  const perfil = miudo ? BANDEJA : APP;
+  const volta = 2 * Math.PI * perfil.anelRaio;
+  const cheio = (volta * APP.anelVarredura) / 360;
+  const assento = `translate(${CENTRO} ${perfil.padCentroY}) scale(${perfil.padEscala}) translate(${-CENTRO} ${-PAD_CENTRO_Y})`;
 
   return (
     <svg
       width={tamanho}
       height={tamanho}
-      viewBox="0 0 512 512"
+      viewBox={`0 0 ${CAIXA} ${CAIXA}`}
       aria-hidden="true"
       style={{ display: "block", flex: "0 0 auto" }}
     >
       <defs>
         <linearGradient
           id="marca-kontro"
-          x1="120"
-          y1="80"
-          x2="400"
-          y2="440"
+          x1={GRADIENTE.x1}
+          y1={GRADIENTE.y1}
+          x2={GRADIENTE.x2}
+          y2={GRADIENTE.y2}
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0" stopColor="#5FE083" />
-          <stop offset="1" stopColor="#35D7A8" />
+          <stop offset="0" stopColor={CORES.verde} />
+          <stop offset="1" stopColor={CORES.teal} />
         </linearGradient>
       </defs>
 
-      <circle cx="256" cy="256" r="256" fill="#0F1318" />
+      <circle cx={CENTRO} cy={CENTRO} r={CENTRO} fill={CORES.fundo} />
       <circle
-        cx="256"
-        cy="256"
-        r={raio}
+        cx={CENTRO}
+        cy={CENTRO}
+        r={perfil.anelRaio}
         fill="none"
-        stroke="#FFFFFF"
-        strokeOpacity={miudo ? 0.22 : 0.13}
-        strokeWidth={grossura}
+        stroke={CORES.branco}
+        strokeOpacity={perfil.trilhoOpacidade}
+        strokeWidth={perfil.anelLargura}
       />
       <circle
-        cx="256"
-        cy="256"
-        r={raio}
+        cx={CENTRO}
+        cy={CENTRO}
+        r={perfil.anelRaio}
         fill="none"
         stroke="url(#marca-kontro)"
-        strokeWidth={grossura}
+        strokeWidth={perfil.anelLargura}
         strokeLinecap="round"
         strokeDasharray={`${cheio} ${volta - cheio}`}
-        transform="rotate(-90 256 256)"
+        transform={`rotate(-90 ${CENTRO} ${CENTRO})`}
       />
 
       {miudo ? (
-        <g transform={`translate(256 ${centroY}) scale(${escala}) translate(-256 -288)`}>
-          <path d={PAD_COM_STICKS_VAZADOS} fill="#FFFFFF" fillRule="evenodd" />
+        <g transform={assento}>
+          <path d={PAD_COM_STICKS_VAZADOS} fill={CORES.branco} fillRule="evenodd" />
         </g>
       ) : (
-        <g transform={`translate(256 ${centroY}) scale(${escala}) translate(-256 -288)`}>
-          <path
-            d="M168 158H344C392 158 424 186 436 232L462 330C476 382 452 418 414 418C386 418 366 400 352 372L330 328C322 312 308 304 292 304H220C204 304 190 312 182 328L160 372C146 400 126 418 98 418C60 418 36 382 50 330L76 232C88 186 120 158 168 158Z"
-            fill="#F4F7F9"
+        <g transform={assento}>
+          <path d={PAD} fill={CORES.glifoClaro} />
+          <circle
+            cx={APP.stickEsq[0]}
+            cy={APP.stickEsq[1]}
+            r={APP.stickRaio}
+            fill={CORES.fundo}
           />
-          <circle cx="180" cy="238" r="29" fill="#0F1318" />
-          <circle cx="332" cy="238" r="29" fill="#0F1318" />
+          <circle
+            cx={APP.stickDir[0]}
+            cy={APP.stickDir[1]}
+            r={APP.stickRaio}
+            fill={CORES.fundo}
+          />
         </g>
       )}
     </svg>

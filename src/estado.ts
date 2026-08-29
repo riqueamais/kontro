@@ -158,25 +158,3 @@ export function useConfig(): Config | null {
 
   return cfg;
 }
-
-export function quandoLeu(estado: Estado): string {
-  if (!estado.readAt) return "sem leitura ainda";
-
-  const quando = new Date(estado.readAt);
-  const verbo = estado.stale ? "lido" : "atualizado";
-  const hora = quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-  const dias = diasAtras(quando);
-  if (dias === 0) return `${verbo} às ${hora}`;
-  if (dias === 1) return `${verbo} ontem às ${hora}`;
-
-  const dia = quando.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-  return `${verbo} em ${dia}, às ${hora}`;
-}
-
-/// Quantos dias de calendario separam a data de hoje. Comparar timestamps daria "ontem"
-/// para uma leitura de vinte minutos atras feita pouco depois da meia-noite.
-export function diasAtras(quando: Date): number {
-  const meiaNoite = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  return Math.round((meiaNoite(new Date()) - meiaNoite(quando)) / 86_400_000);
-}

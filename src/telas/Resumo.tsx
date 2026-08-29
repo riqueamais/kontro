@@ -8,7 +8,8 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
-import { Amostra, Estado, Sessao, corDoAnel, quandoLeu, useEstado, useLimiares } from "../estado";
+import { Amostra, Sessao, corDoAnel, useEstado, useLimiares } from "../estado";
+import { detalhe, quandoLeu } from "../formato";
 
 export function Resumo() {
   const estado = useEstado();
@@ -80,13 +81,4 @@ export function Resumo() {
       <ListaDeControles principal={estado.key} sempre />
     </>
   );
-}
-
-function detalhe(estado: Estado) {
-  if (estado.mode === "Offline") return estado.deviceName;
-  if (estado.conectadoSemCarga)
-    return `conectado ${estado.textoDaLigacao} · não informa bateria`;
-  if (estado.precisao === "Aproximada")
-    return `${estado.textoDaCarga} · sem percentual neste controle`;
-  return estado.autonomia ?? estado.textoDaLigacao;
 }

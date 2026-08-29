@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { Amostra } from "../estado";
+import { momento } from "../formato";
 import "./historico.css";
 
 const DIA = 86_400_000;
@@ -158,7 +159,7 @@ export function Historico({ serie, trocadaEm, compacto, janela, aoSairDaJanela }
         {sob ? (
           <>
             <span className="destaque">{sob.p}%</span>
-            <span>{quando(sob.t)}</span>
+            <span>{momento(sob.t)}</span>
           </>
         ) : (
           <span>{janela ? resumoDaSessao(amostras) : resumo(amostras, trechos.length)}</span>
@@ -229,11 +230,6 @@ function marcas(inicio: number, fim: number, dentroDeUmaSessao: boolean) {
     }
   }
   return saida;
-}
-
-function quando(ms: number): string {
-  const q = new Date(ms);
-  return `${q.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} às ${q.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
 function resumoDaSessao(amostras: Amostra[]): string {
