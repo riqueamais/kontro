@@ -1,16 +1,10 @@
-﻿# dependencias e saidas de build
+# dependencias e saidas de build
 node_modules/
 dist/
 src-tauri/target/
 
 # o Tauri gera estes a partir da configuracao
 src-tauri/gen/schemas/
-
-# sobras do app anterior em .NET
-bin/
-obj/
-publish/
-Releases/
 
 # lixo do sistema
 Thumbs.db
