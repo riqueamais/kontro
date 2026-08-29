@@ -27,7 +27,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::history::{Amostra, Sessao};
 use crate::model::BatteryState;
-use crate::settings::{CloseAction, Settings};
+use crate::settings::{CloseAction, Limiares, Settings};
 
 pub struct Compartilhado {
     estado: Mutex<BatteryState>,
@@ -265,7 +265,8 @@ fn iniciar_ciclo(
 
                 let _ = app.emit("kontro://estado", &principal);
                 let _ = app.emit("kontro://controles", &panorama.todos);
-                atualizar_bandeja(&app, &principal, &mut ultimo_icone);
+                let limiares = compartilhado.config.lock().unwrap().limiares();
+                atualizar_bandeja(&app, &principal, limiares, &mut ultimo_icone);
             }
 
             if tempo::agora() >= proxima_checagem {
@@ -353,7 +354,12 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String) {
+fn atualizar_bandeja(
+    app: &AppHandle,
+    estado: &BatteryState,
+    limiares: Limiares,
+    ultimo: &mut String,
+) {
     let Some(bandeja) = app.tray_by_id("kontro") else { return };
 
     let dica = format!(
@@ -363,13 +369,16 @@ fn atualizar_bandeja(app: &AppHandle, estado: &BatteryState, ultimo: &mut String
     let _ = bandeja.set_tooltip(Some(dica));
 
     let tamanho = tray::tamanho_do_icone();
-    let assinatura = format!("{:?}|{:?}|{tamanho}", estado.mode, estado.preenchimento);
+    let assinatura = format!(
+        "{:?}|{:?}|{tamanho}|{}|{}",
+        estado.mode, estado.preenchimento, limiares.critico, limiares.aviso
+    );
     if assinatura == *ultimo {
         return;
     }
     *ultimo = assinatura;
 
-    if let Some(icone) = tray::desenhar(estado, tamanho) {
+    if let Some(icone) = tray::desenhar(estado, tamanho, limiares) {
         let _ = bandeja.set_icon(Some(icone));
     }
 }

@@ -84,12 +84,25 @@ export function useControles(): Estado[] {
   return controles;
 }
 
-export function corDoAnel(estado: Estado): string {
+export interface Limiares {
+  critico: number;
+  aviso: number;
+}
+
+export const LIMIARES_PADRAO: Limiares = { critico: 10, aviso: 20 };
+
+export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO): string {
   if (estado.girando) return "var(--accent-teal)";
   if (estado.mode === "Offline" || estado.preenchimento === null) return "var(--gray)";
-  if (estado.preenchimento < 30) return "var(--red)";
-  if (estado.preenchimento < 60) return "var(--amber)";
+  if (estado.preenchimento < limiares.critico) return "var(--red)";
+  if (estado.preenchimento < limiares.aviso) return "var(--amber)";
   return "var(--accent-green)";
+}
+
+export function useLimiares(): Limiares {
+  const cfg = useConfig();
+  if (!cfg) return LIMIARES_PADRAO;
+  return { critico: cfg.CriticalThreshold, aviso: cfg.WarnThreshold };
 }
 
 export function qualJanela(): string {

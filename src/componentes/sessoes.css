@@ -4,7 +4,7 @@
   border-top: 1px solid var(--stroke);
 }
 
-.sessoes-titulo {
+.sessoes .sessoes-titulo {
   font-family: var(--font-mono);
   font-size: 10.5px;
   letter-spacing: 0.12em;
@@ -13,7 +13,7 @@
   margin-bottom: var(--space-2);
 }
 
-.sessao {
+.sessoes .sessao {
   display: flex;
   align-items: baseline;
   gap: var(--space-3);
@@ -21,7 +21,7 @@
   font-size: 12.5px;
 }
 
-.sessao-quando {
+.sessoes .sessao-quando {
   flex: 1;
   min-width: 0;
   color: var(--text-secondary);
@@ -30,18 +30,18 @@
   text-overflow: ellipsis;
 }
 
-.sessao-carga {
+.sessoes .sessao-carga {
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-tertiary);
   white-space: nowrap;
 }
 
-.sessao-carga.gastou {
+.sessoes .sessao-carga.gastou {
   color: var(--text-primary);
 }
 
-.sessao-duracao {
+.sessoes .sessao-duracao {
   min-width: 56px;
   text-align: right;
   font-family: var(--font-mono);
@@ -50,7 +50,7 @@
   white-space: nowrap;
 }
 
-button.sessao {
+.sessoes button.sessao {
   width: 100%;
   border: 1px solid transparent;
   border-radius: var(--radius-field);
@@ -60,11 +60,11 @@ button.sessao {
   cursor: default;
 }
 
-button.sessao:hover {
+.sessoes button.sessao:hover {
   background: var(--surface-alt);
 }
 
-button.sessao.escolhida {
+.sessoes button.sessao.escolhida {
   background: var(--surface-alt);
   border-color: var(--stroke-strong);
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
-import { Estado, corDoAnel } from "../estado";
+import { Estado, corDoAnel, useLimiares } from "../estado";
 import "./aviso.css";
 
 type Assunto = "Conectou" | "Desconectou" | "TrocouDeVia";
@@ -19,6 +19,7 @@ const PERMANENCIA_MS = 4000;
 const SAIDA_MS = 240;
 
 export function Aviso() {
+  const limiares = useLimiares();
   const [pacote, setPacote] = useState<Pacote | null>(null);
   const [saindo, setSaindo] = useState(false);
   const [rodada, setRodada] = useState(0);
@@ -51,7 +52,7 @@ export function Aviso() {
       <div key={rodada} className={`cartao${saindo ? " saindo" : ""}`}>
         <Anel
           valor={estado.preenchimento}
-          cor={assunto === "Desconectou" ? "var(--gray)" : corDoAnel(estado)}
+          cor={assunto === "Desconectou" ? "var(--gray)" : corDoAnel(estado, limiares)}
           espessura={46}
           tamanho={44}
           girando={assunto !== "Desconectou" && estado.girando}

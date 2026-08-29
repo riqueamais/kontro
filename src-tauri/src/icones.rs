@@ -5,6 +5,7 @@ use tiny_skia::Pixmap;
 
 use crate::geometria as g;
 use crate::model::LinkMode;
+use crate::settings::Limiares;
 use crate::tray;
 
 const TAMANHOS_ICO: &[u32] = &[16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
@@ -80,7 +81,7 @@ fn vetores_de_referencia(pasta: &Path) -> io::Result<()> {
 
     for (nome, preenchimento, modo) in estados {
         let estado = tray::estado_demo(*preenchimento, *modo);
-        std::fs::write(pasta.join(nome), tray::montar_svg(&estado))?;
+        std::fs::write(pasta.join(nome), tray::montar_svg(&estado, Limiares::PADRAO))?;
     }
 
     Ok(())

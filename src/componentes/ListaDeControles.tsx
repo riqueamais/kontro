@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 
-import { Estado, corDoAnel, useControles } from "../estado";
+import { Estado, Limiares, corDoAnel, useControles, useLimiares } from "../estado";
 import { Anel } from "./Anel";
 import { Glifo } from "./Glifo";
 import "./lista.css";
@@ -14,6 +14,7 @@ export function ListaDeControles({
   sempre?: boolean;
 }) {
   const controles = useControles();
+  const limiares = useLimiares();
   const [editando, setEditando] = useState<string | null>(null);
   if (controles.length < (sempre ? 1 : 2)) return null;
   return (
@@ -23,6 +24,7 @@ export function ListaDeControles({
         <Linha
           key={c.key}
           controle={c}
+          limiares={limiares}
           principal={c.key === principal}
           podeEsquecer={sempre}
           editando={editando === c.key}
@@ -35,6 +37,7 @@ export function ListaDeControles({
 }
 function Linha({
   controle,
+  limiares,
   principal,
   podeEsquecer,
   editando,
@@ -42,6 +45,7 @@ function Linha({
   aoSair,
 }: {
   controle: Estado;
+  limiares: Limiares;
   principal: boolean;
   podeEsquecer: boolean;
   editando: boolean;
@@ -72,7 +76,7 @@ function Linha({
     <div className={`item${principal ? " principal" : ""}`}>
       <Anel
         valor={controle.preenchimento}
-        cor={corDoAnel(controle)}
+        cor={corDoAnel(controle, limiares)}
         espessura={70}
         tamanho={26}
         girando={controle.girando}

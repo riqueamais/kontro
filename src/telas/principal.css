@@ -1,4 +1,4 @@
-.app {
+body[data-janela="principal"] .app {
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -6,7 +6,7 @@
   overflow: hidden;
 }
 
-.barra {
+body[data-janela="principal"] .barra {
   flex: 0 0 auto;
   height: 38px;
   display: flex;
@@ -18,7 +18,7 @@
   user-select: none;
 }
 
-.marca {
+body[data-janela="principal"] .marca {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -28,12 +28,12 @@
   color: var(--text-secondary);
 }
 
-.botoes-da-janela {
+body[data-janela="principal"] .botoes-da-janela {
   display: flex;
   height: 100%;
 }
 
-.botao-janela {
+body[data-janela="principal"] .botao-janela {
   width: 46px;
   height: 100%;
   display: grid;
@@ -45,24 +45,24 @@
   transition: background var(--motion-fast), color var(--motion-fast);
 }
 
-.botao-janela:hover {
+body[data-janela="principal"] .botao-janela:hover {
   background: var(--surface-alt);
   color: var(--text-primary);
 }
 
-.botao-janela.fechar:hover {
+body[data-janela="principal"] .botao-janela.fechar:hover {
   background: var(--red);
   color: #fff;
 }
 
-.corpo {
+body[data-janela="principal"] .corpo {
   flex: 1;
   display: grid;
   grid-template-columns: 196px 1fr;
   min-height: 0;
 }
 
-.corpo > .trilho {
+body[data-janela="principal"] .corpo > .trilho {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -71,7 +71,7 @@
   border-right: 1px solid var(--stroke);
 }
 
-.aba {
+body[data-janela="principal"] .aba {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -85,32 +85,32 @@
   transition: background var(--motion-fast), color var(--motion-fast);
 }
 
-.aba:hover {
+body[data-janela="principal"] .aba:hover {
   background: var(--surface-alt);
   color: var(--text-primary);
 }
 
-.aba.ativa {
+body[data-janela="principal"] .aba.ativa {
   background: var(--surface-alt);
   color: var(--text-primary);
   font-weight: 500;
   box-shadow: inset 2px 0 0 var(--accent-teal);
 }
 
-.pagina {
+body[data-janela="principal"] .pagina {
   min-width: 0;
   overflow-y: auto;
   padding: var(--space-5) var(--space-5) var(--space-6);
 }
 
-.titulo-da-pagina {
+body[data-janela="principal"] .titulo-da-pagina {
   font-family: var(--font-display);
   font-size: 21px;
   font-weight: 600;
   margin: 0 0 var(--space-4);
 }
 
-.pagina h2 {
+body[data-janela="principal"] .pagina h2 {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -119,7 +119,7 @@
   margin: var(--space-5) 0 var(--space-2);
 }
 
-.cartao {
+body[data-janela="principal"] .cartao {
   background: var(--surface);
   border: 1px solid var(--stroke);
   border-radius: var(--radius-card);
@@ -127,46 +127,46 @@
   margin-bottom: var(--space-3);
 }
 
-.cartao.estado {
+body[data-janela="principal"] .cartao.estado {
   display: flex;
   align-items: center;
   gap: var(--space-5);
 }
 
-.cartao .leitura {
+body[data-janela="principal"] .cartao .leitura {
   flex: 1;
   min-width: 0;
 }
 
-.cartao .numero {
+body[data-janela="principal"] .cartao .numero {
   font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
 }
 
-.cartao .numero.grande {
+body[data-janela="principal"] .cartao .numero.grande {
   font-size: 26px;
 }
 
-.cartao .dispositivo {
+body[data-janela="principal"] .cartao .dispositivo {
   font-size: 16px;
   font-weight: 600;
 }
 
-.cartao .detalhe {
+body[data-janela="principal"] .cartao .detalhe {
   margin-top: 4px;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
-.cartao .rodape {
+body[data-janela="principal"] .cartao .rodape {
   margin-top: 6px;
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-tertiary);
 }
 
-.linha {
+body[data-janela="principal"] .linha {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: var(--space-4);
@@ -177,16 +177,16 @@
   background: var(--surface);
   margin-bottom: var(--space-2);
 }
-.linha .titulo {
+body[data-janela="principal"] .linha .titulo {
   font-size: 14px;
   font-weight: 500;
 }
-.linha .descricao {
+body[data-janela="principal"] .linha .descricao {
   margin-top: 2px;
   font-size: 12.5px;
   color: var(--text-tertiary);
 }
-.ciclo {
+body[data-janela="principal"] .ciclo {
   padding: 6px 12px;
   border-radius: var(--radius-field);
   border: 1px solid var(--stroke-strong);
@@ -195,11 +195,11 @@
   white-space: nowrap;
   transition: background var(--motion-fast), color var(--motion-fast);
 }
-.ciclo:hover {
+body[data-janela="principal"] .ciclo:hover {
   background: var(--surface-alt);
   color: var(--text-primary);
 }
-.chave {
+body[data-janela="principal"] .chave {
   width: 40px;
   height: 22px;
   border-radius: 11px;
@@ -209,11 +209,11 @@
   position: relative;
   transition: background var(--motion-base), border-color var(--motion-base);
 }
-.chave.ligada {
+body[data-janela="principal"] .chave.ligada {
   background: var(--accent-green);
   border-color: var(--accent-green);
 }
-.chave .bolinha {
+body[data-janela="principal"] .chave .bolinha {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -223,20 +223,20 @@
   background: var(--text-secondary);
   transition: transform var(--motion-base) var(--curva), background var(--motion-base);
 }
-.chave.ligada .bolinha {
+body[data-janela="principal"] .chave.ligada .bolinha {
   transform: translateX(18px);
   background: var(--ink);
 }
 
-.ciclo.destaque {
+body[data-janela="principal"] .ciclo.destaque {
   border-color: var(--accent-green);
   color: var(--accent-green);
 }
-.ciclo.destaque:hover {
+body[data-janela="principal"] .ciclo.destaque:hover {
   background: var(--accent-green);
   color: var(--ink);
 }
-.ciclo:disabled {
+body[data-janela="principal"] .ciclo:disabled {
   opacity: 0.6;
   cursor: default;
 }

@@ -23,6 +23,16 @@ pub enum OverlayCorner {
     InferiorDireito,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Limiares {
+    pub critico: i32,
+    pub aviso: i32,
+}
+
+impl Limiares {
+    pub const PADRAO: Limiares = Limiares { critico: 10, aviso: 20 };
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
 pub struct Settings {
@@ -84,6 +94,10 @@ impl Settings {
         }
     }
 
+    pub fn limiares(&self) -> Limiares {
+        Limiares { critico: self.critical_threshold, aviso: self.warn_threshold }
+    }
+
     pub fn ajustar(&mut self) {
         self.warn_threshold = self.warn_threshold.clamp(5, 90);
         self.critical_threshold = self.critical_threshold.clamp(1, self.warn_threshold - 1);
@@ -116,6 +130,11 @@ mod testes {
         cfg.ajustar();
         assert_eq!(cfg.overlay_scale, 2.0);
         assert_eq!(cfg.overlay_opacity, 0.3);
+    }
+
+    #[test]
+    fn o_padrao_dos_limiares_acompanha_o_padrao_das_configuracoes() {
+        assert_eq!(Settings::default().limiares(), Limiares::PADRAO);
     }
 
     #[test]

@@ -2,7 +2,7 @@
   padding: 12px;
 }
 
-.pilula {
+.sobreposicao .pilula {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -12,7 +12,7 @@
   box-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
 }
 
-.pilula .valor {
+.sobreposicao .pilula .valor {
   min-width: 46px;
   text-align: center;
   font-family: var(--font-mono);
@@ -21,7 +21,7 @@
   color: var(--text-primary);
 }
 
-.pilula .acompanhantes {
+.sobreposicao .pilula .acompanhantes {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -29,12 +29,12 @@
   padding-left: 12px;
   border-left: 1px solid rgba(255, 255, 255, 0.14);
 }
-.pilula .acompanhante {
+.sobreposicao .pilula .acompanhante {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-.pilula .valor.menor {
+.sobreposicao .pilula .valor.menor {
   min-width: 34px;
   font-size: 13px;
   color: var(--text-secondary);

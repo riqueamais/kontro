@@ -4,7 +4,7 @@
   border-top: 1px solid var(--stroke);
 }
 
-.lista-titulo {
+.lista .lista-titulo {
   font-family: var(--font-mono);
   font-size: 10.5px;
   letter-spacing: 0.12em;
@@ -13,7 +13,7 @@
   margin-bottom: var(--space-2);
 }
 
-.item {
+.lista .item {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -22,15 +22,15 @@
   border: 1px solid transparent;
 }
 
-.item.principal {
+.lista .item.principal {
   background: var(--surface);
   border-color: var(--stroke);
 }
-.item-texto {
+.lista .item-texto {
   min-width: 0;
   flex: 1;
 }
-.item-nome {
+.lista .item-nome {
   display: block;
   width: 100%;
   padding: 0;
@@ -46,10 +46,10 @@
   border-bottom: 1px dashed transparent;
   transition: border-color var(--motion-fast);
 }
-.item-nome:hover {
+.lista .item-nome:hover {
   border-bottom-color: var(--stroke-strong);
 }
-.renomear {
+.lista .renomear {
   width: 100%;
   padding: 2px 6px;
   border-radius: 4px;
@@ -59,7 +59,7 @@
   font-family: inherit;
   font-size: 13.5px;
 }
-.item-estado {
+.lista .item-estado {
   margin-top: 2px;
   font-size: 11.5px;
   color: var(--text-tertiary);
@@ -82,7 +82,7 @@
 .lista.solta .item.principal {
   border-color: var(--stroke-strong);
 }
-.esquecer {
+.lista .esquecer {
   width: 26px;
   height: 26px;
   display: grid;
@@ -95,27 +95,27 @@
   transition: opacity var(--motion-fast), background var(--motion-fast),
     color var(--motion-fast);
 }
-.item:hover .esquecer,
-.esquecer:focus-visible {
+.lista .item:hover .esquecer,
+.lista .esquecer:focus-visible {
   opacity: 1;
 }
-.esquecer:hover {
+.lista .esquecer:hover {
   background: var(--surface-alt);
   color: var(--red);
 }
-.confirmar {
+.lista .confirmar {
   display: flex;
   gap: var(--space-2);
 }
-.confirmar .ciclo {
+.lista .confirmar .ciclo {
   padding: 4px 10px;
   font-size: 12.5px;
 }
-.ciclo.perigo {
+.lista .ciclo.perigo {
   border-color: var(--red);
   color: var(--red);
 }
-.ciclo.perigo:hover {
+.lista .ciclo.perigo:hover {
   background: var(--red);
   color: var(--ink);
 }

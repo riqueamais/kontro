@@ -2,15 +2,13 @@ use tauri::image::Image;
 
 use crate::geometria as g;
 use crate::model::{BatteryState, LinkMode};
+use crate::settings::Limiares;
 
-const VERMELHO_ABAIXO: i32 = 30;
-const AMBAR_ABAIXO: i32 = 60;
-
-pub fn desenhar(estado: &BatteryState, tamanho: u32) -> Option<Image<'static>> {
-    rasterizar(&montar_svg(estado), tamanho)
+pub fn desenhar(estado: &BatteryState, tamanho: u32, limiares: Limiares) -> Option<Image<'static>> {
+    rasterizar(&montar_svg(estado, limiares), tamanho)
 }
 
-pub(crate) fn montar_svg(estado: &BatteryState) -> String {
+pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
@@ -54,7 +52,7 @@ pub(crate) fn montar_svg(estado: &BatteryState) -> String {
         ),
 
         (_, Some(p)) => {
-            let cor = g::cor_do_nivel(p, VERMELHO_ABAIXO, AMBAR_ABAIXO);
+            let cor = g::cor_do_nivel(p, limiares.critico, limiares.aviso);
             let arco = if p >= 100 {
                 format!(
                     r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor}" stroke-width="{grossura}"/>"##
@@ -124,7 +122,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
     };
 
     for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
-        let svg = montar_svg(&estado_demo(*preenchimento, *modo));
+        let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO);
         let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
 
         let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;

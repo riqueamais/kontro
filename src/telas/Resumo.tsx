@@ -8,10 +8,11 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
-import { Amostra, Estado, Sessao, corDoAnel, quandoLeu, useEstado } from "../estado";
+import { Amostra, Estado, Sessao, corDoAnel, quandoLeu, useEstado, useLimiares } from "../estado";
 
 export function Resumo() {
   const estado = useEstado();
+  const limiares = useLimiares();
   const [serie, setSerie] = useState<Amostra[]>([]);
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const [saude, setSaude] = useState<DadosDeSaude | null>(null);
@@ -32,7 +33,7 @@ export function Resumo() {
       <section className="cartao estado">
         <Anel
           valor={estado.preenchimento}
-          cor={corDoAnel(estado)}
+          cor={corDoAnel(estado, limiares)}
           espessura={38}
           tamanho={96}
           girando={estado.girando}

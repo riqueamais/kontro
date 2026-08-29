@@ -6,11 +6,12 @@ import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
-import { Amostra, Estado, corDoAnel, quandoLeu, useEstado } from "../estado";
+import { Amostra, Estado, corDoAnel, quandoLeu, useEstado, useLimiares } from "../estado";
 import "./painel.css";
 
 export function Painel() {
   const estado = useEstado();
+  const limiares = useLimiares();
   const [serie, setSerie] = useState<Amostra[]>([]);
   const painel = useRef<HTMLDivElement>(null);
 
@@ -82,7 +83,7 @@ export function Painel() {
       <div className="topo">
         <Anel
           valor={estado.preenchimento}
-          cor={corDoAnel(estado)}
+          cor={corDoAnel(estado, limiares)}
           espessura={38}
           tamanho={96}
           girando={estado.girando}

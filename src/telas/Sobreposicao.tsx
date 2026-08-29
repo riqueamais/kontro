@@ -1,12 +1,13 @@
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
-import { Estado, corDoAnel, useConfig, useControles, useEstado } from "../estado";
+import { Estado, corDoAnel, useConfig, useControles, useEstado, useLimiares } from "../estado";
 import "./sobreposicao.css";
 
 export function Sobreposicao() {
   const estado = useEstado();
   const todos = useControles();
   const cfg = useConfig();
+  const limiares = useLimiares();
   if (!estado) return null;
   const escala = cfg?.OverlayScale ?? 1;
   const opacidade = cfg?.OverlayOpacity ?? 0.9;
@@ -19,7 +20,7 @@ export function Sobreposicao() {
       <div className="pilula" style={{ opacity: opacidade }}>
         <Anel
           valor={estado.preenchimento}
-          cor={corDoAnel(estado)}
+          cor={corDoAnel(estado, limiares)}
           espessura={60}
           tamanho={30}
           girando={estado.girando}
@@ -33,7 +34,7 @@ export function Sobreposicao() {
               <div className="acompanhante" key={c.key} title={c.deviceName}>
                 <Anel
                   valor={c.preenchimento}
-                  cor={corDoAnel(c)}
+                  cor={corDoAnel(c, limiares)}
                   espessura={70}
                   tamanho={20}
                   girando={c.girando}

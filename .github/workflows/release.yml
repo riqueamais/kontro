@@ -63,9 +63,22 @@ jobs:
         run: |
           $v = "${{ steps.ver.outputs.version }}"
 
-          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
-          $conf.version = $v
-          $conf | ConvertTo-Json -Depth 20 | Set-Content src-tauri/tauri.conf.json -Encoding utf8
+          # Trocar so a linha da versao. Um round-trip por ConvertFrom-Json/ConvertTo-Json
+          # reescreve o arquivo inteiro, e leitura sem encoding declarado decodifica UTF-8
+          # como ANSI: foi assim que o copyright e a descricao viraram lixo e dobraram de
+          # tamanho a cada release, ate 2454 caracteres. Ler e gravar pelas APIs do .NET
+          # deixa o encoding explicito nas duas pontas.
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $caminhoConf = Join-Path (Get-Location) "src-tauri/tauri.conf.json"
+          $conf = [System.IO.File]::ReadAllText($caminhoConf, $utf8)
+          $conferido = $false
+          $conf = [regex]::Replace($conf, '(?m)^(\s*)"version": "[^"]*"', {
+            param($m)
+            if ($script:conferido) { return $m.Value }
+            $script:conferido = $true
+            return $m.Groups[1].Value + '"version": "' + $v + '"'
+          })
+          [System.IO.File]::WriteAllText($caminhoConf, $conf, $utf8)
 
           # A linha de versao do pacote vem antes das dependencias, entao so a
           # primeira troca. O padrao nao pode terminar em $: num checkout no Windows o
@@ -93,6 +106,16 @@ jobs:
           Write-Host "tag=$v  cargo=$noCargo  conf=$noConf"
           if ($noCargo -ne $v -or $noConf -ne $v) {
             Write-Error "A versao nao foi carimbada em todos os lugares."
+            exit 1
+          }
+
+          # "Ã" so aparece quando UTF-8 foi lido como ANSI. O copyright e a descricao vao
+          # para o recurso de versao do .exe e para o instalador: se o carimbo estragar o
+          # encoding de novo, a release para aqui em vez de sair com lixo nas propriedades.
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $bruto = [System.IO.File]::ReadAllText((Join-Path (Get-Location) "src-tauri/tauri.conf.json"), $utf8)
+          if ($bruto.Contains([char]0x00C3)) {
+            Write-Error "tauri.conf.json saiu com o encoding estragado pelo carimbo."
             exit 1
           }
 
