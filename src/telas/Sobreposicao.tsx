@@ -11,7 +11,7 @@ export function Sobreposicao() {
   if (!estado) return null;
   const escala = cfg?.OverlayScale ?? 1;
   const opacidade = cfg?.OverlayOpacity ?? 0.9;
-  const acompanhantes = todos.filter((c) => c.mode !== "Offline" && c.key !== estado.key);
+  const acompanhantes = todos.filter((c) => c.via !== "Desligado" && c.chave !== estado.chave);
   return (
     <div
       className="sobreposicao"
@@ -31,7 +31,7 @@ export function Sobreposicao() {
         {acompanhantes.length > 0 && (
           <div className="acompanhantes">
             {acompanhantes.map((c) => (
-              <div className="acompanhante" key={c.key} title={c.deviceName}>
+              <div className="acompanhante" key={c.chave} title={c.nome}>
                 <Anel
                   valor={c.preenchimento}
                   cor={corDoAnel(c, limiares)}

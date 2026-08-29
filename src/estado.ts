@@ -2,21 +2,21 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
 
-export type LinkMode = "Offline" | "Bluetooth" | "Cable" | "Wireless";
+export type Via = "Desligado" | "Bluetooth" | "Cabo" | "SemFio";
 export type Precisao = "Nenhuma" | "Aproximada" | "Exata";
 
 export interface Estado {
-  mode: LinkMode;
-  percent: number | null;
+  via: Via;
+  percentual: number | null;
   precisao: Precisao;
   nivel: number | null;
-  readAt: number | null;
-  charging: boolean;
-  stale: boolean;
-  deviceName: string;
-  address: string | null;
-  key: string;
-  knownCount: number;
+  lidoEm: number | null;
+  carregando: boolean;
+  leituraAntiga: boolean;
+  nome: string;
+  endereco: string | null;
+  chave: string;
+  quantosConhecidos: number;
   preenchimento: number | null;
   textoDaCarga: string;
   textoDaLigacao: string;
@@ -29,7 +29,7 @@ export interface Estado {
 export interface Amostra {
   t: number;
   p: number;
-  via: LinkMode | null;
+  via: Via | null;
 }
 
 export interface Sessao {
@@ -94,7 +94,7 @@ export const LIMIARES_PADRAO: Limiares = { critico: 10, aviso: 20 };
 
 export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO): string {
   if (estado.girando) return "var(--accent-teal)";
-  if (estado.mode === "Offline" || estado.preenchimento === null) return "var(--gray)";
+  if (estado.via === "Desligado" || estado.preenchimento === null) return "var(--gray)";
   if (estado.preenchimento < limiares.critico) return "var(--red)";
   if (estado.preenchimento < limiares.aviso) return "var(--amber)";
   return "var(--accent-green)";

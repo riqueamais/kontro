@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::paths;
+use crate::caminhos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CloseAction {
@@ -77,7 +77,7 @@ impl Default for Settings {
 
 impl Settings {
     pub fn carregar() -> Self {
-        let Some(bruto) = paths::ler("settings.json") else {
+        let Some(bruto) = caminhos::ler("settings.json") else {
             return Settings::default();
         };
 
@@ -87,7 +87,7 @@ impl Settings {
                 cfg
             }
             Err(_) => {
-                let caminho = paths::arquivo("settings.json");
+                let caminho = caminhos::arquivo("settings.json");
                 let _ = std::fs::rename(&caminho, caminho.with_extension("json.invalido"));
                 Settings::default()
             }
@@ -106,9 +106,9 @@ impl Settings {
     }
 
     pub fn salvar(&self) {
-        paths::garantir_dir();
+        caminhos::garantir_dir();
         if let Ok(t) = serde_json::to_string_pretty(self) {
-            let _ = std::fs::write(paths::arquivo("settings.json"), t);
+            let _ = std::fs::write(caminhos::arquivo("settings.json"), t);
         }
     }
 }

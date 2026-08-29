@@ -22,13 +22,13 @@ export function ListaDeControles({
       <div className="lista-titulo">Seus controles</div>
       {controles.map((c) => (
         <Linha
-          key={c.key}
+          key={c.chave}
           controle={c}
           limiares={limiares}
-          principal={c.key === principal}
+          principal={c.chave === principal}
           podeEsquecer={sempre}
-          editando={editando === c.key}
-          aoEditar={() => setEditando(c.key)}
+          editando={editando === c.chave}
+          aoEditar={() => setEditando(c.chave)}
           aoSair={() => setEditando(null)}
         />
       ))}
@@ -64,14 +64,14 @@ function Linha({
     const nome = campo.current?.value ?? "";
     // O painel se esconde quando perde o foco, e isso dispara o onBlur. Sem esta guarda,
     // sair do painel com o campo aberto gravaria um apelido que ninguem digitou.
-    if (nome !== controle.deviceName) {
-      void invoke("renomear_controle", { chave: controle.key, nome });
+    if (nome !== controle.nome) {
+      void invoke("renomear_controle", { chave: controle.chave, nome });
     }
     aoSair();
   };
   // Esquecer um controle que esta ligado nao adianta: a descoberta o encontra de novo no
   // ciclo seguinte, e ele reaparece como se nada tivesse acontecido.
-  const removivel = podeEsquecer && controle.mode === "Offline";
+  const removivel = podeEsquecer && controle.via === "Desligado";
   return (
     <div className={`item${principal ? " principal" : ""}`}>
       <Anel
@@ -88,7 +88,7 @@ function Linha({
           <input
             ref={campo}
             className="renomear"
-            defaultValue={controle.deviceName}
+            defaultValue={controle.nome}
             maxLength={40}
             placeholder="Nome do controle"
             onBlur={salvar}
@@ -100,11 +100,11 @@ function Linha({
           />
         ) : (
           <button className="item-nome" title="Renomear" onClick={aoEditar}>
-            {controle.deviceName}
+            {controle.nome}
           </button>
         )}
         <div className="item-estado">
-          {controle.mode === "Offline"
+          {controle.via === "Desligado"
             ? controle.preenchimento !== null
               ? `desconectado · ${controle.textoDaCarga} na última leitura`
               : "desconectado"
@@ -116,7 +116,7 @@ function Linha({
           <div className="confirmar">
             <button
               className="ciclo perigo"
-              onClick={() => void invoke("esquecer_controle", { chave: controle.key })}
+              onClick={() => void invoke("esquecer_controle", { chave: controle.chave })}
             >
               Esquecer
             </button>

@@ -1,12 +1,12 @@
 use std::fmt::Write;
 
-use crate::device::{discovery, gatt, hid, pnp, xinput};
-use crate::history::Sessao;
-use crate::model::BatteryState;
+use crate::dispositivo::{descoberta, gatt, hid, pnp, xinput};
+use crate::historico::Sessao;
+use crate::modelo::EstadoDoControle;
 
 pub struct AoVivo<'a> {
     pub principal: &'a str,
-    pub estados: &'a [BatteryState],
+    pub estados: &'a [EstadoDoControle],
     pub sessoes: &'a [Sessao],
 }
 
@@ -82,7 +82,7 @@ fn secao_pnp(t: &mut String) {
             Some(ms) => crate::tempo::para_texto(ms),
             None => "sem data".to_string(),
         };
-        let _ = writeln!(t, "   {}: {}%   ({quando})", no.nome, no.percent);
+        let _ = writeln!(t, "   {}: {}%   ({quando})", no.nome, no.percentual);
         let _ = writeln!(t, "      instancia={}", no.instancia);
         let _ = writeln!(t, "      container={}", no.container);
     }
@@ -93,7 +93,7 @@ fn secao_hid(t: &mut String) {
     let _ = writeln!(t, "=== HID: carga informada pelo proprio dispositivo ===");
     let _ = writeln!(t, "   E por aqui que muitos controles de dongle publicam a bateria.");
 
-    let controles = discovery::descobrir();
+    let controles = descoberta::descobrir();
     let com_hid: Vec<_> = controles.iter().filter(|c| !c.id_hid.is_empty()).collect();
     if com_hid.is_empty() {
         let _ = writeln!(t, "   (nenhum controle HID presente)");
@@ -114,7 +114,7 @@ fn secao_vigia(t: &mut String) {
     let _ = writeln!(t, "=== Vigia de dispositivos ===");
 
     let (aviso, avisos) = std::sync::mpsc::channel();
-    let vigia = crate::device::vigia::observar(aviso);
+    let vigia = crate::dispositivo::vigia::observar(aviso);
     let _ = writeln!(t, "   observadores de pe: {} (esperado: 4)", vigia.quantos());
 
     std::thread::sleep(std::time::Duration::from_secs(2));
@@ -141,11 +141,11 @@ fn secao_monitor(t: &mut String) {
         return;
     };
 
-    let sessoes: Vec<Sessao> = monitor.historico().sessoes(&panorama.principal.key);
+    let sessoes: Vec<Sessao> = monitor.historico().sessoes(&panorama.principal.chave);
     secao_do_app(
         t,
         &AoVivo {
-            principal: &panorama.principal.key,
+            principal: &panorama.principal.chave,
             estados: &panorama.todos,
             sessoes: &sessoes,
         },
@@ -153,36 +153,36 @@ fn secao_monitor(t: &mut String) {
 }
 
 fn secao_do_app(t: &mut String, v: &AoVivo) {
-    use crate::model::LinkMode;
+    use crate::modelo::Via;
 
     let _ = writeln!(t, "=== O que o monitor conclui ===");
 
     for estado in v.estados {
-        let marca = if estado.key == v.principal { "  <- principal" } else { "" };
-        let _ = writeln!(t, "   {}{marca}", estado.device_name);
-        let _ = writeln!(t, "      chave={}", estado.key);
+        let marca = if estado.chave == v.principal { "  <- principal" } else { "" };
+        let _ = writeln!(t, "   {}{marca}", estado.nome);
+        let _ = writeln!(t, "      chave={}", estado.chave);
         let _ = writeln!(
             t,
             "      via={:?}   carga={}   precisao={:?}",
-            estado.mode, estado.texto_da_carga, estado.precisao
+            estado.via, estado.texto_da_carga, estado.precisao
         );
-        let quando = match estado.read_at {
+        let quando = match estado.lido_em {
             Some(ms) => crate::tempo::para_texto(ms),
             None => "nunca".to_string(),
         };
         let _ = writeln!(
             t,
             "      lido em {quando}   {}",
-            if estado.stale { "(ultima conhecida)" } else { "(ao vivo)" }
+            if estado.leitura_antiga { "(ultima conhecida)" } else { "(ao vivo)" }
         );
-        if estado.mode == LinkMode::Cable {
-            let _ = writeln!(t, "      carregando={}", estado.charging);
+        if estado.via == Via::Cabo {
+            let _ = writeln!(t, "      carregando={}", estado.carregando);
         }
         if let Some(a) = &estado.autonomia {
             let _ = writeln!(t, "      autonomia: {a}");
         }
 
-        if estado.key != v.principal {
+        if estado.chave != v.principal {
             continue;
         }
         if v.sessoes.is_empty() {
@@ -205,7 +205,7 @@ fn secao_do_app(t: &mut String, v: &AoVivo) {
 
 fn secao_descoberta(t: &mut String) {
     let _ = writeln!(t, "=== Resultado final da descoberta (o que o app mostra) ===");
-    let controles = discovery::descobrir();
+    let controles = descoberta::descobrir();
     if controles.is_empty() {
         let _ = writeln!(t, "   (nenhum controle ligado agora)");
     }

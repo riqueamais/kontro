@@ -10,7 +10,7 @@ use windows::Foundation::TypedEventHandler;
 use windows::Storage::Streams::DataReader;
 
 pub enum AvisoGatt {
-    Carga { endereco: u64, percent: i32 },
+    Carga { endereco: u64, percentual: i32 },
 }
 
 pub struct VinculoGatt {
@@ -50,7 +50,7 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
         .GetGattServicesForUuidWithCacheModeAsync(GattServiceUuids::Battery()?, BluetoothCacheMode::Uncached)?
         .join()?;
     if servicos.Status()? != GattCommunicationStatus::Success {
-        return Err(crate::device::sem_resposta());
+        return Err(crate::dispositivo::sem_resposta());
     }
     let servico = servicos.Services()?.GetAt(0)?;
 
@@ -61,7 +61,7 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
         )?
         .join()?;
     if caracteristicas.Status()? != GattCommunicationStatus::Success {
-        return Err(crate::device::sem_resposta());
+        return Err(crate::dispositivo::sem_resposta());
     }
     let caracteristica = caracteristicas.Characteristics()?.GetAt(0)?;
 
@@ -72,7 +72,7 @@ pub fn abrir(endereco: u64, canal: Sender<AvisoGatt>) -> Result<(VinculoGatt, Op
             if let Some(argumentos) = argumentos.as_ref() {
                 if let Ok(buffer) = argumentos.CharacteristicValue() {
                     if let Some(pct) = primeiro_byte(&buffer) {
-                        let _ = canal.send(AvisoGatt::Carga { endereco, percent: pct });
+                        let _ = canal.send(AvisoGatt::Carga { endereco, percentual: pct });
                     }
                 }
             }
@@ -102,10 +102,10 @@ fn ler(caracteristica: &GattCharacteristic) -> Result<i32> {
         .ReadValueWithCacheModeAsync(BluetoothCacheMode::Uncached)?
         .join()?;
     if resultado.Status()? != GattCommunicationStatus::Success {
-        return Err(crate::device::sem_resposta());
+        return Err(crate::dispositivo::sem_resposta());
     }
     let buffer = resultado.Value()?;
-    primeiro_byte(&buffer).ok_or_else(crate::device::sem_resposta)
+    primeiro_byte(&buffer).ok_or_else(crate::dispositivo::sem_resposta)
 }
 
 fn primeiro_byte(buffer: &windows::Storage::Streams::IBuffer) -> Option<i32> {

@@ -187,7 +187,7 @@ function segmentar(serie: Amostra[], inicio: number, fim: number): Amostra[][] {
 }
 
 function quebra(anterior: Amostra, seguinte: Amostra): boolean {
-  if (anterior.via === "Offline") return true;
+  if (anterior.via === "Desligado") return true;
   const limite = anterior.via ? SALTO_DE_SEGURANCA : SALTO_SEM_VIA_GRAVADA;
   return seguinte.t - anterior.t > limite;
 }

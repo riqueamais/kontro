@@ -36,10 +36,10 @@ export function duracao(minutos: number): string {
 }
 
 export function quandoLeu(estado: Estado): string {
-  if (!estado.readAt) return "sem leitura ainda";
+  if (!estado.lidoEm) return "sem leitura ainda";
 
-  const quando = new Date(estado.readAt);
-  const verbo = estado.stale ? "lido" : "atualizado";
+  const quando = new Date(estado.lidoEm);
+  const verbo = estado.leituraAntiga ? "lido" : "atualizado";
   const dias = diasAtras(quando);
 
   if (dias === 0) return `${verbo} às ${hora(quando)}`;
@@ -48,7 +48,7 @@ export function quandoLeu(estado: Estado): string {
 }
 
 export function detalhe(estado: Estado): string {
-  if (estado.mode === "Offline") return estado.deviceName;
+  if (estado.via === "Desligado") return estado.nome;
   if (estado.conectadoSemCarga) {
     return `conectado ${estado.textoDaLigacao} · não informa bateria`;
   }

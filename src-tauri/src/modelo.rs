@@ -8,12 +8,12 @@ pub enum Precisao {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-pub enum LinkMode {
+pub enum Via {
     #[default]
-    Offline,
+    Desligado,
     Bluetooth,
-    Cable,
-    Wireless,
+    Cabo,
+    SemFio,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,20 +70,42 @@ pub fn preenchimento_do_nivel(nivel: i32) -> i32 {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BatteryState {
-    pub mode: LinkMode,
-    pub percent: Option<i32>,
+#[derive(Debug, Clone, Default)]
+pub struct Bruto {
+    pub via: Via,
+    pub percentual: Option<i32>,
     pub precisao: Precisao,
     pub nivel: Option<i32>,
-    pub read_at: Option<i64>,
-    pub charging: bool,
-    pub stale: bool,
-    pub device_name: String,
-    pub address: Option<String>,
-    pub key: String,
-    pub known_count: usize,
+    pub lido_em: Option<i64>,
+    pub carregando: bool,
+    pub leitura_antiga: bool,
+    pub nome: String,
+    pub endereco: Option<String>,
+    pub chave: String,
+    pub quantos_conhecidos: usize,
+    pub autonomia: Option<String>,
+}
+
+impl Default for Precisao {
+    fn default() -> Self {
+        Precisao::Nenhuma
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EstadoDoControle {
+    pub via: Via,
+    pub percentual: Option<i32>,
+    pub precisao: Precisao,
+    pub nivel: Option<i32>,
+    pub lido_em: Option<i64>,
+    pub carregando: bool,
+    pub leitura_antiga: bool,
+    pub nome: String,
+    pub endereco: Option<String>,
+    pub chave: String,
+    pub quantos_conhecidos: usize,
 
     pub preenchimento: Option<i32>,
     pub texto_da_carga: String,
@@ -95,63 +117,65 @@ pub struct BatteryState {
     pub autonomia: Option<String>,
 }
 
-impl BatteryState {
-    pub fn montar(
-        mode: LinkMode,
-        percent: Option<i32>,
-        precisao: Precisao,
-        nivel: Option<i32>,
-        read_at: Option<i64>,
-        charging: bool,
-        stale: bool,
-        device_name: String,
-        address: Option<String>,
-        key: String,
-        known_count: usize,
-        autonomia: Option<String>,
-    ) -> Self {
+impl EstadoDoControle {
+    pub fn montar(bruto: Bruto) -> Self {
+        let Bruto {
+            via,
+            percentual,
+            precisao,
+            nivel,
+            lido_em,
+            carregando,
+            leitura_antiga,
+            nome,
+            endereco,
+            chave,
+            quantos_conhecidos,
+            autonomia,
+        } = bruto;
+
         let preenchimento = match precisao {
-            Precisao::Exata => percent,
+            Precisao::Exata => percentual,
             Precisao::Aproximada => nivel.map(preenchimento_do_nivel),
             Precisao::Nenhuma => None,
         };
 
-        let texto_da_carga = match (precisao, percent, nivel) {
+        let texto_da_carga = match (precisao, percentual, nivel) {
             (Precisao::Exata, Some(p), _) => format!("{p}%"),
             (Precisao::Aproximada, _, Some(n)) => descrever_nivel(n).to_string(),
             _ => "--".to_string(),
         };
 
-        let texto_da_ligacao = match mode {
-            LinkMode::Bluetooth => "Bluetooth",
-            LinkMode::Wireless => "sem fio",
-            LinkMode::Cable => {
-                if charging {
+        let texto_da_ligacao = match via {
+            Via::Bluetooth => "Bluetooth",
+            Via::SemFio => "sem fio",
+            Via::Cabo => {
+                if carregando {
                     "carregando"
                 } else {
                     "no cabo"
                 }
             }
-            LinkMode::Offline => "desconectado",
+            Via::Desligado => "desconectado",
         }
         .to_string();
 
-        let tem_numero = precisao == Precisao::Exata && percent.is_some();
-        let conectado_sem_carga = mode != LinkMode::Offline && preenchimento.is_none();
-        let girando = mode == LinkMode::Cable && preenchimento.is_none();
+        let tem_numero = precisao == Precisao::Exata && percentual.is_some();
+        let conectado_sem_carga = via != Via::Desligado && preenchimento.is_none();
+        let girando = via == Via::Cabo && preenchimento.is_none();
 
-        BatteryState {
-            mode,
-            percent,
+        EstadoDoControle {
+            via,
+            percentual,
             precisao,
             nivel,
-            read_at,
-            charging,
-            stale,
-            device_name,
-            address,
-            key,
-            known_count,
+            lido_em,
+            carregando,
+            leitura_antiga,
+            nome,
+            endereco,
+            chave,
+            quantos_conhecidos,
             preenchimento,
             texto_da_carga,
             texto_da_ligacao,
@@ -162,15 +186,16 @@ impl BatteryState {
         }
     }
 
-    pub fn igual_a(&self, o: &BatteryState) -> bool {
-        self.mode == o.mode
-            && self.percent == o.percent
-            && self.charging == o.charging
-            && self.stale == o.stale
-            && self.key == o.key
-            && self.device_name == o.device_name
-            && self.known_count == o.known_count
+    pub fn igual_a(&self, o: &EstadoDoControle) -> bool {
+        self.via == o.via
+            && self.percentual == o.percentual
+            && self.carregando == o.carregando
+            && self.leitura_antiga == o.leitura_antiga
+            && self.chave == o.chave
+            && self.nome == o.nome
+            && self.quantos_conhecidos == o.quantos_conhecidos
             && self.precisao == o.precisao
             && self.nivel == o.nivel
+            && self.autonomia == o.autonomia
     }
 }

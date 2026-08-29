@@ -23,7 +23,7 @@ export function Resumo() {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
     invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
     invoke<DadosDeSaude | null>("saude_da_bateria").then(setSaude).catch(() => {});
-  }, [estado?.key, estado?.percent]);
+  }, [estado?.chave, estado?.percentual]);
 
   if (!estado) return null;
 
@@ -40,7 +40,7 @@ export function Resumo() {
           girando={estado.girando}
         >
           {estado.temNumero ? (
-            <span className="numero grande">{estado.percent}%</span>
+            <span className="numero grande">{estado.percentual}%</span>
           ) : (
             <Glifo tamanho={36} cor="var(--text-secondary)" />
           )}
@@ -48,7 +48,7 @@ export function Resumo() {
 
         <div className="leitura">
           <div className="dispositivo">
-            {estado.mode === "Offline" ? "Desconectado" : estado.deviceName}
+            {estado.via === "Desligado" ? "Desconectado" : estado.nome}
           </div>
           <div className="detalhe">{detalhe(estado)}</div>
           <div className="rodape">{quandoLeu(estado)}</div>
@@ -78,7 +78,7 @@ export function Resumo() {
         />
       </section>
 
-      <ListaDeControles principal={estado.key} sempre />
+      <ListaDeControles principal={estado.chave} sempre />
     </>
   );
 }

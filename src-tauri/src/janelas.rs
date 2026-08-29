@@ -2,7 +2,7 @@ use tauri::window::Monitor;
 use tauri::{AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
             WebviewWindowBuilder};
 
-use crate::settings::{OverlayCorner, Settings};
+use crate::configuracoes::{OverlayCorner, Settings};
 use crate::tela;
 
 pub const LARGURA_DO_PAINEL: f64 = 392.0;
@@ -50,7 +50,7 @@ fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
 }
 
 fn vestir_icone(janela: &WebviewWindow) {
-    if let Some(icone) = crate::tray::icone_do_app(crate::tray::tamanho_do_icone_grande()) {
+    if let Some(icone) = crate::bandeja::icone_do_app(crate::bandeja::tamanho_do_icone_grande()) {
         let _ = janela.set_icon(icone);
     }
 }

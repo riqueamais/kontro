@@ -3,7 +3,7 @@ pub mod gatt;
 pub mod hid;
 pub mod pnp;
 pub mod xinput;
-pub mod discovery;
+pub mod descoberta;
 pub mod vigia;
 
 pub fn sem_resposta() -> windows::core::Error {

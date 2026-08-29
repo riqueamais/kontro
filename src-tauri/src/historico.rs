@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::LinkMode;
-use crate::{paths, tempo};
+use crate::modelo::Via;
+use crate::{caminhos, tempo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct AmostraEmDisco {
@@ -12,23 +12,23 @@ struct AmostraEmDisco {
     #[serde(rename = "P")]
     p: i32,
     #[serde(rename = "V", default, skip_serializing_if = "Option::is_none")]
-    v: Option<LinkMode>,
+    v: Option<Via>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Amostra {
     pub t: i64,
     pub p: i32,
-    pub via: Option<LinkMode>,
+    pub via: Option<Via>,
 }
 
 impl Amostra {
     fn desligado(&self) -> bool {
-        self.via == Some(LinkMode::Offline)
+        self.via == Some(Via::Desligado)
     }
 
     fn no_cabo(&self) -> bool {
-        self.via == Some(LinkMode::Cable)
+        self.via == Some(Via::Cabo)
     }
 }
 
@@ -83,7 +83,7 @@ pub struct Saude {
 
 impl History {
     pub fn carregar() -> Self {
-        let bruto = paths::ler("history.json").unwrap_or_default();
+        let bruto = caminhos::ler("history.json").unwrap_or_default();
         let mapa: HashMap<String, Vec<AmostraEmDisco>> =
             serde_json::from_str(&bruto).unwrap_or_default();
         let corte = tempo::agora() - JANELA_MS;
@@ -127,26 +127,26 @@ impl History {
         }
     }
 
-    pub fn adicionar(&mut self, chave: &str, percent: i32, quando: i64, via: LinkMode) {
+    pub fn adicionar(&mut self, chave: &str, percentual: i32, quando: i64, via: Via) {
         let serie = self.por_controle.entry(chave.to_string()).or_default();
 
         if let Some(u) = serie.last().copied() {
-            if quando <= u.t && u.p == percent {
+            if quando <= u.t && u.p == percentual {
                 return;
             }
-            let mudou = u.p != percent || u.desligado();
+            let mudou = u.p != percentual || u.desligado();
             let vencido = quando - u.t > DEZ_MINUTOS_MS;
             if !mudou && !vencido {
                 return;
             }
         }
 
-        serie.push(Amostra { t: quando, p: percent, via: Some(via) });
+        serie.push(Amostra { t: quando, p: percentual, via: Some(via) });
         serie.sort_by_key(|a| a.t);
         self.sujo = true;
     }
 
-    pub fn marcar_desligado(&mut self, chave: &str, percent: i32, quando: i64) {
+    pub fn marcar_desligado(&mut self, chave: &str, percentual: i32, quando: i64) {
         let serie = self.por_controle.entry(chave.to_string()).or_default();
 
         match serie.last() {
@@ -156,12 +156,12 @@ impl History {
             _ => {}
         }
 
-        serie.push(Amostra { t: quando, p: percent, via: Some(LinkMode::Offline) });
+        serie.push(Amostra { t: quando, p: percentual, via: Some(Via::Desligado) });
         self.sujo = true;
     }
 
     pub fn salvar(&mut self) {
-        paths::garantir_dir();
+        caminhos::garantir_dir();
         let em_disco: HashMap<&String, Vec<AmostraEmDisco>> = self
             .por_controle
             .iter()
@@ -176,7 +176,7 @@ impl History {
             .collect();
 
         if let Ok(t) = serde_json::to_string(&em_disco) {
-            if std::fs::write(paths::arquivo("history.json"), t).is_ok() {
+            if std::fs::write(caminhos::arquivo("history.json"), t).is_ok() {
                 self.sujo = false;
             }
         }
@@ -277,9 +277,9 @@ impl History {
         }
     }
 
-    pub fn autonomia_em_minutos(&self, chave: &str, percent: i32) -> Option<i64> {
+    pub fn autonomia_em_minutos(&self, chave: &str, percentual: i32) -> Option<i64> {
         let taxa = self.consumo_por_hora(chave)?;
-        let horas = percent as f64 / taxa;
+        let horas = percentual as f64 / taxa;
         (horas > 0.0 && horas <= 200.0).then(|| (horas * 60.0).round() as i64)
     }
 }
@@ -385,7 +385,7 @@ mod testes {
         Amostra { t, p, via: None }
     }
 
-    fn com_via(t: i64, p: i32, via: LinkMode) -> Amostra {
+    fn com_via(t: i64, p: i32, via: Via) -> Amostra {
         Amostra { t, p, via: Some(via) }
     }
 
@@ -541,8 +541,8 @@ mod testes {
     fn carregar_no_cabo_nao_e_trocar() {
         let agora = tempo::agora();
         let a = vec![
-            com_via(agora - 20 * MINUTO, 12, LinkMode::Cable),
-            com_via(agora - 18 * MINUTO, 40, LinkMode::Cable),
+            com_via(agora - 20 * MINUTO, 12, Via::Cabo),
+            com_via(agora - 18 * MINUTO, 40, Via::Cabo),
         ];
         assert_eq!(
             ultima_troca(&historico(a).por_controle["c"]),
@@ -571,10 +571,10 @@ mod testes {
     fn desligar_quebra_a_sessao_mesmo_sem_buraco_no_relogio() {
         let agora = tempo::agora();
         let a = vec![
-            com_via(agora - 60 * MINUTO, 70, LinkMode::Bluetooth),
-            com_via(agora - 50 * MINUTO, 70, LinkMode::Offline),
-            com_via(agora - 45 * MINUTO, 65, LinkMode::Bluetooth),
-            com_via(agora - 5 * MINUTO, 60, LinkMode::Bluetooth),
+            com_via(agora - 60 * MINUTO, 70, Via::Bluetooth),
+            com_via(agora - 50 * MINUTO, 70, Via::Desligado),
+            com_via(agora - 45 * MINUTO, 65, Via::Bluetooth),
+            com_via(agora - 5 * MINUTO, 60, Via::Bluetooth),
         ];
         let s = historico(a).sessoes("c");
         assert_eq!(s.len(), 2, "o desligamento gravado separa as duas");
@@ -585,8 +585,8 @@ mod testes {
     fn com_a_via_gravada_meia_hora_sem_leitura_nao_quebra_a_sessao() {
         let agora = tempo::agora();
         let a = vec![
-            com_via(agora - 60 * MINUTO, 70, LinkMode::Bluetooth),
-            com_via(agora - 15 * MINUTO, 65, LinkMode::Bluetooth),
+            com_via(agora - 60 * MINUTO, 70, Via::Bluetooth),
+            com_via(agora - 15 * MINUTO, 65, Via::Bluetooth),
         ];
         let s = historico(a).sessoes("c");
         assert_eq!(s.len(), 1, "o GATT so avisa quando muda: 45 min calado e uso, nao ausencia");
@@ -606,7 +606,7 @@ mod testes {
     #[test]
     fn o_marcador_de_desligado_nao_se_repete() {
         let agora = tempo::agora();
-        let mut h = historico(vec![com_via(agora - 30 * MINUTO, 70, LinkMode::Bluetooth)]);
+        let mut h = historico(vec![com_via(agora - 30 * MINUTO, 70, Via::Bluetooth)]);
         h.marcar_desligado("c", 70, agora - 20 * MINUTO);
         h.marcar_desligado("c", 70, agora - 10 * MINUTO);
         assert_eq!(h.serie("c").len(), 2);

@@ -5,8 +5,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
 use crate::janelas;
-use crate::model::{BatteryState, LinkMode};
-use crate::settings::{OverlayMode, Settings};
+use crate::modelo::{EstadoDoControle, Via};
+use crate::configuracoes::{OverlayMode, Settings};
 use crate::tela;
 use crate::tempo;
 
@@ -23,7 +23,7 @@ const CARENCIA_DA_ABERTURA_MS: i64 = 6_000;
 
 pub struct Orquestrador {
     aberto_em: i64,
-    anterior: Option<(String, LinkMode)>,
+    anterior: Option<(String, Via)>,
     conexao_a_avisar: Option<i64>,
     avisados: HashMap<String, Vec<i32>>,
     ultimo_percentual: HashMap<String, i32>,
@@ -43,7 +43,7 @@ impl Orquestrador {
     pub fn reavaliar(
         &mut self,
         app: &AppHandle,
-        estado: &BatteryState,
+        estado: &EstadoDoControle,
         cfg: &Settings,
         mao: Option<bool>,
         ligados: usize,
@@ -57,7 +57,7 @@ impl Orquestrador {
     fn sobreposicao(
         &self,
         app: &AppHandle,
-        estado: &BatteryState,
+        estado: &EstadoDoControle,
         cfg: &Settings,
         mao: Option<bool>,
         ligados: usize,
@@ -65,7 +65,7 @@ impl Orquestrador {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
         let ligada = cfg.overlay_mode != OverlayMode::Desligada;
-        let tem_leitura = estado.mode != LinkMode::Offline;
+        let tem_leitura = estado.via != Via::Desligado;
         let momento_de_jogo =
             cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
 
@@ -74,8 +74,8 @@ impl Orquestrador {
             .and_then(|j| j.is_focused().ok())
             .unwrap_or(false);
 
-        let critico = !estado.charging
-            && !estado.stale
+        let critico = !estado.carregando
+            && !estado.leitura_antiga
             && estado
                 .preenchimento
                 .map(|p| p <= cfg.critical_threshold)
@@ -96,11 +96,11 @@ impl Orquestrador {
         }
     }
 
-    fn transicao(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
-        let anterior = self.anterior.replace((estado.key.clone(), estado.mode));
+    fn transicao(&mut self, app: &AppHandle, estado: &EstadoDoControle, cfg: &Settings) {
+        let anterior = self.anterior.replace((estado.chave.clone(), estado.via));
 
         let Some((chave, modo)) = anterior else { return };
-        if chave != estado.key || modo == estado.mode {
+        if chave != estado.chave || modo == estado.via {
             return;
         }
         let anterior = modo;
@@ -113,13 +113,13 @@ impl Orquestrador {
             return;
         }
 
-        if estado.mode == LinkMode::Offline {
+        if estado.via == Via::Desligado {
             self.conexao_a_avisar = None;
             mostrar_aviso(app, estado, AvisoDeLigacao::Desconectou);
             return;
         }
 
-        if anterior == LinkMode::Offline {
+        if anterior == Via::Desligado {
             self.conexao_a_avisar = Some(tempo::agora());
             return;
         }
@@ -127,14 +127,14 @@ impl Orquestrador {
         mostrar_aviso(app, estado, AvisoDeLigacao::TrocouDeVia);
     }
 
-    fn talvez_avisar(&mut self, app: &AppHandle, estado: &BatteryState) {
+    fn talvez_avisar(&mut self, app: &AppHandle, estado: &EstadoDoControle) {
         let Some(desde) = self.conexao_a_avisar else { return };
-        if estado.mode == LinkMode::Offline {
+        if estado.via == Via::Desligado {
             self.conexao_a_avisar = None;
             return;
         }
 
-        let tem_carga = !estado.stale && estado.preenchimento.is_some();
+        let tem_carga = !estado.leitura_antiga && estado.preenchimento.is_some();
         let cansou = tempo::agora() - desde > ESPERA_DO_AVISO_MS;
         if !tem_carga && !cansou {
             return;
@@ -146,28 +146,28 @@ impl Orquestrador {
 }
 
 impl Orquestrador {
-    fn limiares(&mut self, app: &AppHandle, estado: &BatteryState, cfg: &Settings) {
-        if !cfg.notifications_enabled || estado.mode == LinkMode::Offline {
+    fn limiares(&mut self, app: &AppHandle, estado: &EstadoDoControle, cfg: &Settings) {
+        if !cfg.notifications_enabled || estado.via == Via::Desligado {
             return;
         }
-        if estado.stale {
+        if estado.leitura_antiga {
             return;
         }
-        let Some(pct) = estado.percent.filter(|_| estado.tem_numero) else { return };
+        let Some(pct) = estado.percentual.filter(|_| estado.tem_numero) else { return };
 
-        let avisados = self.avisados.entry(estado.key.clone()).or_default();
+        let avisados = self.avisados.entry(estado.chave.clone()).or_default();
 
-        if let Some(anterior) = self.ultimo_percentual.get(&estado.key) {
+        if let Some(anterior) = self.ultimo_percentual.get(&estado.chave) {
             if pct - anterior > 5 {
                 avisados.clear();
             }
         }
-        self.ultimo_percentual.insert(estado.key.clone(), pct);
+        self.ultimo_percentual.insert(estado.chave.clone(), pct);
 
-        let nome = if estado.device_name.trim().is_empty() {
+        let nome = if estado.nome.trim().is_empty() {
             "O controle"
         } else {
-            estado.device_name.as_str()
+            estado.nome.as_str()
         };
 
         for limite in [cfg.critical_threshold, cfg.warn_threshold] {
@@ -192,10 +192,10 @@ impl Orquestrador {
 #[derive(Serialize, Clone)]
 struct Pacote<'a> {
     assunto: AvisoDeLigacao,
-    estado: &'a BatteryState,
+    estado: &'a EstadoDoControle,
 }
 
-fn mostrar_aviso(app: &AppHandle, estado: &BatteryState, assunto: AvisoDeLigacao) {
+fn mostrar_aviso(app: &AppHandle, estado: &EstadoDoControle, assunto: AvisoDeLigacao) {
     let Some(janela) = app.get_webview_window(janelas::AVISO) else { return };
 
     janelas::posicionar_aviso(app);

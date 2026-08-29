@@ -5,7 +5,7 @@ use windows::core::{Result, HSTRING};
 use windows::Devices::HumanInterfaceDevice::{HidDevice, HidReportType};
 use windows::Storage::FileAccessMode;
 
-use crate::model::Leitura;
+use crate::modelo::Leitura;
 
 pub const PAGINA_CONTROLES_GENERICOS: u16 = 0x0006;
 pub const USO_CARGA_DA_BATERIA: u16 = 0x0020;
@@ -81,7 +81,7 @@ fn por_entrada(dispositivo: &HidDevice) -> Option<Leitura> {
 
     let esperando = operacao.clone();
     std::thread::spawn(move || {
-        crate::device::iniciar_apartamento();
+        crate::dispositivo::iniciar_apartamento();
         let _ = envio.send(esperando.join());
     });
 

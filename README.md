@@ -95,7 +95,7 @@ cargo run --release -- --gerar-icones .
 ```
 
 O comando redesenha `src-tauri/icons/`, os ícones de `docs/`, o `setup.ico` do instalador,
-o favicon da interface e os vetores de referência em `Assets/svg/`. Se algo aparecer no
+o favicon da interface e os vetores de referência em `assets/svg/`. Se algo aparecer no
 `git status` depois de rodar, é porque a geometria mudou e os arquivos estavam atrasados.
 
 ## Publicando uma versão

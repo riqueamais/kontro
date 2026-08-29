@@ -18,7 +18,7 @@ export function Painel() {
 
   useEffect(() => {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
-  }, [estado?.key, estado?.percent]);
+  }, [estado?.chave, estado?.percentual]);
 
   useEffect(() => {
     const janela = getCurrentWindow();
@@ -90,7 +90,7 @@ export function Painel() {
           girando={estado.girando}
         >
           {estado.temNumero ? (
-            <span className="numero">{estado.percent}%</span>
+            <span className="numero">{estado.percentual}%</span>
           ) : (
             <Glifo tamanho={38} cor="var(--text-secondary)" />
           )}
@@ -98,7 +98,7 @@ export function Painel() {
 
         <div className="leitura">
           <div className="dispositivo">
-            {estado.mode === "Offline" ? "Desconectado" : estado.deviceName}
+            {estado.via === "Desligado" ? "Desconectado" : estado.nome}
           </div>
           <div className="detalhe">{detalhe(estado)}</div>
           <div className="rodape">{quandoLeu(estado)}</div>
@@ -107,7 +107,7 @@ export function Painel() {
 
       <Historico serie={serie} compacto />
 
-      <ListaDeControles principal={estado.key} />
+      <ListaDeControles principal={estado.chave} />
 
       <div className="acoes">
         <button onClick={() => invoke("mostrar_janela", { rotulo: "principal" })}>

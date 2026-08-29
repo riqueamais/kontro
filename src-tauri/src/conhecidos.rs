@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::device::discovery::Controle;
-use crate::{paths, tempo};
+use crate::dispositivo::descoberta::Controle;
+use crate::{caminhos, tempo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase", default)]
@@ -73,7 +73,7 @@ pub struct Conhecidos {
 
 impl Conhecidos {
     pub fn carregar() -> Self {
-        let itens = paths::ler("controllers.json")
+        let itens = caminhos::ler("controllers.json")
             .and_then(|t| serde_json::from_str::<Vec<ControleSalvo>>(&t).ok())
             .unwrap_or_default();
 
@@ -197,9 +197,9 @@ impl Conhecidos {
     }
 
     pub fn salvar(&self) {
-        paths::garantir_dir();
+        caminhos::garantir_dir();
         if let Ok(t) = serde_json::to_string(&self.itens) {
-            let _ = std::fs::write(paths::arquivo("controllers.json"), t);
+            let _ = std::fs::write(caminhos::arquivo("controllers.json"), t);
         }
     }
 }

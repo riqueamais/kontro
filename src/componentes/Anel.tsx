@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import "./anel.css";
+
 const CAIXA = 512;
 const CENTRO = CAIXA / 2;
 
@@ -54,13 +56,8 @@ export function Anel({ valor, cor, espessura, tamanho, girando, children }: Prop
   const cheio = !girando && suave >= 99.9;
 
   return (
-    <div style={{ position: "relative", width: tamanho, height: tamanho }}>
-      <svg
-        width={tamanho}
-        height={tamanho}
-        viewBox={`0 0 ${CAIXA} ${CAIXA}`}
-        style={{ display: "block" }}
-      >
+    <div className="anel" style={{ width: tamanho, height: tamanho }}>
+      <svg width={tamanho} height={tamanho} viewBox={`0 0 ${CAIXA} ${CAIXA}`}>
         <circle
           cx={CENTRO}
           cy={CENTRO}
@@ -70,7 +67,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, children }: Prop
           strokeWidth={espessura}
         />
         {girando ? (
-          <g style={{ transformOrigin: "50% 50%", animation: "kontro-girar 1.7s linear infinite" }}>
+          <g className="giro">
             <path
               d={arco(raio, -90, ARCO_DO_GIRO)}
               fill="none"
@@ -92,16 +89,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, children }: Prop
         ) : null}
       </svg>
 
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "grid",
-          placeItems: "center",
-        }}
-      >
-        {children}
-      </div>
+      <div className="miolo">{children}</div>
     </div>
   );
 }

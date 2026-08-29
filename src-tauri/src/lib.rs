@@ -1,21 +1,21 @@
 mod atalho;
 mod atualizacao;
-mod autostart;
-mod device;
+mod inicio_automatico;
+mod dispositivo;
 mod diagnostico;
 mod geometria;
-mod history;
+mod historico;
 mod icones;
 mod janelas;
-mod known;
-mod model;
+mod conhecidos;
+mod modelo;
 mod monitor;
 mod orquestra;
-mod paths;
-mod settings;
+mod caminhos;
+mod configuracoes;
 mod tela;
 mod tempo;
-mod tray;
+mod bandeja;
 
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
@@ -25,16 +25,16 @@ use tauri_plugin_notification::NotificationExt;
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::history::{Amostra, Sessao};
-use crate::model::BatteryState;
-use crate::settings::{CloseAction, Limiares, Settings};
+use crate::historico::{Amostra, Sessao};
+use crate::modelo::EstadoDoControle;
+use crate::configuracoes::{CloseAction, Limiares, Settings};
 
 pub struct Compartilhado {
-    estado: Mutex<BatteryState>,
-    todos: Mutex<Vec<BatteryState>>,
+    estado: Mutex<EstadoDoControle>,
+    todos: Mutex<Vec<EstadoDoControle>>,
     serie: Mutex<Vec<Amostra>>,
     sessoes: Mutex<Vec<Sessao>>,
-    saude: Mutex<Option<history::Saude>>,
+    saude: Mutex<Option<historico::Saude>>,
     sobreposicao_a_mao: Mutex<Option<bool>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
@@ -57,7 +57,7 @@ pub fn executar() {
             .cloned()
             .unwrap_or_else(|| "kontro-diagnostico.txt".to_string());
 
-        device::iniciar_apartamento();
+        dispositivo::iniciar_apartamento();
         match diagnostico::escrever(&destino, None) {
             Ok(()) => println!("diagnostico salvo em {destino}"),
             Err(e) => eprintln!("nao consegui salvar o diagnostico: {e}"),
@@ -70,9 +70,9 @@ pub fn executar() {
         let tamanho = argumentos
             .get(i + 2)
             .and_then(|t| t.parse().ok())
-            .unwrap_or_else(tray::tamanho_do_icone);
+            .unwrap_or_else(bandeja::tamanho_do_icone);
         let fundo_claro = argumentos.iter().any(|a| a == "--claro");
-        match tray::salvar_previa(&destino, tamanho, fundo_claro) {
+        match bandeja::salvar_previa(&destino, tamanho, fundo_claro) {
             Some(()) => println!("previa de {tamanho}px salva em {destino}"),
             None => eprintln!("nao consegui desenhar a previa"),
         }
@@ -90,23 +90,15 @@ pub fn executar() {
 
     let mut config = Settings::carregar();
 
-    config.start_with_windows = autostart::ligado();
+    config.start_with_windows = inicio_automatico::ligado();
 
     let compartilhado = Arc::new(Compartilhado {
-        estado: Mutex::new(model::BatteryState::montar(
-            model::LinkMode::Offline,
-            None,
-            model::Precisao::Nenhuma,
-            None,
-            None,
-            false,
-            true,
-            "Procurando controle".to_string(),
-            None,
-            "wired".to_string(),
-            0,
-            None,
-        )),
+        estado: Mutex::new(modelo::EstadoDoControle::montar(modelo::Bruto {
+            leitura_antiga: true,
+            nome: "Procurando controle".to_string(),
+            chave: "wired".to_string(),
+            ..Default::default()
+        })),
         serie: Mutex::new(Vec::new()),
         sessoes: Mutex::new(Vec::new()),
         saude: Mutex::new(None),
@@ -232,7 +224,7 @@ fn iniciar_ciclo(
     pedidos: mpsc::Receiver<Pedido>,
 ) {
     std::thread::spawn(move || {
-        device::iniciar_apartamento();
+        dispositivo::iniciar_apartamento();
 
         let mut monitor = monitor::Monitor::novo();
         let mut ultimo_icone = String::new();
@@ -252,15 +244,15 @@ fn iniciar_ciclo(
                 }
                 {
                     let mut serie = compartilhado.serie.lock().unwrap();
-                    *serie = monitor.historico().serie(&principal.key).to_vec();
+                    *serie = monitor.historico().serie(&principal.chave).to_vec();
                 }
                 {
                     let mut saude = compartilhado.saude.lock().unwrap();
-                    *saude = Some(monitor.historico().saude(&principal.key));
+                    *saude = Some(monitor.historico().saude(&principal.chave));
                 }
                 {
                     let mut sessoes = compartilhado.sessoes.lock().unwrap();
-                    *sessoes = monitor.historico().sessoes(&principal.key);
+                    *sessoes = monitor.historico().sessoes(&principal.chave);
                 }
 
                 let _ = app.emit("kontro://estado", &principal);
@@ -306,7 +298,7 @@ fn ligados(compartilhado: &Compartilhado) -> usize {
         .lock()
         .unwrap()
         .iter()
-        .filter(|e| e.mode != model::LinkMode::Offline)
+        .filter(|e| e.via != modelo::Via::Desligado)
         .count()
 }
 
@@ -356,7 +348,7 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
 
 fn atualizar_bandeja(
     app: &AppHandle,
-    estado: &BatteryState,
+    estado: &EstadoDoControle,
     limiares: Limiares,
     ultimo: &mut String,
 ) {
@@ -364,21 +356,21 @@ fn atualizar_bandeja(
 
     let dica = format!(
         "{} - {} - {}",
-        estado.device_name, estado.texto_da_carga, estado.texto_da_ligacao
+        estado.nome, estado.texto_da_carga, estado.texto_da_ligacao
     );
     let _ = bandeja.set_tooltip(Some(dica));
 
-    let tamanho = tray::tamanho_do_icone();
+    let tamanho = bandeja::tamanho_do_icone();
     let assinatura = format!(
         "{:?}|{:?}|{tamanho}|{}|{}",
-        estado.mode, estado.preenchimento, limiares.critico, limiares.aviso
+        estado.via, estado.preenchimento, limiares.critico, limiares.aviso
     );
     if assinatura == *ultimo {
         return;
     }
     *ultimo = assinatura;
 
-    if let Some(icone) = tray::desenhar(estado, tamanho, limiares) {
+    if let Some(icone) = bandeja::desenhar(estado, tamanho, limiares) {
         let _ = bandeja.set_icon(Some(icone));
     }
 }
@@ -403,12 +395,12 @@ fn avisar_versao_nova(app: &AppHandle) {
 }
 
 #[tauri::command]
-fn estado_atual(compartilhado: tauri::State<Arc<Compartilhado>>) -> BatteryState {
+fn estado_atual(compartilhado: tauri::State<Arc<Compartilhado>>) -> EstadoDoControle {
     compartilhado.estado.lock().unwrap().clone()
 }
 
 #[tauri::command]
-fn controles(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<BatteryState> {
+fn controles(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<EstadoDoControle> {
     compartilhado.todos.lock().unwrap().clone()
 }
 
@@ -433,7 +425,7 @@ fn sessoes_do_controle(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<S
 }
 
 #[tauri::command]
-fn saude_da_bateria(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<history::Saude> {
+fn saude_da_bateria(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<historico::Saude> {
     compartilhado.saude.lock().unwrap().clone()
 }
 
@@ -453,9 +445,9 @@ fn salvar_configuracoes(
     {
         let anterior = compartilhado.config.lock().unwrap().start_with_windows;
         if novas.start_with_windows != anterior
-            && !autostart::definir(novas.start_with_windows)
+            && !inicio_automatico::definir(novas.start_with_windows)
         {
-            novas.start_with_windows = autostart::ligado();
+            novas.start_with_windows = inicio_automatico::ligado();
         }
     }
 
@@ -547,12 +539,12 @@ fn procurar_atualizacao(
 
 #[tauri::command]
 fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result<String, String> {
-    let destino = paths::arquivo("diagnostico.txt");
+    let destino = caminhos::arquivo("diagnostico.txt");
     let estados = compartilhado.todos.lock().unwrap().clone();
-    let principal = compartilhado.estado.lock().unwrap().key.clone();
+    let principal = compartilhado.estado.lock().unwrap().chave.clone();
     let sessoes = compartilhado.sessoes.lock().unwrap().clone();
 
-    paths::garantir_dir();
+    caminhos::garantir_dir();
     diagnostico::escrever(
         &destino.to_string_lossy(),
         Some(diagnostico::AoVivo {

@@ -13,7 +13,7 @@ pub struct NoDeBateria {
     pub nome: String,
     pub instancia: String,
     pub container: String,
-    pub percent: i32,
+    pub percentual: i32,
     pub medido_em: Option<i64>,
 }
 
@@ -37,8 +37,8 @@ pub fn nos_com_bateria() -> Vec<NoDeBateria> {
             let props = info.Properties()?;
 
             let Some(bruto) = valor(&props, CHAVE_NIVEL) else { continue };
-            let Some(percent) = como_inteiro(&bruto) else { continue };
-            if !(0..=100).contains(&percent) {
+            let Some(percentual) = como_inteiro(&bruto) else { continue };
+            if !(0..=100).contains(&percentual) {
                 continue;
             }
 
@@ -50,7 +50,7 @@ pub fn nos_com_bateria() -> Vec<NoDeBateria> {
                 container: valor(&props, CHAVE_CONTAINER)
                     .and_then(|v| como_texto(&v))
                     .unwrap_or_default(),
-                percent,
+                percentual,
                 medido_em: valor(&props, CHAVE_MOMENTO).and_then(|v| como_momento(&v)),
             });
         }
@@ -60,13 +60,13 @@ pub fn nos_com_bateria() -> Vec<NoDeBateria> {
 }
 
 pub struct CargaGuardada {
-    pub percent: i32,
+    pub percentual: i32,
     pub medido_em: Option<i64>,
 }
 
 impl From<&NoDeBateria> for CargaGuardada {
     fn from(no: &NoDeBateria) -> Self {
-        CargaGuardada { percent: no.percent, medido_em: no.medido_em }
+        CargaGuardada { percentual: no.percentual, medido_em: no.medido_em }
     }
 }
 

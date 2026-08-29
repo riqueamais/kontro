@@ -4,9 +4,9 @@ use std::path::Path;
 use tiny_skia::Pixmap;
 
 use crate::geometria as g;
-use crate::model::LinkMode;
-use crate::settings::Limiares;
-use crate::tray;
+use crate::modelo::Via;
+use crate::configuracoes::Limiares;
+use crate::bandeja;
 
 const TAMANHOS_ICO: &[u32] = &[16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
 const TAMANHOS_FAVICON: &[u32] = &[16, 24, 32, 48, 64, 128, 256];
@@ -17,10 +17,10 @@ pub fn gerar(raiz: &str) -> io::Result<()> {
 
     icones_do_app(&raiz.join("src-tauri/icons"))?;
     icones_do_site(&raiz.join("docs"))?;
-    icone_do_instalador(&raiz.join("Assets/branding/setup.ico"))?;
+    icone_do_instalador(&raiz.join("assets/branding/setup.ico"))?;
     favicon_do_front(&raiz.join("public/favicon.svg"))?;
     geometria_do_front(&raiz.join("src/estilo/geometria.gerada.ts"))?;
-    vetores_de_referencia(&raiz.join("Assets/svg"))?;
+    vetores_de_referencia(&raiz.join("assets/svg"))?;
 
     Ok(())
 }
@@ -66,7 +66,7 @@ fn icone_do_instalador(caminho: &Path) -> io::Result<()> {
 
 fn favicon_do_front(caminho: &Path) -> io::Result<()> {
     criar_pasta_do_arquivo(caminho)?;
-    std::fs::write(caminho, tray::svg_do_app(256))
+    std::fs::write(caminho, bandeja::svg_do_app(256))
 }
 
 fn geometria_do_front(caminho: &Path) -> io::Result<()> {
@@ -150,17 +150,17 @@ export const GRADIENTE = {{ x1: {g1}, y1: {g2}, x2: {g3}, y2: {g4} }} as const;
 fn vetores_de_referencia(pasta: &Path) -> io::Result<()> {
     std::fs::create_dir_all(pasta)?;
 
-    std::fs::write(pasta.join("app-icon.svg"), tray::svg_do_app(512))?;
+    std::fs::write(pasta.join("app-icon.svg"), bandeja::svg_do_app(512))?;
 
-    let estados: &[(&str, Option<i32>, LinkMode)] = &[
-        ("tray-off.svg", None, LinkMode::Offline),
-        ("tray-cable.svg", None, LinkMode::Cable),
-        ("tray-level-72.svg", Some(72), LinkMode::Bluetooth),
+    let estados: &[(&str, Option<i32>, Via)] = &[
+        ("tray-off.svg", None, Via::Desligado),
+        ("tray-cable.svg", None, Via::Cabo),
+        ("tray-level-72.svg", Some(72), Via::Bluetooth),
     ];
 
     for (nome, preenchimento, modo) in estados {
-        let estado = tray::estado_demo(*preenchimento, *modo);
-        std::fs::write(pasta.join(nome), tray::montar_svg(&estado, Limiares::PADRAO))?;
+        let estado = bandeja::estado_demo(*preenchimento, *modo);
+        std::fs::write(pasta.join(nome), bandeja::montar_svg(&estado, Limiares::PADRAO))?;
     }
 
     Ok(())
@@ -196,7 +196,7 @@ fn gravar_ico(caminho: &Path, tamanhos: &[u32]) -> io::Result<()> {
 }
 
 fn desenhar(tamanho: u32) -> io::Result<Pixmap> {
-    let svg = tray::svg_do_app(tamanho);
+    let svg = bandeja::svg_do_app(tamanho);
     let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default())
         .map_err(|e| io::Error::other(format!("svg invalido em {tamanho}px: {e}")))?;
 

@@ -1,0 +1,25 @@
+.anel {
+  position: relative;
+}
+
+.anel > svg {
+  display: block;
+}
+
+.anel .giro {
+  transform-origin: 50% 50%;
+  animation: kontro-girar 1.7s linear infinite;
+}
+
+.anel .miolo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+@keyframes kontro-girar {
+  to {
+    transform: rotate(360deg);
+  }
+}

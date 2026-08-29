@@ -7,7 +7,7 @@ use windows::Devices::Enumeration::{
 use windows::Devices::HumanInterfaceDevice::HidDevice;
 use windows::Foundation::TypedEventHandler;
 
-use super::{discovery, hid};
+use super::{descoberta, hid};
 
 pub struct Vigia {
     observadores: Vec<DeviceWatcher>,
@@ -72,7 +72,7 @@ fn seletores() -> Vec<HSTRING> {
     lista.push(HSTRING::from(format!(
         "System.Devices.InterfaceClassGuid:=\"{}\" AND \
          System.Devices.InterfaceEnabled:=System.StructuredQueryType.Boolean#True",
-        discovery::GUID_XUSB
+        descoberta::GUID_XUSB
     )));
 
     lista

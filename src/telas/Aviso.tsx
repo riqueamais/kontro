@@ -58,13 +58,13 @@ export function Aviso() {
           girando={assunto !== "Desconectou" && estado.girando}
         >
           {estado.temNumero && assunto !== "Desconectou" ? (
-            <span className="pct">{estado.percent}%</span>
+            <span className="pct">{estado.percentual}%</span>
           ) : (
             <Glifo tamanho={18} cor="var(--text-secondary)" />
           )}
         </Anel>
         <div className="texto">
-          <div className="nome">{estado.deviceName}</div>
+          <div className="nome">{estado.nome}</div>
           <div className="linha">{legenda(assunto, estado)}</div>
         </div>
       </div>
@@ -83,7 +83,7 @@ function legenda(assunto: Assunto, estado: Estado): string {
 
   const abertura = assunto === "TrocouDeVia" ? "agora" : "conectado";
   if (estado.girando) {
-    return estado.charging ? `${abertura} no cabo · carregando` : `${abertura} no cabo`;
+    return estado.carregando ? `${abertura} no cabo · carregando` : `${abertura} no cabo`;
   }
   if (estado.temNumero) return `${abertura} · ${estado.textoDaLigacao}`;
   if (estado.preenchimento !== null) {

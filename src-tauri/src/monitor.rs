@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
 
-use crate::device::discovery::{self, Controle};
-use crate::device::gatt::{self, AvisoGatt, VinculoGatt};
-use crate::device::vigia::{self, Vigia};
-use crate::device::{gaming, hid, pnp, xinput};
-use crate::history::History;
-use crate::known::Conhecidos;
-use crate::model::{BatteryState, Leitura, LinkMode, Precisao};
+use crate::dispositivo::descoberta::{self, Controle};
+use crate::dispositivo::gatt::{self, AvisoGatt, VinculoGatt};
+use crate::dispositivo::vigia::{self, Vigia};
+use crate::dispositivo::{gaming, hid, pnp, xinput};
+use crate::historico::History;
+use crate::conhecidos::Conhecidos;
+use crate::modelo::{Bruto, EstadoDoControle, Leitura, Precisao, Via};
 use crate::tempo;
 
 const INTERVALO_SEM_BLUETOOTH_MS: i64 = 20_000;
@@ -25,8 +25,8 @@ const ESPERA_ENTRE_VINCULOS_MS: i64 = 5_000;
 
 #[derive(Debug, Clone)]
 pub struct Panorama {
-    pub principal: BatteryState,
-    pub todos: Vec<BatteryState>,
+    pub principal: EstadoDoControle,
+    pub todos: Vec<EstadoDoControle>,
 }
 
 #[derive(Debug, Clone)]
@@ -48,21 +48,15 @@ impl Presenca {
 
 #[derive(Debug, Default, Clone)]
 struct Registro {
-    percent: Option<i32>,
+    percentual: Option<i32>,
     nivel: Option<i32>,
     precisao: Precisao,
     em: Option<i64>,
     tentativa: Option<i64>,
     provisorio: bool,
     incerto: bool,
-    via: LinkMode,
+    via: Via,
     via_desde: i64,
-}
-
-impl Default for Precisao {
-    fn default() -> Self {
-        Precisao::Nenhuma
-    }
 }
 
 pub struct Monitor {
@@ -82,13 +76,13 @@ pub struct Monitor {
     pareados: Vec<(u64, String)>,
     pareados_em: i64,
 
-    em_observacao: Option<(String, i32, i64, LinkMode)>,
+    em_observacao: Option<(String, i32, i64, Via)>,
     conectado_desde: Option<i64>,
     tentativa_de_vinculo: i64,
 
     ultima_gravacao: i64,
 
-    ultimo: Option<BatteryState>,
+    ultimo: Option<EstadoDoControle>,
 }
 
 impl Monitor {
@@ -106,7 +100,7 @@ impl Monitor {
                 leituras.insert(
                     chave,
                     Registro {
-                        percent: Some(ultimo.p),
+                        percentual: Some(ultimo.p),
                         precisao: Precisao::Exata,
                         em: Some(ultimo.t),
                         via_desde: agora,
@@ -143,9 +137,9 @@ impl Monitor {
         self.talvez_descobrir(agora);
 
         while let Ok(aviso) = self.recebimento.try_recv() {
-            let AvisoGatt::Carga { endereco, percent } = aviso;
+            let AvisoGatt::Carga { endereco, percentual } = aviso;
             let chave = format!("{endereco:012x}");
-            self.gravar(&chave, percent, agora, false, LinkMode::Bluetooth);
+            self.gravar(&chave, percentual, agora, false, Via::Bluetooth);
         }
 
         let controles: Vec<Controle> =
@@ -165,14 +159,14 @@ impl Monitor {
             });
             self.marcar_via(&controle.chave(), modo, agora);
 
-            if modo == LinkMode::Bluetooth && !vinculado {
+            if modo == Via::Bluetooth && !vinculado {
                 vinculado = true;
                 self.garantir_vinculo(controle, agora);
                 self.confirmar_em_observacao(agora);
             }
 
             let dele = self.vinculo.as_ref().map(|v| v.endereco()) == Some(endereco);
-            if modo != LinkMode::Offline && !dele {
+            if modo != Via::Desligado && !dele {
                 self.ler_sem_bluetooth(controle, modo, agora);
             }
 
@@ -198,7 +192,7 @@ impl Monitor {
             .ultimo
             .as_ref()
             .map(|u| {
-                !u.igual_a(&panorama.principal) || u.known_count != panorama.todos.len()
+                !u.igual_a(&panorama.principal) || u.quantos_conhecidos != panorama.todos.len()
             })
             .unwrap_or(true);
 
@@ -224,11 +218,11 @@ impl Monitor {
             self.renovar_pareados(agora);
         }
 
-        let mut achados = discovery::descobrir_com(&self.pareados);
+        let mut achados = descoberta::descobrir_com(&self.pareados);
 
         if !renovou && achados.iter().any(|c| c.endereco != 0 && !self.tem_nome(c.endereco)) {
             self.renovar_pareados(agora);
-            achados = discovery::descobrir_com(&self.pareados);
+            achados = descoberta::descobrir_com(&self.pareados);
         }
 
         self.presentes = achados.iter().map(Presenca::de).collect();
@@ -263,7 +257,7 @@ impl Monitor {
         self.conectado_desde = Some(agora);
 
         if let Some(pct) = inicial {
-            self.gravar(&controle.chave(), pct, agora, true, LinkMode::Bluetooth);
+            self.gravar(&controle.chave(), pct, agora, true, Via::Bluetooth);
         }
     }
 
@@ -272,19 +266,19 @@ impl Monitor {
         self.conectado_desde = None;
     }
 
-    fn gravar(&mut self, chave: &str, percent: i32, agora: i64, provisorio: bool, via: LinkMode) {
-        if !(0..=100).contains(&percent) {
+    fn gravar(&mut self, chave: &str, percentual: i32, agora: i64, provisorio: bool, via: Via) {
+        if !(0..=100).contains(&percentual) {
             return;
         }
         let registro = self.leituras.entry(chave.to_string()).or_default();
 
         if provisorio {
-            self.em_observacao = Some((chave.to_string(), percent, agora, via));
+            self.em_observacao = Some((chave.to_string(), percentual, agora, via));
 
-            if registro.precisao == Precisao::Exata && registro.percent.is_some() {
+            if registro.precisao == Precisao::Exata && registro.percentual.is_some() {
                 return;
             }
-            registro.percent = Some(percent);
+            registro.percentual = Some(percentual);
             registro.nivel = None;
             registro.precisao = Precisao::Exata;
             registro.em = Some(agora);
@@ -294,24 +288,24 @@ impl Monitor {
         }
 
         self.em_observacao = None;
-        registro.percent = Some(percent);
+        registro.percentual = Some(percentual);
         registro.nivel = None;
         registro.precisao = Precisao::Exata;
         registro.em = Some(agora);
         registro.provisorio = false;
         registro.incerto = false;
-        self.historico.adicionar(chave, percent, agora, via);
+        self.historico.adicionar(chave, percentual, agora, via);
     }
 
     fn confirmar_em_observacao(&mut self, agora: i64) {
-        let Some((chave, percent, quando, via)) = self.em_observacao.clone() else { return };
+        let Some((chave, percentual, quando, via)) = self.em_observacao.clone() else { return };
         if agora - quando < ESPERA_DE_CONFIRMACAO_MS {
             return;
         }
-        self.gravar(&chave, percent, agora, false, via);
+        self.gravar(&chave, percentual, agora, false, via);
     }
 
-    fn ler_sem_bluetooth(&mut self, controle: &Controle, modo: LinkMode, agora: i64) {
+    fn ler_sem_bluetooth(&mut self, controle: &Controle, modo: Via, agora: i64) {
         let chave = controle.chave();
         {
             let registro = self.leituras.entry(chave.clone()).or_default();
@@ -381,18 +375,18 @@ impl Monitor {
         registro.incerto = incerto;
 
         if leitura.precisao == Precisao::Exata {
-            registro.percent = Some(leitura.valor);
+            registro.percentual = Some(leitura.valor);
             registro.nivel = None;
             if !incerto {
                 self.historico.adicionar(&chave, leitura.valor, em, modo);
             }
         } else {
             registro.nivel = Some(leitura.valor);
-            registro.percent = None;
+            registro.percentual = None;
         }
     }
 
-    fn marcar_via(&mut self, chave: &str, modo: LinkMode, agora: i64) {
+    fn marcar_via(&mut self, chave: &str, modo: Via, agora: i64) {
         let registro = self.leituras.entry(chave.to_string()).or_default();
         if registro.via_desde == 0 {
             registro.via_desde = agora;
@@ -400,13 +394,13 @@ impl Monitor {
         if registro.via == modo {
             return;
         }
-        let saiu_do_ar = modo == LinkMode::Offline && registro.via != LinkMode::Offline;
-        let ultimo = registro.percent.filter(|_| registro.precisao == Precisao::Exata);
+        let saiu_do_ar = modo == Via::Desligado && registro.via != Via::Desligado;
+        let ultimo = registro.percentual.filter(|_| registro.precisao == Precisao::Exata);
         registro.via = modo;
         registro.via_desde = agora;
 
-        if let (true, Some(percent)) = (saiu_do_ar, ultimo) {
-            self.historico.marcar_desligado(chave, percent, agora);
+        if let (true, Some(percentual)) = (saiu_do_ar, ultimo) {
+            self.historico.marcar_desligado(chave, percentual, agora);
         }
     }
 
@@ -421,28 +415,20 @@ impl Monitor {
         self.historico.salvar();
     }
 
-    fn montar_vazio(&self) -> BatteryState {
-        BatteryState::montar(
-            LinkMode::Offline,
-            None,
-            Precisao::Nenhuma,
-            None,
-            None,
-            false,
-            true,
-            "Nenhum controle pareado".to_string(),
-            None,
-            "wired".to_string(),
-            0,
-            None,
-        )
+    fn montar_vazio(&self) -> EstadoDoControle {
+        EstadoDoControle::montar(Bruto {
+            leitura_antiga: true,
+            nome: "Nenhum controle pareado".to_string(),
+            chave: "wired".to_string(),
+            ..Default::default()
+        })
     }
 
-    fn montar_um(&self, controle: &Controle, modo: LinkMode, agora: i64) -> BatteryState {
+    fn montar_um(&self, controle: &Controle, modo: Via, agora: i64) -> EstadoDoControle {
         let chave = controle.chave();
         let registro = self.leituras.get(&chave).cloned().unwrap_or_default();
 
-        let do_vinculo = modo != LinkMode::Bluetooth
+        let do_vinculo = modo != Via::Bluetooth
             || matches!(
                 (self.conectado_desde, registro.em),
                 (Some(inicio), Some(em)) if em >= inicio
@@ -452,33 +438,33 @@ impl Monitor {
             && !registro.provisorio
             && !registro.incerto
             && do_vinculo
-            && (modo == LinkMode::Bluetooth
+            && (modo == Via::Bluetooth
                 || agora - registro.em.unwrap_or(0) < INTERVALO_SEM_BLUETOOTH_MS * 2);
 
-        BatteryState::montar(
-            modo,
-            registro.percent,
-            registro.precisao,
-            registro.nivel,
-            registro.em,
-            modo == LinkMode::Cable && gaming::carregando(),
-            !ao_vivo,
-            controle.nome.clone(),
-            controle.endereco_bonito(),
-            chave.clone(),
-            self.conhecidos.quantidade(),
-            self.autonomia(&chave, &registro, modo),
-        )
+        EstadoDoControle::montar(Bruto {
+            via: modo,
+            percentual: registro.percentual,
+            precisao: registro.precisao,
+            nivel: registro.nivel,
+            lido_em: registro.em,
+            carregando: modo == Via::Cabo && gaming::carregando(),
+            leitura_antiga: !ao_vivo,
+            nome: controle.nome.clone(),
+            endereco: controle.endereco_bonito(),
+            chave: chave.clone(),
+            quantos_conhecidos: self.conhecidos.quantidade(),
+            autonomia: self.autonomia(&chave, &registro, modo),
+        })
     }
 
-    fn autonomia(&self, chave: &str, registro: &Registro, modo: LinkMode) -> Option<String> {
-        if modo == LinkMode::Offline || modo == LinkMode::Cable {
+    fn autonomia(&self, chave: &str, registro: &Registro, modo: Via) -> Option<String> {
+        if modo == Via::Desligado || modo == Via::Cabo {
             return None;
         }
-        let percent = registro.percent.filter(|_| registro.precisao == Precisao::Exata)?;
+        let percentual = registro.percentual.filter(|_| registro.precisao == Precisao::Exata)?;
 
-        if let Some(minutos) = self.historico.autonomia_em_minutos(chave, percent) {
-            return Some(crate::model::descrever_autonomia(minutos));
+        if let Some(minutos) = self.historico.autonomia_em_minutos(chave, percentual) {
+            return Some(crate::modelo::descrever_autonomia(minutos));
         }
         if let Some(taxa) = self.historico.consumo_por_hora(chave) {
             return Some(format!("consumo de {taxa:.1} %/h").replace('.', ","));
@@ -499,7 +485,7 @@ impl Monitor {
         if let Some(vinculo) = &self.vinculo {
             let endereco = vinculo.endereco();
             if let Some(pct) = gatt::reler(vinculo) {
-                self.gravar(&format!("{endereco:012x}"), pct, agora, false, LinkMode::Bluetooth);
+                self.gravar(&format!("{endereco:012x}"), pct, agora, false, Via::Bluetooth);
             }
         }
 
@@ -542,15 +528,15 @@ fn modo_de(
     presenca: Option<&Presenca>,
     algum_no_cabo: bool,
     responde_no_gatt: impl FnOnce() -> bool,
-) -> LinkMode {
-    let Some(presenca) = presenca else { return LinkMode::Offline };
+) -> Via {
+    let Some(presenca) = presenca else { return Via::Desligado };
     if presenca.endereco != 0 || responde_no_gatt() {
-        return LinkMode::Bluetooth;
+        return Via::Bluetooth;
     }
     if algum_no_cabo {
-        LinkMode::Cable
+        Via::Cabo
     } else {
-        LinkMode::Wireless
+        Via::SemFio
     }
 }
 
@@ -565,15 +551,15 @@ fn presenca_de<'a>(presentes: &'a [Presenca], controle: &Controle) -> Option<&'a
 
 fn aceitar_guardada(carga: &pnp::CargaGuardada, atual: &Registro) -> Option<i32> {
     if carga.medido_em.is_some() {
-        return Some(carga.percent);
+        return Some(carga.percentual);
     }
-    let temos = atual.percent.is_some() && atual.precisao == Precisao::Exata;
-    (!temos || atual.incerto).then_some(carga.percent)
+    let temos = atual.percentual.is_some() && atual.precisao == Precisao::Exata;
+    (!temos || atual.incerto).then_some(carga.percentual)
 }
 
-fn escolher_principal(estados: &[BatteryState]) -> Option<&BatteryState> {
-    let ligados: Vec<&BatteryState> =
-        estados.iter().filter(|e| e.mode != LinkMode::Offline).collect();
+fn escolher_principal(estados: &[EstadoDoControle]) -> Option<&EstadoDoControle> {
+    let ligados: Vec<&EstadoDoControle> =
+        estados.iter().filter(|e| e.via != Via::Desligado).collect();
 
     let candidatos = if ligados.is_empty() { estados.iter().collect() } else { ligados };
 
@@ -601,67 +587,62 @@ mod testes {
         Controle { endereco, container: container.into(), ..Default::default() }
     }
 
-    fn com_hora(percent: i32) -> Registro {
+    fn com_hora(percentual: i32) -> Registro {
         Registro {
-            percent: Some(percent),
+            percentual: Some(percentual),
             precisao: Precisao::Exata,
             em: Some(1),
             ..Default::default()
         }
     }
 
-    fn estado(chave: &str, preenchimento: Option<i32>, modo: LinkMode) -> BatteryState {
-        BatteryState::montar(
-            modo,
-            preenchimento,
-            if preenchimento.is_some() { Precisao::Exata } else { Precisao::Nenhuma },
-            None,
-            None,
-            false,
-            false,
-            chave.into(),
-            None,
-            chave.into(),
-            1,
-            None,
-        )
+    fn estado(chave: &str, preenchimento: Option<i32>, modo: Via) -> EstadoDoControle {
+        EstadoDoControle::montar(Bruto {
+            via: modo,
+            percentual: preenchimento,
+            precisao: if preenchimento.is_some() { Precisao::Exata } else { Precisao::Nenhuma },
+            nome: chave.into(),
+            chave: chave.into(),
+            quantos_conhecidos: 1,
+            ..Default::default()
+        })
     }
 
     #[test]
     fn desligar_o_controle_nao_e_ligar_no_cabo() {
-        assert_eq!(modo_de(None, true, || false), LinkMode::Offline);
+        assert_eq!(modo_de(None, true, || false), Via::Desligado);
     }
 
     #[test]
     fn quem_chegou_por_bluetooth_nunca_esta_no_cabo() {
         let p = presente("408e2c82242f", "c1", 0x408e2c82242f);
-        assert_eq!(modo_de(Some(&p), true, || false), LinkMode::Bluetooth);
+        assert_eq!(modo_de(Some(&p), true, || false), Via::Bluetooth);
     }
 
     #[test]
     fn a_interface_de_bluetooth_dispensa_perguntar_ao_radio() {
         let p = presente("408e2c82242f", "c1", 0x408e2c82242f);
         let modo = modo_de(Some(&p), true, || panic!("perguntou ao radio sem precisar"));
-        assert_eq!(modo, LinkMode::Bluetooth);
+        assert_eq!(modo, Via::Bluetooth);
     }
 
     #[test]
     fn controle_desligado_dispensa_perguntar_ao_radio() {
         let modo = modo_de(None, true, || panic!("perguntou ao radio por um controle que saiu"));
-        assert_eq!(modo, LinkMode::Offline);
+        assert_eq!(modo, Via::Desligado);
     }
 
     #[test]
     fn sem_endereco_na_interface_o_radio_ainda_responde() {
         let p = presente("hid:x", "c1", 0);
-        assert_eq!(modo_de(Some(&p), true, || true), LinkMode::Bluetooth);
+        assert_eq!(modo_de(Some(&p), true, || true), Via::Bluetooth);
     }
 
     #[test]
     fn sem_endereco_e_sem_radio_a_palavra_e_do_xinput() {
         let p = presente("hid:x", "c1", 0);
-        assert_eq!(modo_de(Some(&p), true, || false), LinkMode::Cable);
-        assert_eq!(modo_de(Some(&p), false, || false), LinkMode::Wireless);
+        assert_eq!(modo_de(Some(&p), true, || false), Via::Cabo);
+        assert_eq!(modo_de(Some(&p), false, || false), Via::SemFio);
     }
 
     #[test]
@@ -678,44 +659,44 @@ mod testes {
 
     #[test]
     fn numero_sem_data_nao_derruba_leitura_com_hora() {
-        let guardado = pnp::CargaGuardada { percent: 64, medido_em: None };
+        let guardado = pnp::CargaGuardada { percentual: 64, medido_em: None };
         assert_eq!(aceitar_guardada(&guardado, &com_hora(84)), None);
     }
 
     #[test]
     fn numero_sem_data_preenche_o_vazio() {
-        let guardado = pnp::CargaGuardada { percent: 64, medido_em: None };
+        let guardado = pnp::CargaGuardada { percentual: 64, medido_em: None };
         assert_eq!(aceitar_guardada(&guardado, &Registro::default()), Some(64));
     }
 
     #[test]
     fn a_fonte_sem_data_continua_acompanhada() {
         let anterior = Registro { incerto: true, ..com_hora(64) };
-        let guardado = pnp::CargaGuardada { percent: 60, medido_em: None };
+        let guardado = pnp::CargaGuardada { percentual: 60, medido_em: None };
         assert_eq!(aceitar_guardada(&guardado, &anterior), Some(60));
     }
 
     #[test]
     fn numero_com_data_entra_sempre() {
-        let guardado = pnp::CargaGuardada { percent: 64, medido_em: Some(2) };
+        let guardado = pnp::CargaGuardada { percentual: 64, medido_em: Some(2) };
         assert_eq!(aceitar_guardada(&guardado, &com_hora(84)), Some(64));
     }
 
     #[test]
     fn o_icone_mostra_quem_esta_pior() {
         let lista = [
-            estado("cheio", Some(90), LinkMode::Bluetooth),
-            estado("vazio", Some(12), LinkMode::Wireless),
+            estado("cheio", Some(90), Via::Bluetooth),
+            estado("vazio", Some(12), Via::SemFio),
         ];
-        assert_eq!(escolher_principal(&lista).unwrap().key, "vazio");
+        assert_eq!(escolher_principal(&lista).unwrap().chave, "vazio");
     }
 
     #[test]
     fn controle_desligado_nao_rouba_o_icone_de_quem_esta_ligado() {
         let lista = [
-            estado("desligado", Some(3), LinkMode::Offline),
-            estado("ligado", Some(80), LinkMode::Bluetooth),
+            estado("desligado", Some(3), Via::Desligado),
+            estado("ligado", Some(80), Via::Bluetooth),
         ];
-        assert_eq!(escolher_principal(&lista).unwrap().key, "ligado");
+        assert_eq!(escolher_principal(&lista).unwrap().chave, "ligado");
     }
 }

@@ -1,14 +1,14 @@
 use tauri::image::Image;
 
 use crate::geometria as g;
-use crate::model::{BatteryState, LinkMode};
-use crate::settings::Limiares;
+use crate::modelo::{EstadoDoControle, Via};
+use crate::configuracoes::Limiares;
 
-pub fn desenhar(estado: &BatteryState, tamanho: u32, limiares: Limiares) -> Option<Image<'static>> {
+pub fn desenhar(estado: &EstadoDoControle, tamanho: u32, limiares: Limiares) -> Option<Image<'static>> {
     rasterizar(&montar_svg(estado, limiares), tamanho)
 }
 
-pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
+pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
@@ -42,16 +42,16 @@ pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
         )
     };
 
-    let miolo = match (estado.mode, estado.preenchimento) {
+    let miolo = match (estado.via, estado.preenchimento) {
 
-        (LinkMode::Offline, _) => format!(
+        (Via::Desligado, _) => format!(
             r##"{trilho}{}<path d="{}" stroke="{cor_glifo}" stroke-width="{}" stroke-linecap="round"/>"##,
             desenhar_glifo(g::GLIFO_APAGADO),
             g::RISCO,
             g::RISCO_LARGURA
         ),
 
-        (LinkMode::Cable, None) => format!(
+        (Via::Cabo, None) => format!(
             r##"{trilho}<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-width="{grossura}"/>{}"##,
             g::CINZA,
             desenhar_glifo(1.0)
@@ -82,34 +82,29 @@ pub(crate) fn montar_svg(estado: &BatteryState, limiares: Limiares) -> String {
     )
 }
 
-pub(crate) fn estado_demo(preenchimento: Option<i32>, modo: LinkMode) -> BatteryState {
-    BatteryState::montar(
-        modo,
-        preenchimento,
-        if preenchimento.is_some() {
-            crate::model::Precisao::Exata
+pub(crate) fn estado_demo(preenchimento: Option<i32>, modo: Via) -> EstadoDoControle {
+    EstadoDoControle::montar(crate::modelo::Bruto {
+        via: modo,
+        percentual: preenchimento,
+        precisao: if preenchimento.is_some() {
+            crate::modelo::Precisao::Exata
         } else {
-            crate::model::Precisao::Nenhuma
+            crate::modelo::Precisao::Nenhuma
         },
-        None,
-        None,
-        false,
-        false,
-        "demo".into(),
-        None,
-        "demo".into(),
-        1,
-        None,
-    )
+        nome: "demo".into(),
+        chave: "demo".into(),
+        quantos_conhecidos: 1,
+        ..Default::default()
+    })
 }
 
 pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<()> {
-    let exemplos: [(Option<i32>, LinkMode); 5] = [
-        (None, LinkMode::Offline),
-        (Some(100), LinkMode::Bluetooth),
-        (Some(55), LinkMode::Bluetooth),
-        (Some(12), LinkMode::Bluetooth),
-        (None, LinkMode::Cable),
+    let exemplos: [(Option<i32>, Via); 5] = [
+        (None, Via::Desligado),
+        (Some(100), Via::Bluetooth),
+        (Some(55), Via::Bluetooth),
+        (Some(12), Via::Bluetooth),
+        (None, Via::Cabo),
     ];
 
     let escala = 8u32;

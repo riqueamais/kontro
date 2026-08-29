@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tauri_plugin_updater::UpdaterExt;
 
-use crate::paths;
+use crate::caminhos;
 use crate::tempo;
 
 pub const JANELA_MS: i64 = 24 * 60 * 60 * 1000;
@@ -61,16 +61,16 @@ fn descrever(erro: &tauri_plugin_updater::Error) -> String {
 }
 
 pub fn ultima_checagem() -> i64 {
-    paths::ler("atualizacao.json")
+    caminhos::ler("atualizacao.json")
         .and_then(|t| serde_json::from_str::<Marca>(&t).ok())
         .map(|m| m.ultima_checagem_ms)
         .unwrap_or(0)
 }
 
 fn marcar_checagem() {
-    paths::garantir_dir();
+    caminhos::garantir_dir();
     let marca = Marca { ultima_checagem_ms: tempo::agora() };
     if let Ok(t) = serde_json::to_string_pretty(&marca) {
-        let _ = std::fs::write(paths::arquivo("atualizacao.json"), t);
+        let _ = std::fs::write(caminhos::arquivo("atualizacao.json"), t);
     }
 }

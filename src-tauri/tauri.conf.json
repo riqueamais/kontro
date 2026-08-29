@@ -35,9 +35,9 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "installerIcon": "../Assets/branding/setup.ico",
-        "headerImage": "../Assets/branding/installer/nsis-header.bmp",
-        "sidebarImage": "../Assets/branding/installer/nsis-sidebar.bmp",
+        "installerIcon": "../assets/branding/setup.ico",
+        "headerImage": "../assets/branding/installer/nsis-header.bmp",
+        "sidebarImage": "../assets/branding/installer/nsis-sidebar.bmp",
         "languages": [
           "PortugueseBR",
           "English"
