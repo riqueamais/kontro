@@ -526,6 +526,30 @@ mod testes {
     }
 
     #[test]
+    fn o_arquivo_de_antes_da_via_continua_sendo_lido() {
+        let bruto = r#"{"408e2c82242f":[{"T":"2026-08-20T00:28:00-03:00","P":73}]}"#;
+        let mapa: HashMap<String, Vec<AmostraEmDisco>> = serde_json::from_str(bruto).unwrap();
+
+        let serie = &mapa["408e2c82242f"];
+        assert_eq!(serie.len(), 1);
+        assert_eq!(serie[0].p, 73);
+        assert_eq!(serie[0].v, None, "amostra sem V nao pode virar Desligado");
+    }
+
+    #[test]
+    fn a_amostra_sem_via_nao_ganha_o_campo_ao_ser_gravada() {
+        let sem = AmostraEmDisco { t: "2026-08-20T00:28:00-03:00".into(), p: 73, v: None };
+        let com = AmostraEmDisco {
+            t: "2026-08-20T00:28:00-03:00".into(),
+            p: 73,
+            v: Some(Via::Bluetooth),
+        };
+
+        assert!(!serde_json::to_string(&sem).unwrap().contains("\"V\""));
+        assert!(serde_json::to_string(&com).unwrap().contains("\"V\":\"Bluetooth\""));
+    }
+
+    #[test]
     fn carregar_no_cabo_nao_e_trocar() {
         let agora = tempo::agora();
         let a = vec![
