@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
+import { useConfig } from "../estado";
 import { Configuracoes } from "./Configuracoes";
+import { Passos } from "./Passos";
 import { Resumo } from "./Resumo";
 import "./principal.css";
 
@@ -42,7 +44,23 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
 ];
 
 export function Principal() {
+  const cfg = useConfig();
   const [pagina, setPagina] = useState<Pagina>("resumo");
+  const [passos, setPassos] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (passos === null && cfg) setPassos(!cfg.FirstRunDone);
+  }, [cfg, passos]);
+
+  if (passos) {
+    return (
+      <div className="app">
+        <BarraDeTitulo />
+        <Passos aoTerminar={() => setPassos(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <BarraDeTitulo />
@@ -60,7 +78,9 @@ export function Principal() {
             </button>
           ))}
         </nav>
-        <main className="pagina">{pagina === "resumo" ? <Resumo /> : <Configuracoes />}</main>
+        <main className="pagina">
+          {pagina === "resumo" ? <Resumo /> : <Configuracoes aoRever={() => setPassos(true)} />}
+        </main>
       </div>
     </div>
   );

@@ -183,14 +183,6 @@ pub fn executar() {
                 }
             }
 
-            {
-                let mut cfg = compartilhado.config.lock().unwrap();
-                if !cfg.first_run_done {
-                    cfg.first_run_done = true;
-                    cfg.salvar();
-                }
-            }
-
             iniciar_ciclo(handle, compartilhado.clone(), recebimento);
             Ok(())
         })

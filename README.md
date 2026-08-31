@@ -54,6 +54,10 @@ publicadas aqui.
 
 ## Configuração
 
+Na primeira abertura o app se explica em seis telas — o que o ícone diz, por que não há
+percentual no cabo, e a pílula solta na tela para você arrastar até onde quiser. Dá para
+rever quando quiser, em Configurações.
+
 Pelo ícone na bandeja, em Configurações:
 
 - Iniciar com o Windows e iniciar minimizado

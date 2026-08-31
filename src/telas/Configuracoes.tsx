@@ -3,6 +3,8 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
+import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
+import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import { Config, OverlayMode, useAtalhosRecusados, usePilulaSolta } from "../estado";
 
 const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
@@ -33,9 +35,6 @@ const NOME_DA_TECLA: Record<string, string> = {
   PageUp: "Page Up",
   PageDown: "Page Down",
 };
-
-const LIMIARES_DE_AVISO = [40, 30, 25, 20, 15, 10] as const;
-const LIMIARES_CRITICOS = [20, 15, 10, 5] as const;
 
 const TAMANHOS: [number, string][] = [
   [0.85, "Pequena"],
@@ -79,7 +78,7 @@ type Passo =
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
-export function Configuracoes() {
+export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
@@ -158,16 +157,8 @@ export function Configuracoes() {
   };
 
   if (!cfg) return null;
-  const gravar = (mudanca: Partial<Config>) => {
-    const novas = { ...cfg, ...mudanca };
-    setCfg(novas);
-    void invoke("salvar_configuracoes", { novas });
-  };
+  const gravar = (mudanca: Partial<Config>) => setCfg(salvar(cfg, mudanca));
 
-  const ciclar = <T extends string | number>(atual: T, opcoes: readonly T[]): T => {
-    const i = opcoes.indexOf(atual);
-    return i < 0 ? opcoes[0] : opcoes[(i + 1) % opcoes.length];
-  };
   return (
     <>
       <h1 className="titulo-da-pagina">Configurações</h1>
@@ -375,6 +366,14 @@ export function Configuracoes() {
         <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
       </Linha>
       <h2>Problemas</h2>
+      <Linha
+        titulo="Passo a passo"
+        descricao="As seis telas que explicam o app, de novo do começo."
+      >
+        <button className="ciclo" onClick={aoRever}>
+          Rever
+        </button>
+      </Linha>
       <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
         <button
           className="ciclo"
@@ -454,14 +453,6 @@ function primeiraLinha(notas: string | null): string {
 
   if (!linha) return "";
   return linha.length > 150 ? `${linha.slice(0, 147)}...` : linha;
-}
-
-function MiniTela({ x, y, solta }: { x: number; y: number; solta: boolean }) {
-  return (
-    <span className={solta ? "mini-tela solta" : "mini-tela"} aria-hidden="true">
-      <span className="mini-pilula" style={{ left: 1 + x * 36, top: 1 + y * 22 }} />
-    </span>
-  );
 }
 
 function descricaoDoAtalho(base: string, combinacao: string, recusados: string[]): string {
@@ -544,36 +535,4 @@ function nomeDaTecla(parte: string): string {
   if (parte.startsWith("Digit")) return parte.slice(5);
   if (parte.startsWith("Numpad")) return `Num ${parte.slice(6)}`;
   return parte;
-}
-
-function Linha({
-  titulo,
-  descricao,
-  children,
-}: {
-  titulo: string;
-  descricao: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="linha">
-      <div className="rotulo">
-        <div className="titulo">{titulo}</div>
-        <div className="descricao">{descricao}</div>
-      </div>
-      <div className="controle">{children}</div>
-    </div>
-  );
-}
-function Chave({ ligado, aoTrocar }: { ligado: boolean; aoTrocar: (v: boolean) => void }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={ligado}
-      className={`chave${ligado ? " ligada" : ""}`}
-      onClick={() => aoTrocar(!ligado)}
-    >
-      <span className="bolinha" />
-    </button>
-  );
 }

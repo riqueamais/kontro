@@ -1,0 +1,174 @@
+body[data-janela="principal"] .passos {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  overflow: hidden;
+}
+
+body[data-janela="principal"] .passos .pontos {
+  display: flex;
+  gap: 6px;
+}
+
+body[data-janela="principal"] .passos .ponto {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--stroke-strong);
+  transition:
+    width var(--motion-base) var(--curva),
+    background var(--motion-base);
+}
+
+body[data-janela="principal"] .passos .ponto.feito {
+  background: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .passos .ponto.agora {
+  width: 20px;
+  background: var(--accent-green);
+}
+
+body[data-janela="principal"] .passos .folha {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  text-align: center;
+  overflow-y: auto;
+}
+
+body[data-janela="principal"] .passos .palco {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+}
+
+body[data-janela="principal"] .passos .palco.fileira {
+  gap: var(--space-5);
+}
+
+body[data-janela="principal"] .passos .amostra {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .passos .amostra.apagada {
+  opacity: 0.5;
+}
+
+body[data-janela="principal"] .passos .riscado {
+  position: relative;
+}
+
+body[data-janela="principal"] .passos .risco {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body[data-janela="principal"] .passos .legenda {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .passos h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+body[data-janela="principal"] .passos p {
+  max-width: 46ch;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+body[data-janela="principal"] .passos .recado {
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+body[data-janela="principal"] .passos .recado b {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+body[data-janela="principal"] .passos .previa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 18px 8px 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 26px;
+  background: var(--surface);
+}
+
+body[data-janela="principal"] .passos .dizeres {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+body[data-janela="principal"] .passos .dizeres .valor {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+body[data-janela="principal"] .passos .dizeres .carimbo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .passos .linha {
+  width: 100%;
+  margin-bottom: 0;
+  text-align: left;
+}
+
+body[data-janela="principal"] .passos .rodape {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 520px;
+}
+
+body[data-janela="principal"] .passos .adiante {
+  display: flex;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .passos .ciclo.fantasma {
+  border-color: transparent;
+  color: var(--text-tertiary);
+}

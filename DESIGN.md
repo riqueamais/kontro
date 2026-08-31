@@ -133,6 +133,14 @@ em Title, corpo em cartões de raio 12 e 16px de padding: *Estado atual*,
 *Configurações* em linhas de 44px de altura mínima com rótulo à esquerda e
 controle à direita.
 
+**Passo a passo (primeira abertura)** — ocupa a janela inteira, sem o trilho lateral.
+Coluna centrada de 520: pontos de progresso no topo (o de agora vira um traço de 20px
+em AccentGreen), palco de 136px com a ilustração, título em Title, corpo em Body com no
+máximo 46 caracteres por linha, e o rodapé com *Pular* à esquerda e *Voltar/Avançar* à
+direita. As ilustrações são os próprios componentes do app — o anel de verdade, animando
+— e nunca imagem de tela. Um dos seis passos é ao vivo: solta a pílula na tela e espera
+a pessoa arrastar. Ele fecha gravando `FirstRunDone`, e só então.
+
 **Menu da bandeja** — largura mínima 200, itens de 32px, padding 12/8, fundo
 SurfaceAlt, borda Stroke, raio 8. Primeiro item é o estado (desabilitado, serve de
 cabeçalho), depois separador, depois as ações.
