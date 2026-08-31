@@ -1,6 +1,6 @@
 [package]
 name = "kontro"
-version = "2.12.0"
+version = "2.12.1"
 description = "Bateria do seu controle, em tempo real, na bandeja do sistema."
 authors = ["riqueamais"]
 edition = "2021"
