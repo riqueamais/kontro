@@ -140,6 +140,7 @@ pub fn executar() {
             salvar_configuracoes,
             ler_agora,
             versao_do_app,
+            marcar_atualizacao,
             versao_disponivel,
             procurar_atualizacao,
             mostrar_janela,
@@ -164,6 +165,7 @@ pub fn executar() {
             }
 
             let pedido_explicito = std::env::args().any(|a| a == "--show");
+            let voltou_de_atualizacao = consumir_marca_de_atualizacao();
 
             if std::env::args().any(|a| a == "--painel") {
                 if let Some(painel) = handle.get_webview_window(janelas::PAINEL) {
@@ -174,6 +176,7 @@ pub fn executar() {
             }
             let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
             let abrir_direto = pedido_explicito
+                || voltou_de_atualizacao
                 || (!subiu_com_o_sistema && {
                     let cfg = compartilhado.config.lock().unwrap();
                     !cfg.start_minimized || !cfg.first_run_done
@@ -534,6 +537,21 @@ struct VersaoNova {
     versao: String,
     notas: Option<String>,
     atual: String,
+}
+
+fn consumir_marca_de_atualizacao() -> bool {
+    let marca = caminhos::arquivo("atualizando");
+    let existe = marca.exists();
+    if existe {
+        let _ = std::fs::remove_file(&marca);
+    }
+    existe
+}
+
+#[tauri::command]
+fn marcar_atualizacao() {
+    caminhos::garantir_dir();
+    let _ = std::fs::write(caminhos::arquivo("atualizando"), env!("CARGO_PKG_VERSION"));
 }
 
 #[tauri::command]

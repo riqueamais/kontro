@@ -137,6 +137,8 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         setPasso({ tipo: "parado" });
         return;
       }
+      await invoke("marcar_atualizacao");
+
       let total = 0;
       let baixado = 0;
       await atualizacao.downloadAndInstall((evento) => {
