@@ -83,6 +83,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
   const [telas, setTelas] = useState(1);
+  const [atual, setAtual] = useState("");
   const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
     "parado",
   );
@@ -93,6 +94,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
     invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
     invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
+    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
   }, []);
 
   const procurar = async () => {
@@ -340,24 +342,17 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         />
       </Linha>
       <h2>Versão</h2>
-      <Linha titulo={tituloDaVersao(nova, passo)} descricao={detalheDaVersao(nova, passo)}>
-        {nova && passo.tipo === "parado" ? (
-          <button className="ciclo destaque" onClick={() => void atualizarAgora()}>
-            Atualizar agora
-          </button>
-        ) : (
-          <button
-            className="ciclo"
-            disabled={
-              passo.tipo === "procurando" ||
-              passo.tipo === "baixando" ||
-              passo.tipo === "instalando"
-            }
-            onClick={() => void procurar()}
-          >
-            {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
-          </button>
-        )}
+      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
+      <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
+        <button
+          className="ciclo"
+          disabled={
+            passo.tipo === "procurando" || passo.tipo === "baixando" || passo.tipo === "instalando"
+          }
+          onClick={() => void procurar()}
+        >
+          {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
+        </button>
       </Linha>
       <Linha
         titulo="Avisar sobre versões novas"
@@ -400,37 +395,125 @@ function rotulo(degraus: [number, string][], valor: number): string {
   return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
 }
 
-function tituloDaVersao(nova: VersaoNova | null, passo: Passo): string {
+function tituloDaVersao(passo: Passo): string {
   switch (passo.tipo) {
     case "atualizado":
       return "Você está na versão mais recente";
-    case "baixando":
-      return passo.porcento === null
-        ? "Baixando a atualização..."
-        : `Baixando a atualização... ${passo.porcento}%`;
-    case "instalando":
-      return "Instalando — o app vai reiniciar";
     case "falhou":
       return passo.ao === "verificar"
         ? "Não foi possível verificar"
         : "Não foi possível atualizar";
     default:
-      return nova ? `Versão ${nova.versao} disponível` : "Procurar atualizações";
+      return "Procurar atualizações";
   }
 }
-function detalheDaVersao(nova: VersaoNova | null, passo: Passo): string {
+function detalheDaVersao(atual: string, passo: Passo): string {
   if (passo.tipo === "falhou") return passo.motivo;
   if (passo.tipo === "procurando") return "Consultando o repositório...";
   if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
-  if (passo.tipo === "baixando" || passo.tipo === "instalando") {
-    return "O pacote é verificado antes de rodar.";
-  }
-  if (!nova) return "O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.";
 
-  const resumo = primeiraLinha(nova.notas);
-  return resumo
-    ? `${resumo} Você está na ${nova.atual}; o app baixa e instala sozinho.`
-    : `Você está na ${nova.atual}. O app baixa e instala sozinho.`;
+  const onde = atual ? `Você está na ${atual}. ` : "";
+  return `${onde}O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.`;
+}
+
+function Novidade({
+  nova,
+  passo,
+  aoAtualizar,
+}: {
+  nova: VersaoNova;
+  passo: Passo;
+  aoAtualizar: () => void;
+}) {
+  const baixando = passo.tipo === "baixando";
+  const instalando = passo.tipo === "instalando";
+  const porcento = passo.tipo === "baixando" ? passo.porcento : null;
+
+  return (
+    <section className="cartao novidade">
+      <div className="cabeca">
+        <div>
+          <div className="dispositivo">Versão {nova.versao} disponível</div>
+          <div className="rodape">você está na {nova.atual}</div>
+        </div>
+        {!baixando && !instalando && (
+          <button className="ciclo destaque" onClick={aoAtualizar}>
+            Atualizar agora
+          </button>
+        )}
+      </div>
+
+      {(baixando || instalando) && (
+        <div className="andamento">
+          <div className="trilho" aria-hidden="true">
+            <span style={{ width: instalando ? "100%" : `${porcento ?? 8}%` }} />
+          </div>
+          <div className="rodape">
+            {instalando
+              ? "instalando — o app vai reiniciar"
+              : porcento === null
+                ? "baixando o pacote, que é verificado antes de rodar"
+                : `baixando ${porcento}% — o pacote é verificado antes de rodar`}
+          </div>
+        </div>
+      )}
+
+      <Notas texto={nova.notas} />
+    </section>
+  );
+}
+
+function Notas({ texto }: { texto: string | null }) {
+  const blocos = emBlocos(texto);
+  if (blocos.length === 0) return null;
+
+  return (
+    <div className="notas">
+      {blocos.map((bloco, i) =>
+        bloco.tipo === "titulo" ? (
+          <h3 key={i}>{bloco.texto}</h3>
+        ) : (
+          <ul key={i}>
+            {bloco.itens.map((item, j) => (
+              <li key={j}>{item}</li>
+            ))}
+          </ul>
+        ),
+      )}
+    </div>
+  );
+}
+
+type Bloco = { tipo: "titulo"; texto: string } | { tipo: "lista"; itens: string[] };
+
+function emBlocos(texto: string | null): Bloco[] {
+  const blocos: Bloco[] = [];
+  let lista: string[] | null = null;
+
+  for (const bruta of (texto ?? "").split(/\r?\n/)) {
+    const linha = bruta.replace(/^﻿/, "").trim();
+    if (!linha || /^kontro[\s\d.]*$/i.test(linha)) continue;
+
+    const marcador = linha.match(/^[-*·]\s+(.*)$/);
+    if (marcador) {
+      if (!lista) {
+        lista = [];
+        blocos.push({ tipo: "lista", itens: lista });
+      }
+      lista.push(marcador[1]);
+      continue;
+    }
+
+    if (lista && /^\s/.test(bruta)) {
+      lista[lista.length - 1] = `${lista[lista.length - 1]} ${linha}`;
+      continue;
+    }
+
+    lista = null;
+    blocos.push({ tipo: "titulo", texto: linha });
+  }
+
+  return blocos;
 }
 function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"): string {
   switch (passo) {
@@ -443,16 +526,6 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
     default:
       return "Grava o que o app enxerga de cada fonte de carga: Bluetooth, HID, XInput e o que o Windows guarda.";
   }
-}
-
-function primeiraLinha(notas: string | null): string {
-  const linha = (notas ?? "")
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^﻿/, "").trim())
-    .find((l) => l.length > 0 && !/^kontro[\s\d.]*$/i.test(l));
-
-  if (!linha) return "";
-  return linha.length > 150 ? `${linha.slice(0, 147)}...` : linha;
 }
 
 function descricaoDoAtalho(base: string, combinacao: string, recusados: string[]): string {

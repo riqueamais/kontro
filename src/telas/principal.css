@@ -314,3 +314,70 @@ body[data-janela="principal"] .tecla {
   line-height: 14px;
   color: var(--text-primary);
 }
+
+body[data-janela="principal"] .cartao.novidade .cabeca {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+body[data-janela="principal"] .cartao.novidade .andamento {
+  margin-top: var(--space-3);
+}
+
+body[data-janela="principal"] .cartao.novidade .trilho {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--stroke);
+  overflow: hidden;
+}
+
+body[data-janela="principal"] .cartao.novidade .trilho span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-green);
+  transition: width var(--motion-slow) var(--curva);
+}
+
+body[data-janela="principal"] .cartao.novidade .andamento .rodape {
+  margin-top: var(--space-2);
+}
+
+body[data-janela="principal"] .cartao.novidade .notas {
+  max-height: 208px;
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--stroke);
+  overflow-y: auto;
+}
+
+body[data-janela="principal"] .cartao.novidade .notas h3 {
+  margin: var(--space-3) 0 var(--space-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .cartao.novidade .notas h3:first-child {
+  margin-top: 0;
+}
+
+body[data-janela="principal"] .cartao.novidade .notas ul {
+  margin: 0;
+  padding-left: var(--space-4);
+}
+
+body[data-janela="principal"] .cartao.novidade .notas li {
+  margin-bottom: var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+body[data-janela="principal"] .cartao.novidade .notas li::marker {
+  color: var(--stroke-strong);
+}

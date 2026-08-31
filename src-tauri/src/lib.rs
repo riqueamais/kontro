@@ -139,6 +139,7 @@ pub fn executar() {
             configuracoes,
             salvar_configuracoes,
             ler_agora,
+            versao_do_app,
             versao_disponivel,
             procurar_atualizacao,
             mostrar_janela,
@@ -381,8 +382,8 @@ fn avisar_versao_nova(app: &AppHandle) {
         let _ = app
             .notification()
             .builder()
-            .title(format!("Kontro {} disponivel", novidade.versao))
-            .body("Abra as configuracoes do Kontro para instalar.")
+            .title(format!("Kontro {} disponível", novidade.versao))
+            .body("Abra as configurações do Kontro para instalar.")
             .show();
 
         let compartilhado = app.state::<Arc<Compartilhado>>();
@@ -533,6 +534,11 @@ struct VersaoNova {
     versao: String,
     notas: Option<String>,
     atual: String,
+}
+
+#[tauri::command]
+fn versao_do_app() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 #[tauri::command]

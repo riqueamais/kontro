@@ -133,6 +133,13 @@ em Title, corpo em cartões de raio 12 e 16px de padding: *Estado atual*,
 *Configurações* em linhas de 44px de altura mínima com rótulo à esquerda e
 controle à direita.
 
+**Versão nova** — é estado, não ajuste, então é cartão e não linha: título em Subtitle
+com o número da versão, última leitura da versão atual em Caption/Mono, botão primário à
+direita e, abaixo de um divisor, as notas da release desenhadas como o que são — rótulo
+de seção no mesmo estilo dos `<h2>` da página e uma lista de verdade, nunca a primeira
+linha do texto truncada dentro de uma descrição. Baixando, o botão dá lugar a um trilho
+de 3px em AccentGreen com a porcentagem em Caption/Mono embaixo.
+
 **Passo a passo (primeira abertura)** — ocupa a janela inteira, sem o trilho lateral.
 Coluna centrada de 520: pontos de progresso no topo (o de agora vira um traço de 20px
 em AccentGreen), palco de 136px com a ilustração, título em Title, corpo em Body com no
