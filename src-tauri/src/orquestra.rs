@@ -47,9 +47,8 @@ impl Orquestrador {
         cfg: &Settings,
         mao: Option<bool>,
         solta: bool,
-        ligados: usize,
     ) {
-        self.sobreposicao(app, estado, cfg, mao, solta, ligados);
+        self.sobreposicao(app, estado, cfg, mao, solta);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
         self.limiares(app, estado, cfg);
@@ -62,7 +61,6 @@ impl Orquestrador {
         cfg: &Settings,
         mao: Option<bool>,
         solta: bool,
-        ligados: usize,
     ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
@@ -92,7 +90,6 @@ impl Orquestrador {
         };
 
         if mostrar {
-            janelas::dimensionar_sobreposicao(app, cfg, ligados);
             janelas::posicionar_sobreposicao(app, cfg);
             if !janela.is_visible().unwrap_or(false) {
                 let _ = janela.show();

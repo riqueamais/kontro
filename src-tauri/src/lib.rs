@@ -148,7 +148,8 @@ pub fn executar() {
             atalhos_recusados,
             quantidade_de_telas,
             salvar_diagnostico,
-            ajustar_altura_do_painel
+            ajustar_altura_do_painel,
+            ajustar_tamanho_da_sobreposicao
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
@@ -276,7 +277,7 @@ fn iniciar_ciclo(
                 let cfg = compartilhado.config.lock().unwrap().clone();
                 let mao = *compartilhado.sobreposicao_a_mao.lock().unwrap();
                 let solta = *compartilhado.sobreposicao_solta.lock().unwrap();
-                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta, ligados(&compartilhado));
+                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta);
             }
 
             match pedidos.recv_timeout(INTERVALO_DO_CICLO) {
@@ -293,10 +294,6 @@ fn iniciar_ciclo(
             }
         }
     });
-}
-
-fn ligados(compartilhado: &Compartilhado) -> usize {
-    compartilhado.todos.lock().unwrap().iter().filter(|e| e.via != modelo::Via::Desligado).count()
 }
 
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
@@ -466,7 +463,6 @@ fn salvar_configuracoes(
         *compartilhado.atalhos_recusados.lock().unwrap() = recusados;
     }
 
-    janelas::dimensionar_sobreposicao(&app, &novas, ligados(&compartilhado));
     if !*compartilhado.sobreposicao_solta.lock().unwrap() {
         janelas::posicionar_sobreposicao(&app, &novas);
     }
@@ -491,7 +487,6 @@ pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
     let _ = janela.set_ignore_cursor_events(!solta);
 
     let mut cfg = compartilhado.config.lock().unwrap().clone();
-    janelas::dimensionar_sobreposicao(app, &cfg, ligados(&compartilhado));
 
     if solta {
         janelas::posicionar_sobreposicao(app, &cfg);
@@ -606,6 +601,21 @@ fn mostrar_janela(app: AppHandle, rotulo: String) {
     if let Some(j) = app.get_webview_window(&rotulo) {
         let _ = j.show();
     }
+}
+
+#[tauri::command]
+fn ajustar_tamanho_da_sobreposicao(
+    app: AppHandle,
+    compartilhado: tauri::State<Arc<Compartilhado>>,
+    largura: f64,
+    altura: f64,
+) {
+    let largura = largura.clamp(80.0, 1200.0);
+    let altura = altura.clamp(40.0, 400.0);
+
+    let cfg = compartilhado.config.lock().unwrap().clone();
+    let solta = *compartilhado.sobreposicao_solta.lock().unwrap();
+    janelas::redimensionar_sobreposicao(&app, &cfg, solta, largura, altura);
 }
 
 #[tauri::command]

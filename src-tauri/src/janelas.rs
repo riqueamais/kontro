@@ -21,14 +21,11 @@ pub const PAINEL: &str = "painel";
 pub const SOBREPOSICAO: &str = "sobreposicao";
 pub const AVISO: &str = "aviso";
 
-const MARGEM_SOBREPOSICAO: f64 = 24.0;
-
 const LARGURA_DA_SOBREPOSICAO: f64 = 200.0;
 const ALTURA_DA_SOBREPOSICAO: f64 = 72.0;
 
 const FOLGA_DO_ENCAIXE: f64 = 28.0;
 
-const LARGURA_POR_ACOMPANHANTE: f64 = 84.0;
 const MARGEM_DO_AVISO: f64 = 24.0;
 
 pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
@@ -139,16 +136,35 @@ fn criar_aviso(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     Ok(janela)
 }
 
-pub fn dimensionar_sobreposicao(app: &AppHandle, cfg: &Settings, ligados: usize) {
+pub fn redimensionar_sobreposicao(
+    app: &AppHandle,
+    cfg: &Settings,
+    solta: bool,
+    largura: f64,
+    altura: f64,
+) {
     let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
 
-    let acompanhantes = LARGURA_POR_ACOMPANHANTE * ligados.saturating_sub(1) as f64;
-    let largura = LARGURA_DA_SOBREPOSICAO + acompanhantes;
+    let escala = janela.current_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0);
+    let Ok(antes) = janela.outer_size() else { return };
+    let antes: LogicalSize<f64> = antes.to_logical(escala);
 
-    let _ = janela.set_size(LogicalSize::new(
-        largura * cfg.overlay_scale,
-        ALTURA_DA_SOBREPOSICAO * cfg.overlay_scale,
-    ));
+    let _ = janela.set_size(LogicalSize::new(largura, altura));
+
+    if !solta {
+        posicionar_sobreposicao(app, cfg);
+        return;
+    }
+
+    let dx = if cfg.overlay_x > 0.5 { antes.width - largura } else { 0.0 };
+    let dy = if cfg.overlay_y > 0.5 { antes.height - altura } else { 0.0 };
+    if dx == 0.0 && dy == 0.0 {
+        return;
+    }
+
+    let Ok(posicao) = janela.outer_position() else { return };
+    let posicao: LogicalPosition<f64> = posicao.to_logical(escala);
+    let _ = janela.set_position(LogicalPosition::new(posicao.x + dx, posicao.y + dy));
 }
 
 pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
@@ -195,10 +211,10 @@ fn palco(monitor: &Monitor, janela: &WebviewWindow) -> Option<Palco> {
     let tam_janela: LogicalSize<f64> = janela.outer_size().ok()?.to_logical(escala);
 
     Some(Palco {
-        esquerda: posicao.x + MARGEM_SOBREPOSICAO,
-        topo: posicao.y + MARGEM_SOBREPOSICAO,
-        livre_x: (tamanho.width - tam_janela.width - MARGEM_SOBREPOSICAO * 2.0).max(0.0),
-        livre_y: (tamanho.height - tam_janela.height - MARGEM_SOBREPOSICAO * 2.0).max(0.0),
+        esquerda: posicao.x,
+        topo: posicao.y,
+        livre_x: (tamanho.width - tam_janela.width).max(0.0),
+        livre_y: (tamanho.height - tam_janela.height).max(0.0),
     })
 }
 

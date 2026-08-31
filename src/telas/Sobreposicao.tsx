@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -20,13 +21,44 @@ export function Sobreposicao() {
   const cfg = useConfig();
   const limiares = useLimiares();
   const solta = usePilulaSolta();
+  const raiz = useRef<HTMLDivElement>(null);
+  const medida = useRef("");
+
+  const medir = useCallback(() => {
+    const alvo = raiz.current;
+    if (!alvo) return;
+
+    const caixa = alvo.getBoundingClientRect();
+    const largura = Math.ceil(caixa.width);
+    const altura = Math.ceil(caixa.height);
+    if (largura < 40 || altura < 20) return;
+
+    const assinatura = `${largura}x${altura}`;
+    if (assinatura === medida.current) return;
+    medida.current = assinatura;
+
+    void invoke("ajustar_tamanho_da_sobreposicao", { largura, altura });
+  }, []);
+
+  useLayoutEffect(medir);
+
+  useEffect(() => {
+    const alvo = raiz.current;
+    if (!alvo) return;
+
+    const observador = new ResizeObserver(medir);
+    observador.observe(alvo);
+    return () => observador.disconnect();
+  }, [medir]);
+
   if (!estado) return null;
   const escala = cfg?.OverlayScale ?? 1;
   const opacidade = cfg?.OverlayOpacity ?? 0.9;
   const acompanhantes = todos.filter((c) => c.via !== "Desligado" && c.chave !== estado.chave);
   return (
     <div
-      className={solta ? "sobreposicao solta" : "sobreposicao"}
+      ref={raiz}
+      className={classes(solta, (cfg?.OverlayX ?? 1) > 0.5)}
       style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}
       onMouseDown={(evento) => {
         if (solta && evento.button === 0) void getCurrentWindow().startDragging();
@@ -75,6 +107,10 @@ export function Sobreposicao() {
     </div>
   );
 }
+function classes(solta: boolean, aDireita: boolean): string {
+  return ["sobreposicao", solta && "solta", aDireita && "espelhada"].filter(Boolean).join(" ");
+}
+
 function Cadeado() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">

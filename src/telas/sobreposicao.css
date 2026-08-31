@@ -1,8 +1,12 @@
 .sobreposicao {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 12px;
+}
+
+.sobreposicao.espelhada {
+  flex-direction: row-reverse;
 }
 
 .sobreposicao .pilula {
