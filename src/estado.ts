@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Config } from "./config.gerada";
 
-export type { CloseAction, Config, OverlayCorner, OverlayMode } from "./config.gerada";
+export type { CloseAction, Config, OverlayMode } from "./config.gerada";
 
 export type Via = "Desligado" | "Bluetooth" | "Cabo" | "SemFio";
 export type Precisao = "Nenhuma" | "Aproximada" | "Exata";
@@ -108,6 +108,52 @@ export function useLimiares(): Limiares {
   const cfg = useConfig();
   if (!cfg) return LIMIARES_PADRAO;
   return { critico: cfg.CriticalThreshold, aviso: cfg.WarnThreshold };
+}
+
+export function usePilulaSolta(): boolean {
+  const [solta, setSolta] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+
+    invoke<boolean>("pilula_solta").then((s) => {
+      if (vivo) setSolta(s);
+    });
+
+    const parar = listen<boolean>("kontro://solta", (evento) => {
+      if (vivo) setSolta(evento.payload);
+    });
+
+    return () => {
+      vivo = false;
+      parar.then((f) => f());
+    };
+  }, []);
+
+  return solta;
+}
+
+export function useAtalhosRecusados(): string[] {
+  const [recusados, setRecusados] = useState<string[]>([]);
+
+  useEffect(() => {
+    let vivo = true;
+
+    invoke<string[]>("atalhos_recusados").then((r) => {
+      if (vivo) setRecusados(r);
+    });
+
+    const parar = listen<string[]>("kontro://atalhos", (evento) => {
+      if (vivo) setRecusados(evento.payload);
+    });
+
+    return () => {
+      vivo = false;
+      parar.then((f) => f());
+    };
+  }, []);
+
+  return recusados;
 }
 
 export function qualJanela(): string {

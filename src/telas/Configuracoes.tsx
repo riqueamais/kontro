@@ -3,9 +3,36 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
-import { Config, OverlayCorner, OverlayMode } from "../estado";
+import { Config, OverlayMode, useAtalhosRecusados, usePilulaSolta } from "../estado";
 
-const ATALHO = "Ctrl + Shift + K";
+const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
+
+const NOME_DA_TECLA: Record<string, string> = {
+  Ctrl: "Ctrl",
+  Alt: "Alt",
+  Shift: "Shift",
+  Super: "Win",
+  Space: "Espaço",
+  Escape: "Esc",
+  Delete: "Del",
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+  Backquote: "`",
+  Minus: "-",
+  Equal: "=",
+  BracketLeft: "[",
+  BracketRight: "]",
+  Semicolon: ";",
+  Quote: "'",
+  Comma: ",",
+  Period: ".",
+  Slash: "/",
+  Backslash: "\\",
+  PageUp: "Page Up",
+  PageDown: "Page Down",
+};
 
 const LIMIARES_DE_AVISO = [40, 30, 25, 20, 15, 10] as const;
 const LIMIARES_CRITICOS = [20, 15, 10, 5] as const;
@@ -23,13 +50,6 @@ const OPACIDADES: [number, string][] = [
   [0.75, "75%"],
   [0.55, "55%"],
 ];
-
-const CANTOS: Record<OverlayCorner, string> = {
-  SuperiorEsquerdo: "Superior esquerdo",
-  SuperiorDireito: "Superior direito",
-  InferiorEsquerdo: "Inferior esquerdo",
-  InferiorDireito: "Inferior direito",
-};
 
 const MODOS: Record<OverlayMode, string> = {
   Desligada: "Desligada",
@@ -67,6 +87,8 @@ export function Configuracoes() {
   const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
     "parado",
   );
+  const solta = usePilulaSolta();
+  const recusados = useAtalhosRecusados();
 
   useEffect(() => {
     invoke<Config>("configuracoes").then(setCfg).catch(() => {});
@@ -241,21 +263,20 @@ export function Configuracoes() {
           {MODOS[cfg.OverlayMode]}
         </button>
       </Linha>
-      <Linha titulo="Canto" descricao="Onde a pílula fica ancorada.">
+      <Linha
+        titulo="Posição"
+        descricao={
+          solta
+            ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
+            : "A pílula fica onde você largar: solte e arraste até o ponto que quiser."
+        }
+      >
+        <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
         <button
-          className="ciclo"
-          onClick={() =>
-            gravar({
-              OverlayCorner: ciclar(cfg.OverlayCorner, [
-                "InferiorDireito",
-                "InferiorEsquerdo",
-                "SuperiorDireito",
-                "SuperiorEsquerdo",
-              ] as const),
-            })
-          }
+          className={solta ? "ciclo destaque" : "ciclo"}
+          onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
         >
-          {CANTOS[cfg.OverlayCorner]}
+          {solta ? "Prender" : "Soltar"}
         </button>
       </Linha>
       <Linha
@@ -289,13 +310,42 @@ export function Configuracoes() {
           {rotulo(OPACIDADES, cfg.OverlayOpacity)}
         </button>
       </Linha>
+      <h2>Atalhos</h2>
       <Linha
-        titulo="Atalho para mostrar e esconder"
-        descricao={`${ATALHO} tira a pílula da frente sem precisar sair do jogo.`}
+        titulo="Usar atalhos"
+        descricao="Valem por cima do jogo, sem precisar sair dele."
       >
         <Chave
           ligado={cfg.OverlayShortcutEnabled}
           aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
+        />
+      </Linha>
+      <Linha
+        titulo="Mostrar e esconder a pílula"
+        descricao={descricaoDoAtalho(
+          "Tira a pílula da frente e traz de volta.",
+          cfg.OverlayShortcut,
+          recusados,
+        )}
+      >
+        <Captura
+          combinacao={cfg.OverlayShortcut}
+          desabilitado={!cfg.OverlayShortcutEnabled}
+          aoTrocar={(c) => gravar({ OverlayShortcut: c })}
+        />
+      </Linha>
+      <Linha
+        titulo="Soltar a pílula para mover"
+        descricao={descricaoDoAtalho(
+          "Solta a pílula para arrastar, e prende de novo onde você largar.",
+          cfg.OverlayMoveShortcut,
+          recusados,
+        )}
+      >
+        <Captura
+          combinacao={cfg.OverlayMoveShortcut}
+          desabilitado={!cfg.OverlayShortcutEnabled}
+          aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
         />
       </Linha>
       <h2>Versão</h2>
@@ -404,6 +454,96 @@ function primeiraLinha(notas: string | null): string {
 
   if (!linha) return "";
   return linha.length > 150 ? `${linha.slice(0, 147)}...` : linha;
+}
+
+function MiniTela({ x, y, solta }: { x: number; y: number; solta: boolean }) {
+  return (
+    <span className={solta ? "mini-tela solta" : "mini-tela"} aria-hidden="true">
+      <span className="mini-pilula" style={{ left: 1 + x * 36, top: 1 + y * 22 }} />
+    </span>
+  );
+}
+
+function descricaoDoAtalho(base: string, combinacao: string, recusados: string[]): string {
+  if (recusados.includes(combinacao)) {
+    return "Outro programa já usa essa combinação. Escolha outra.";
+  }
+  return base;
+}
+
+function Captura({
+  combinacao,
+  aoTrocar,
+  desabilitado,
+}: {
+  combinacao: string;
+  aoTrocar: (combinacao: string) => void;
+  desabilitado: boolean;
+}) {
+  const [ouvindo, setOuvindo] = useState(false);
+
+  useEffect(() => {
+    if (!ouvindo) return;
+
+    const aoTeclar = (evento: KeyboardEvent) => {
+      evento.preventDefault();
+      evento.stopPropagation();
+
+      if (evento.key === "Escape") {
+        setOuvindo(false);
+        return;
+      }
+
+      const nova = lerCombinacao(evento);
+      if (!nova) return;
+
+      setOuvindo(false);
+      aoTrocar(nova);
+    };
+
+    window.addEventListener("keydown", aoTeclar, true);
+    return () => window.removeEventListener("keydown", aoTeclar, true);
+  }, [ouvindo, aoTrocar]);
+
+  return (
+    <button
+      className={ouvindo ? "captura ouvindo" : "captura"}
+      disabled={desabilitado}
+      onClick={() => setOuvindo(!ouvindo)}
+    >
+      {ouvindo ? (
+        <span className="pedindo">pressione a combinação</span>
+      ) : (
+        combinacao.split("+").map((parte, i) => (
+          <kbd className="tecla" key={i}>
+            {nomeDaTecla(parte)}
+          </kbd>
+        ))
+      )}
+    </button>
+  );
+}
+
+function lerCombinacao(evento: KeyboardEvent): string | null {
+  if (MODIFICADORES.includes(evento.key) || !evento.code) return null;
+
+  const partes: string[] = [];
+  if (evento.ctrlKey) partes.push("Ctrl");
+  if (evento.altKey) partes.push("Alt");
+  if (evento.shiftKey) partes.push("Shift");
+  if (evento.metaKey) partes.push("Super");
+  if (partes.length === 0) return null;
+
+  partes.push(evento.code);
+  return partes.join("+");
+}
+
+function nomeDaTecla(parte: string): string {
+  if (NOME_DA_TECLA[parte]) return NOME_DA_TECLA[parte];
+  if (parte.startsWith("Key")) return parte.slice(3);
+  if (parte.startsWith("Digit")) return parte.slice(5);
+  if (parte.startsWith("Numpad")) return `Num ${parte.slice(6)}`;
+  return parte;
 }
 
 function Linha({

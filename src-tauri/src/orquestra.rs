@@ -46,9 +46,10 @@ impl Orquestrador {
         estado: &EstadoDoControle,
         cfg: &Settings,
         mao: Option<bool>,
+        solta: bool,
         ligados: usize,
     ) {
-        self.sobreposicao(app, estado, cfg, mao, ligados);
+        self.sobreposicao(app, estado, cfg, mao, solta, ligados);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
         self.limiares(app, estado, cfg);
@@ -60,9 +61,17 @@ impl Orquestrador {
         estado: &EstadoDoControle,
         cfg: &Settings,
         mao: Option<bool>,
+        solta: bool,
         ligados: usize,
     ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
+
+        if solta {
+            if !janela.is_visible().unwrap_or(false) {
+                let _ = janela.show();
+            }
+            return;
+        }
 
         let ligada = cfg.overlay_mode != OverlayMode::Desligada;
         let tem_leitura = estado.via != Via::Desligado;
@@ -83,7 +92,8 @@ impl Orquestrador {
         };
 
         if mostrar {
-            janelas::posicionar_sobreposicao(app, cfg, ligados);
+            janelas::dimensionar_sobreposicao(app, cfg, ligados);
+            janelas::posicionar_sobreposicao(app, cfg);
             if !janela.is_visible().unwrap_or(false) {
                 let _ = janela.show();
             }

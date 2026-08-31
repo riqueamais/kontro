@@ -1,4 +1,7 @@
 .sobreposicao {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px;
 }
 
@@ -38,4 +41,41 @@
   min-width: 34px;
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.sobreposicao.solta {
+  cursor: grab;
+}
+
+.sobreposicao.solta:active {
+  cursor: grabbing;
+}
+
+.sobreposicao.solta .pilula {
+  box-shadow:
+    0 3px 16px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(95, 224, 131, 0.55);
+}
+
+.sobreposicao .prender {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(232, 236, 239, 0.18);
+  border-radius: 50%;
+  background: rgba(10, 13, 16, 0.94);
+  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast);
+}
+
+.sobreposicao .prender:hover {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
 }

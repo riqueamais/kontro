@@ -59,7 +59,12 @@ Pelo ícone na bandeja, em Configurações:
 - Iniciar com o Windows e iniciar minimizado
 - O que o botão X faz: minimizar para a bandeja ou encerrar o app
 - Limiares de aviso de carga baixa e de carga crítica
-- Sobreposição: quando aparece, em que canto, em qual tela, tamanho e transparência
+- Sobreposição: quando aparece, em qual tela, tamanho e transparência
+- Onde a pílula mora: solte ela e arraste até qualquer ponto da tela. Perto de um
+  canto ou do meio da borda ela encaixa sozinha
+- Atalhos, que valem por cima do jogo: `Ctrl + Shift + K` mostra e esconde a pílula e
+  `Ctrl + Shift + M` solta ela para arrastar. As duas combinações são trocáveis — clique
+  no atalho e tecle a que você quiser
 - Verificação automática de atualizações
 
 > O Windows 11 esconde ícones novos da bandeja atrás da setinha `^`. Arraste o ícone do

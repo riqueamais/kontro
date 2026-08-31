@@ -240,3 +240,77 @@ body[data-janela="principal"] .ciclo:disabled {
   opacity: 0.6;
   cursor: default;
 }
+
+body[data-janela="principal"] .linha .controle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .mini-tela {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: 5px;
+  background: var(--ink);
+  transition: border-color var(--motion-fast);
+}
+body[data-janela="principal"] .mini-tela.solta {
+  border-color: var(--accent-green);
+}
+body[data-janela="principal"] .mini-tela .mini-pilula {
+  position: absolute;
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--text-tertiary);
+  transition:
+    left var(--motion-base) var(--curva),
+    top var(--motion-base) var(--curva),
+    background var(--motion-fast);
+}
+body[data-janela="principal"] .mini-tela.solta .mini-pilula {
+  background: var(--accent-green);
+}
+
+body[data-janela="principal"] .captura {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--radius-field);
+  background: transparent;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+body[data-janela="principal"] .captura:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+body[data-janela="principal"] .captura:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+body[data-janela="principal"] .captura.ouvindo {
+  border-style: dashed;
+  border-color: var(--accent-green);
+}
+body[data-janela="principal"] .captura .pedindo {
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--accent-green);
+}
+body[data-janela="principal"] .tecla {
+  min-width: 22px;
+  padding: 2px 6px;
+  border: 1px solid var(--stroke-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface-alt);
+  font-family: var(--font-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 14px;
+  color: var(--text-primary);
+}

@@ -4,7 +4,7 @@ use tauri::{
     WebviewWindowBuilder,
 };
 
-use crate::configuracoes::{OverlayCorner, Settings};
+use crate::configuracoes::Settings;
 use crate::tela;
 
 pub const LARGURA_DO_PAINEL: f64 = 392.0;
@@ -25,6 +25,8 @@ const MARGEM_SOBREPOSICAO: f64 = 24.0;
 
 const LARGURA_DA_SOBREPOSICAO: f64 = 200.0;
 const ALTURA_DA_SOBREPOSICAO: f64 = 72.0;
+
+const FOLGA_DO_ENCAIXE: f64 = 28.0;
 
 const LARGURA_POR_ACOMPANHANTE: f64 = 84.0;
 const MARGEM_DO_AVISO: f64 = 24.0;
@@ -137,47 +139,98 @@ fn criar_aviso(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     Ok(janela)
 }
 
-pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings, ligados: usize) {
+pub fn dimensionar_sobreposicao(app: &AppHandle, cfg: &Settings, ligados: usize) {
     let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
-    let Ok(monitores) = app.available_monitors() else { return };
-    if monitores.is_empty() {
-        return;
-    }
 
-    let escolhido: Option<Monitor> = usize::try_from(cfg.overlay_monitor)
-        .ok()
-        .and_then(|i| monitores.get(i).cloned())
-        .or_else(|| monitor_em_foco(app))
-        .or_else(|| monitores.first().cloned());
+    let acompanhantes = LARGURA_POR_ACOMPANHANTE * ligados.saturating_sub(1) as f64;
+    let largura = LARGURA_DA_SOBREPOSICAO + acompanhantes;
 
-    let Some(monitor) = escolhido else { return };
-    let monitor = &monitor;
-
-    let extra = LARGURA_POR_ACOMPANHANTE * ligados.saturating_sub(1) as f64;
     let _ = janela.set_size(LogicalSize::new(
-        (LARGURA_DA_SOBREPOSICAO + extra) * cfg.overlay_scale,
+        largura * cfg.overlay_scale,
         ALTURA_DA_SOBREPOSICAO * cfg.overlay_scale,
     ));
+}
+
+pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
+    let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
+    let Some(monitor) = monitor_da_sobreposicao(app, cfg) else { return };
+    let Some(palco) = palco(&monitor, &janela) else { return };
+
+    let x = palco.esquerda + palco.livre_x * cfg.overlay_x;
+    let y = palco.topo + palco.livre_y * cfg.overlay_y;
+    let _ = janela.set_position(LogicalPosition::new(x, y));
+}
+
+pub struct Pouso {
+    pub x: f64,
+    pub y: f64,
+    pub monitor: i32,
+}
+
+pub fn onde_a_sobreposicao_parou(app: &AppHandle) -> Option<Pouso> {
+    let janela = app.get_webview_window(SOBREPOSICAO)?;
+    let monitor = janela.current_monitor().ok().flatten()?;
+    let palco = palco(&monitor, &janela)?;
+
+    let posicao = janela.outer_position().ok()?.to_logical::<f64>(monitor.scale_factor());
+
+    Some(Pouso {
+        x: encaixar(posicao.x - palco.esquerda, palco.livre_x),
+        y: encaixar(posicao.y - palco.topo, palco.livre_y),
+        monitor: indice_do_monitor(app, &monitor).unwrap_or(-1),
+    })
+}
+
+struct Palco {
+    esquerda: f64,
+    topo: f64,
+    livre_x: f64,
+    livre_y: f64,
+}
+
+fn palco(monitor: &Monitor, janela: &WebviewWindow) -> Option<Palco> {
     let escala = monitor.scale_factor();
     let posicao = monitor.position().to_logical::<f64>(escala);
     let tamanho = monitor.size().to_logical::<f64>(escala);
+    let tam_janela: LogicalSize<f64> = janela.outer_size().ok()?.to_logical(escala);
 
-    let Ok(tam_janela) = janela.outer_size() else { return };
-    let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
+    Some(Palco {
+        esquerda: posicao.x + MARGEM_SOBREPOSICAO,
+        topo: posicao.y + MARGEM_SOBREPOSICAO,
+        livre_x: (tamanho.width - tam_janela.width - MARGEM_SOBREPOSICAO * 2.0).max(0.0),
+        livre_y: (tamanho.height - tam_janela.height - MARGEM_SOBREPOSICAO * 2.0).max(0.0),
+    })
+}
 
-    let esquerda = posicao.x + MARGEM_SOBREPOSICAO;
-    let direita = posicao.x + tamanho.width - tam_janela.width - MARGEM_SOBREPOSICAO;
-    let topo = posicao.y + MARGEM_SOBREPOSICAO;
-    let base = posicao.y + tamanho.height - tam_janela.height - MARGEM_SOBREPOSICAO;
+fn encaixar(desvio: f64, livre: f64) -> f64 {
+    if livre <= 0.0 {
+        return 0.0;
+    }
 
-    let (x, y) = match cfg.overlay_corner {
-        OverlayCorner::SuperiorEsquerdo => (esquerda, topo),
-        OverlayCorner::SuperiorDireito => (direita, topo),
-        OverlayCorner::InferiorEsquerdo => (esquerda, base),
-        OverlayCorner::InferiorDireito => (direita, base),
-    };
+    let fracao = (desvio / livre).clamp(0.0, 1.0);
+    [0.0, 0.5, 1.0]
+        .into_iter()
+        .find(|encaixe| (fracao - encaixe).abs() * livre <= FOLGA_DO_ENCAIXE)
+        .unwrap_or(fracao)
+}
 
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+fn monitor_da_sobreposicao(app: &AppHandle, cfg: &Settings) -> Option<Monitor> {
+    let monitores = app.available_monitors().ok()?;
+    if monitores.is_empty() {
+        return None;
+    }
+
+    usize::try_from(cfg.overlay_monitor)
+        .ok()
+        .and_then(|i| monitores.get(i).cloned())
+        .or_else(|| monitor_em_foco(app))
+        .or_else(|| monitores.first().cloned())
+}
+
+fn indice_do_monitor(app: &AppHandle, alvo: &Monitor) -> Option<i32> {
+    let monitores = app.available_monitors().ok()?;
+    let onde = monitores.iter().position(|m| m.position() == alvo.position())?;
+    i32::try_from(onde).ok()
 }
 
 pub fn posicionar_aviso(app: &AppHandle) {
@@ -228,4 +281,36 @@ fn monitor_em_foco(app: &AppHandle) -> Option<Monitor> {
 fn monitor_do_cursor(app: &AppHandle) -> Option<Monitor> {
     let ponto = app.cursor_position().ok()?;
     app.monitor_from_point(ponto.x, ponto.y).ok().flatten()
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    #[test]
+    fn largar_quase_no_canto_vale_como_canto() {
+        assert_eq!(encaixar(9.0, 1000.0), 0.0);
+        assert_eq!(encaixar(985.0, 1000.0), 1.0);
+    }
+
+    #[test]
+    fn largar_quase_no_meio_vale_como_meio() {
+        assert_eq!(encaixar(510.0, 1000.0), 0.5);
+    }
+
+    #[test]
+    fn no_meio_do_caminho_a_escolha_e_respeitada() {
+        assert_eq!(encaixar(250.0, 1000.0), 0.25);
+    }
+
+    #[test]
+    fn tela_sem_folga_nao_divide_por_zero() {
+        assert_eq!(encaixar(120.0, 0.0), 0.0);
+    }
+
+    #[test]
+    fn largar_fora_da_tela_volta_para_dentro() {
+        assert_eq!(encaixar(-400.0, 1000.0), 0.0);
+        assert_eq!(encaixar(4000.0, 1000.0), 1.0);
+    }
 }

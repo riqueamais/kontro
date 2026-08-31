@@ -37,6 +37,8 @@ pub struct Compartilhado {
     sessoes: Mutex<Vec<Sessao>>,
     saude: Mutex<Option<historico::Saude>>,
     sobreposicao_a_mao: Mutex<Option<bool>>,
+    sobreposicao_solta: Mutex<bool>,
+    atalhos_recusados: Mutex<Vec<String>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
 }
@@ -102,6 +104,8 @@ pub fn executar() {
         sessoes: Mutex::new(Vec::new()),
         saude: Mutex::new(None),
         sobreposicao_a_mao: Mutex::new(None),
+        sobreposicao_solta: Mutex::new(false),
+        atalhos_recusados: Mutex::new(Vec::new()),
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
@@ -139,6 +143,9 @@ pub fn executar() {
             procurar_atualizacao,
             mostrar_janela,
             esconder_janela,
+            soltar_a_pilula,
+            pilula_solta,
+            atalhos_recusados,
             quantidade_de_telas,
             salvar_diagnostico,
             ajustar_altura_do_painel
@@ -148,7 +155,11 @@ pub fn executar() {
             janelas::criar_todas(&handle)?;
             montar_bandeja(&handle)?;
 
-            atalho::aplicar(&handle, compartilhado.config.lock().unwrap().overlay_shortcut_enabled);
+            {
+                let cfg = compartilhado.config.lock().unwrap().clone();
+                let recusados = atalho::aplicar(&handle, &cfg);
+                *compartilhado.atalhos_recusados.lock().unwrap() = recusados;
+            }
 
             let pedido_explicito = std::env::args().any(|a| a == "--show");
 
@@ -272,7 +283,8 @@ fn iniciar_ciclo(
                 let estado = compartilhado.estado.lock().unwrap().clone();
                 let cfg = compartilhado.config.lock().unwrap().clone();
                 let mao = *compartilhado.sobreposicao_a_mao.lock().unwrap();
-                orquestrador.reavaliar(&app, &estado, &cfg, mao, ligados(&compartilhado));
+                let solta = *compartilhado.sobreposicao_solta.lock().unwrap();
+                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta, ligados(&compartilhado));
             }
 
             match pedidos.recv_timeout(INTERVALO_DO_CICLO) {
@@ -453,15 +465,75 @@ fn salvar_configuracoes(
         }
     }
 
-    atalho::aplicar(&app, novas.overlay_shortcut_enabled);
-
     novas.ajustar();
     novas.salvar();
-    janelas::posicionar_sobreposicao(&app, &novas, ligados(&compartilhado));
+
+    {
+        let recusados = atalho::aplicar(&app, &novas);
+        let _ = app.emit("kontro://atalhos", &recusados);
+        *compartilhado.atalhos_recusados.lock().unwrap() = recusados;
+    }
+
+    janelas::dimensionar_sobreposicao(&app, &novas, ligados(&compartilhado));
+    if !*compartilhado.sobreposicao_solta.lock().unwrap() {
+        janelas::posicionar_sobreposicao(&app, &novas);
+    }
 
     let _ = app.emit("kontro://config", &novas);
 
     *compartilhado.config.lock().unwrap() = novas;
+}
+
+pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
+    let Some(compartilhado) = app.try_state::<Arc<Compartilhado>>() else { return };
+    let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
+
+    {
+        let mut agora = compartilhado.sobreposicao_solta.lock().unwrap();
+        if *agora == solta {
+            return;
+        }
+        *agora = solta;
+    }
+
+    let _ = janela.set_ignore_cursor_events(!solta);
+
+    let mut cfg = compartilhado.config.lock().unwrap().clone();
+    janelas::dimensionar_sobreposicao(app, &cfg, ligados(&compartilhado));
+
+    if solta {
+        janelas::posicionar_sobreposicao(app, &cfg);
+        let _ = janela.show();
+    } else {
+        if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
+            cfg.overlay_x = pouso.x;
+            cfg.overlay_y = pouso.y;
+            if cfg.overlay_monitor >= 0 && pouso.monitor >= 0 {
+                cfg.overlay_monitor = pouso.monitor;
+            }
+            cfg.salvar();
+            *compartilhado.config.lock().unwrap() = cfg.clone();
+            let _ = app.emit("kontro://config", &cfg);
+        }
+        janelas::posicionar_sobreposicao(app, &cfg);
+    }
+
+    let _ = app.emit("kontro://solta", solta);
+}
+
+#[tauri::command]
+fn soltar_a_pilula(app: AppHandle, solta: bool) {
+    soltar_sobreposicao(&app, solta);
+}
+
+#[tauri::command]
+fn pilula_solta(compartilhado: tauri::State<Arc<Compartilhado>>) -> bool {
+    *compartilhado.sobreposicao_solta.lock().unwrap()
+}
+
+#[tauri::command]
+fn atalhos_recusados(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<String> {
+    compartilhado.atalhos_recusados.lock().unwrap().clone()
 }
 
 #[tauri::command]
