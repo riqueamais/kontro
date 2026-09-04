@@ -16,7 +16,7 @@
   padding: 7px 14px 7px 10px;
   border-radius: 21px;
   background: rgba(10, 13, 16, 0.94);
-  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .sobreposicao .pilula .valor {
@@ -57,7 +57,7 @@
 
 .sobreposicao.solta .pilula {
   box-shadow:
-    0 3px 16px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.6),
     inset 0 0 0 1px rgba(95, 224, 131, 0.55);
 }
 
@@ -71,7 +71,7 @@
   border: 1px solid rgba(232, 236, 239, 0.18);
   border-radius: 50%;
   background: rgba(10, 13, 16, 0.94);
-  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
   color: var(--text-secondary);
   cursor: pointer;
   transition:
