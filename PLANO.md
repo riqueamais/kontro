@@ -7,6 +7,20 @@ bastante para caber num commit e grande o bastante para dar para ver a diferenç
 Regra que atravessa tudo: **nada aqui pode inventar número**. Brilho, cor e animação
 descrevem estado medido — quando não há medida, não há efeito.
 
+## Situação
+
+**As quinze tarefas foram entregues na 2.13.0.** O que fica de pé para conferir com uso
+real, porque depende de dado que ainda não existe:
+
+- **T5, a projeção até o zero.** Só desenha quando há consumo medido. Com o controle
+  desligado não há linha nenhuma — que é a regra, não uma falha. Precisa de uma sessão
+  para ser vista.
+- **T6 a T10, a cadeia do jogo.** O código grava a partir desta versão; as sessões
+  anteriores não têm nome. A primeira partida em tela cheia é o teste de verdade.
+- **T12, o ranking.** Exige 3 sessões por jogo. Até lá mostra quantos estão em medição.
+
+---
+
 ## Emenda ao DESIGN.md
 
 Três tarefas abaixo colidem de propósito com o doc atual. A colisão é consciente e a regra
