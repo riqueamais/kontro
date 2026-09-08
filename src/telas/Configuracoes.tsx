@@ -83,7 +83,8 @@ type Passo =
   | { tipo: "parado" }
   | { tipo: "procurando" }
   | { tipo: "atualizado" }
-  | { tipo: "baixando"; porcento: number | null }
+  | { tipo: "preparando" }
+  | { tipo: "baixando"; porcento: number | null; bytes: number }
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
@@ -138,7 +139,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   };
 
   const atualizarAgora = async () => {
-    setPasso({ tipo: "baixando", porcento: null });
+    setPasso({ tipo: "preparando" });
     try {
       const atualizacao = await check();
       if (!atualizacao) {
@@ -150,6 +151,8 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
 
       let total = 0;
       let baixado = 0;
+      setPasso({ tipo: "baixando", porcento: null, bytes: 0 });
+
       await atualizacao.downloadAndInstall((evento) => {
         if (evento.event === "Started") {
           total = evento.data.contentLength ?? 0;
@@ -157,7 +160,8 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
           baixado += evento.data.chunkLength;
           setPasso({
             tipo: "baixando",
-            porcento: total > 0 ? Math.round((baixado / total) * 100) : null,
+            porcento: total > 0 ? Math.min(100, Math.round((baixado / total) * 100)) : null,
+            bytes: baixado,
           });
         } else if (evento.event === "Finished") {
           setPasso({ tipo: "instalando" });
@@ -458,7 +462,11 @@ function Novidade({
 }) {
   const baixando = passo.tipo === "baixando";
   const instalando = passo.tipo === "instalando";
+  const preparando = passo.tipo === "preparando";
+  const andando = baixando || instalando || preparando;
   const porcento = passo.tipo === "baixando" ? passo.porcento : null;
+  const bytes = passo.tipo === "baixando" ? passo.bytes : 0;
+  const indefinido = preparando || (baixando && porcento === null);
 
   return (
     <section className="cartao novidade">
@@ -467,31 +475,42 @@ function Novidade({
           <div className="dispositivo">Versão {nova.versao} disponível</div>
           <div className="rodape">você está na {nova.atual}</div>
         </div>
-        {!baixando && !instalando && (
+        {!andando && (
           <button className="ciclo destaque" onClick={aoAtualizar}>
             Atualizar agora
           </button>
         )}
       </div>
 
-      {(baixando || instalando) && (
+      {andando && (
         <div className="andamento">
-          <div className="trilho" aria-hidden="true">
-            <span style={{ width: instalando ? "100%" : `${porcento ?? 8}%` }} />
+          <div className={`trilho${indefinido ? " indefinido" : ""}`} aria-hidden="true">
+            <span
+              style={
+                indefinido ? undefined : { width: `${instalando ? 100 : (porcento ?? 0)}%` }
+              }
+            />
           </div>
-          <div className="rodape">
-            {instalando
-              ? "instalando — o app vai reiniciar"
-              : porcento === null
-                ? "baixando o pacote, que é verificado antes de rodar"
-                : `baixando ${porcento}% — o pacote é verificado antes de rodar`}
-          </div>
+          <div className="rodape">{andamento(passo, porcento, bytes)}</div>
         </div>
       )}
 
       <Notas texto={nova.notas} />
     </section>
   );
+}
+
+function andamento(passo: Passo, porcento: number | null, bytes: number): string {
+  if (passo.tipo === "preparando") return "consultando a release publicada";
+  if (passo.tipo === "instalando") return "instalando — o app reinicia sozinho";
+  if (porcento === null) {
+    return `baixando ${megabytes(bytes)} — o pacote é verificado antes de rodar`;
+  }
+  return `baixando ${porcento}% — o pacote é verificado antes de rodar`;
+}
+
+function megabytes(bytes: number): string {
+  return `${(bytes / 1_048_576).toFixed(1).replace(".", ",")} MB`;
 }
 
 function Notas({ texto }: { texto: string | null }) {

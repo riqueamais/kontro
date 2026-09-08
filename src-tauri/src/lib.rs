@@ -398,7 +398,7 @@ fn atualizar_bandeja(
 fn avisar_versao_nova(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar(&app) else {
+        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar_bloqueando(&app) else {
             return;
         };
 
@@ -678,10 +678,14 @@ struct Busca {
 }
 
 #[tauri::command]
-fn procurar_atualizacao(app: AppHandle, compartilhado: tauri::State<Arc<Compartilhado>>) -> Busca {
+async fn procurar_atualizacao(
+    app: AppHandle,
+    compartilhado: tauri::State<'_, Arc<Compartilhado>>,
+) -> Result<Busca, String> {
     let atual = env!("CARGO_PKG_VERSION").to_string();
+    let achado = atualizacao::procurar(&app).await;
 
-    match atualizacao::procurar(&app) {
+    Ok(match achado {
         atualizacao::Consulta::Nova(n) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
             Busca { estado: "nova", versao: Some(n.versao), notas: n.notas, atual, motivo: None }
@@ -693,7 +697,7 @@ fn procurar_atualizacao(app: AppHandle, compartilhado: tauri::State<Arc<Comparti
         atualizacao::Consulta::Falhou(motivo) => {
             Busca { estado: "falhou", versao: None, notas: None, atual, motivo: Some(motivo) }
         }
-    }
+    })
 }
 
 #[tauri::command]

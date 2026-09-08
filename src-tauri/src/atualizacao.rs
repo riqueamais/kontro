@@ -26,13 +26,17 @@ struct Marca {
     ultima_checagem_ms: i64,
 }
 
-pub fn procurar(app: &AppHandle) -> Consulta {
+pub fn procurar_bloqueando(app: &AppHandle) -> Consulta {
+    tauri::async_runtime::block_on(procurar(app))
+}
+
+pub async fn procurar(app: &AppHandle) -> Consulta {
     let updater = match app.updater() {
         Ok(u) => u,
         Err(e) => return Consulta::Falhou(descrever(&e)),
     };
 
-    match tauri::async_runtime::block_on(updater.check()) {
+    match updater.check().await {
         Ok(achado) => {
             marcar_checagem();
             match achado {

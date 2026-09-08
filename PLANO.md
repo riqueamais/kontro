@@ -343,6 +343,35 @@ nada. Abre sem JS.
 **Pronto quando:** a página foi percorrida de cima a baixo no navegador, sem texto
 ilegível nem seção com metade vazia.
 
+## T18. Clicar em atualizar travava o app
+
+**Onde:** `src-tauri/src/atualizacao.rs`, `lib.rs`, `src/telas/Configuracoes.tsx`.
+
+Dois problemas somados davam a sensação de travamento.
+
+**O que travava de verdade:** `procurar_atualizacao` era um comando síncrono. No Tauri, o
+padrão de `#[tauri::command]` é `ExecutionContext::Blocking` — ele roda na thread
+principal, que é a thread da interface. E lá dentro havia um
+`tauri::async_runtime::block_on` de uma requisição HTTP. Enquanto o GitHub não respondia,
+**nenhuma janela repintava**. Numa rede lenta isso é o app inteiro congelado.
+
+Agora o comando é `async fn` e usa `.await`: a requisição vai para o runtime assíncrono e a
+interface segue viva. Medido: 260 ms depois do clique a tela já mostra "Procurando…" com a
+requisição ainda em voo.
+
+**O que parecia travamento:** a barra de progresso mentia. Quando o servidor não manda
+`Content-Length`, `porcento` vem nulo e a barra ficava **parada em 8%** com um texto fixo —
+indistinguível de um app pendurado. Pior: o passo era marcado como "baixando" *antes* do
+`check()`, então a barra dizia "baixando" enquanto ainda era uma consulta.
+
+Agora há um passo **preparando** para a consulta, e sem `Content-Length` a barra vira
+indeterminada — uma faixa que percorre o trilho — com os megabytes já recebidos no texto.
+Movimento aqui não contraria a emenda do topo: barra indeterminada é a forma honesta de
+dizer "está andando, não sei o tamanho".
+
+**Pronto quando:** clicar em Procurar não congela a janela, e a barra nunca fica parada num
+número fixo enquanto o download acontece.
+
 ---
 
 # Ordem
@@ -351,7 +380,7 @@ ilegível nem seção com metade vazia.
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
-    T15 -> T16 -> T17                 independentes de todas
+    T15 -> T16 -> T17 -> T18          independentes de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

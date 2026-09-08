@@ -360,6 +360,21 @@ body[data-janela="principal"] .cartao.novidade .trilho span {
   transition: width var(--motion-slow) var(--curva);
 }
 
+body[data-janela="principal"] .cartao.novidade .trilho.indefinido span {
+  width: 38%;
+  transition: none;
+  animation: kontro-vaivem 1.4s ease-in-out infinite;
+}
+
+@keyframes kontro-vaivem {
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(280%);
+  }
+}
+
 body[data-janela="principal"] .cartao.novidade .andamento .rodape {
   margin-top: var(--space-2);
 }
