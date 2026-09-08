@@ -16,9 +16,6 @@ import {
 } from "../estado";
 import "./sobreposicao.css";
 
-const ESPERA_PARA_RECOLHER_MS = 8_000;
-const QUANTO_RECOLHE = 0.5;
-
 export function Sobreposicao() {
   const estado = useEstado();
   const todos = useControles();
@@ -27,7 +24,6 @@ export function Sobreposicao() {
   const solta = usePilulaSolta();
   const raiz = useRef<HTMLDivElement>(null);
   const medida = useRef("");
-  const [recolhida, setRecolhida] = useState(false);
   const [entradas, setEntradas] = useState(0);
 
   const medir = useCallback(() => {
@@ -51,7 +47,6 @@ export function Sobreposicao() {
   useEffect(() => {
     const parar = listen("kontro://pilula-apareceu", () => {
       setEntradas((n) => n + 1);
-      setRecolhida(false);
     });
     return () => {
       void parar.then((f) => f());
@@ -67,17 +62,6 @@ export function Sobreposicao() {
     return () => observador.disconnect();
   }, [medir]);
 
-  const marca = estado
-    ? `${estado.preenchimento}|${estado.via}|${estado.girando}|${estado.carregando}`
-    : "";
-
-  useEffect(() => {
-    setRecolhida(false);
-    if (solta) return;
-    const relogio = setTimeout(() => setRecolhida(true), ESPERA_PARA_RECOLHER_MS);
-    return () => clearTimeout(relogio);
-  }, [marca, solta]);
-
   if (!estado) return null;
   const escala = cfg?.OverlayScale ?? 1;
   const opacidade = cfg?.OverlayOpacity ?? 0.9;
@@ -86,7 +70,6 @@ export function Sobreposicao() {
     !estado.leituraAntiga &&
     estado.preenchimento !== null &&
     estado.preenchimento <= limiares.critico;
-  const discreta = recolhida && !solta && !critica;
   const acompanhantes = todos.filter((c) => c.via !== "Desligado" && c.chave !== estado.chave);
   return (
     <div
@@ -98,10 +81,7 @@ export function Sobreposicao() {
         if (solta && evento.button === 0) void getCurrentWindow().startDragging();
       }}
     >
-      <div
-        className="pilula"
-        style={{ opacity: solta ? 1 : opacidade * (discreta ? QUANTO_RECOLHE : 1) }}
-      >
+      <div className="pilula" style={{ opacity: solta ? 1 : opacidade }}>
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}

@@ -397,6 +397,24 @@ cartão por URL e sem isso continuariam mostrando o antigo.
 **Pronto quando:** o link colado numa rede mostra o cartão novo, e o banner abre em
 `assets/banner.html` para ser refeito na próxima mudança de discurso.
 
+## T20. A pílula se apagava sozinha durante o jogo
+
+**Onde:** `src/telas/Sobreposicao.tsx`.
+
+Passados 8 s sem a assinatura do estado mudar (`preenchimento|via|girando|carregando`), a
+pílula caía para metade da opacidade configurada — 45% no padrão de 90%. A intenção era não
+atrapalhar; o efeito era o contrário do que a emenda do topo manda: **luz mudando sozinha
+sem o dado ter mudado**.
+
+E o gatilho estava invertido. Carga é justamente o dado que fica parado: com o controle em
+80%, o número não muda por meia hora. Quer dizer que o estado normal da pílula era o
+apagado, e o brilho cheio virava a exceção dos oito segundos seguintes a cada leitura nova.
+
+Agora a opacidade é só a das Configurações. Quem quer discreto escolhe 55% e ela fica em
+55% o tempo todo.
+
+**Pronto quando:** a pílula tem o mesmo brilho no primeiro segundo e dez minutos depois.
+
 ---
 
 # Ordem
@@ -405,7 +423,7 @@ cartão por URL e sem isso continuariam mostrando o antigo.
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
-    T15 -> T16 -> T17 -> T18 -> T19   independentes de todas
+    T15 -> ... -> T19 -> T20          independentes de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale
