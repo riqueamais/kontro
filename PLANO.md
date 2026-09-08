@@ -372,6 +372,31 @@ dizer "está andando, não sei o tamanho".
 **Pronto quando:** clicar em Procurar não congela a janela, e a barra nunca fica parada num
 número fixo enquanto o download acontece.
 
+## T19. O banner de compartilhamento ficou na versão antiga
+
+**Onde:** `assets/banner.html` (fonte), `docs/banner.png`, `docs/index.html`.
+
+Quando alguém colava o link do Kontro no WhatsApp, no Discord ou no LinkedIn, a imagem que
+aparecia dizia "Bateria do seu controle, em tempo real, na bandeja do sistema" e listava
+`WINDOWS · .NET 8 · WPF · MIT`. Duas coisas erradas de uma vez: a stack mudou para Tauri e
+Rust faz tempo, e a linha técnica era exatamente o que a T17 tirou da página — o cartão
+continuava vendendo protocolo enquanto o site já vendia produto.
+
+O banner novo repete a promessa da página: a pergunta "quanto ainda dá pra jogar" em
+destaque, a carga na bandeja em horas e minutos logo abaixo, e o selo de grátis e código
+aberto. No lugar da lista de tecnologias, a pílula de verdade — o mesmo anel, o mesmo
+desenho da seção "Em jogo" — em tamanho grande.
+
+A fonte virou um HTML de 1280×640 versionado em `assets/`, renderizado por navegador sem
+interface. Antes o PNG existia sozinho, sem fonte nenhuma de onde refazê-lo.
+
+Também foram corrigidos no `index.html` o `softwareVersion` do JSON-LD, parado na 2.13.1, e
+o `og:image:alt`. As três referências à imagem ganharam `?v=2`, porque as redes guardam o
+cartão por URL e sem isso continuariam mostrando o antigo.
+
+**Pronto quando:** o link colado numa rede mostra o cartão novo, e o banner abre em
+`assets/banner.html` para ser refeito na próxima mudança de discurso.
+
 ---
 
 # Ordem
@@ -380,7 +405,7 @@ número fixo enquanto o download acontece.
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
-    T15 -> T16 -> T17 -> T18          independentes de todas
+    T15 -> T16 -> T17 -> T18 -> T19   independentes de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

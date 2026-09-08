@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<style>
+  :root {
+    --ink: #0b0e11;
+    --stroke: #1e252c;
+    --text-primary: #e8ecef;
+    --text-secondary: #9aa4ad;
+    --text-tertiary: #6b757d;
+    --verde: #5fe083;
+    --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    --texto: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --mono: Consolas, ui-monospace, monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+    background: var(--ink);
+    color: var(--text-primary);
+    font-family: var(--texto);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .palco {
+    position: relative;
+    width: 1280px;
+    height: 640px;
+    display: flex;
+    align-items: center;
+    gap: 56px;
+    padding: 0 84px;
+    overflow: hidden;
+  }
+
+  .brilho {
+    position: absolute;
+    top: -340px;
+    right: -120px;
+    width: 1040px;
+    height: 1040px;
+    background: radial-gradient(closest-side, rgba(95, 224, 131, 0.11), transparent 68%);
+    pointer-events: none;
+  }
+
+  .conteudo { position: relative; flex: 0 0 660px; }
+
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .marca svg { width: 64px; height: 64px; display: block; }
+
+  .marca span {
+    font-family: var(--display);
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  h1 em { font-style: normal; color: var(--verde); }
+
+  .chamada {
+    margin-top: 24px;
+    max-width: 600px;
+    font-size: 25px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+  }
+
+  .selo {
+    margin-top: 26px;
+    font-size: 19px;
+    color: var(--text-tertiary);
+  }
+
+  .mostruario {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .mostruario::before {
+    content: "";
+    position: absolute;
+    top: -170px;
+    left: 50%;
+    width: 520px;
+    height: 520px;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgba(95, 224, 131, 0.13), transparent 70%);
+    pointer-events: none;
+  }
+
+  .mostruario > * { position: relative; }
+
+  .pilula {
+    display: inline-flex;
+    align-items: center;
+    gap: 22px;
+    padding: 17px 34px 17px 23px;
+    border-radius: 52px;
+    background: linear-gradient(160deg, rgba(28, 34, 41, 0.96), rgba(10, 13, 16, 0.96) 60%);
+    box-shadow:
+      0 8px 34px rgba(0, 0, 0, 0.7),
+      inset 0 2px 0 rgba(255, 255, 255, 0.07),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+  }
+
+  .pilula svg { width: 74px; height: 74px; display: block; }
+
+  .pilula span {
+    font-family: var(--mono);
+    font-size: 39px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .legenda {
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="palco">
+    <div class="brilho"></div>
+
+    <div class="conteudo">
+      <div class="marca">
+        <svg viewBox="0 0 512 512">
+          <defs>
+            <linearGradient id="anel" x1="120" y1="80" x2="400" y2="440" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#5FE083" /><stop offset="1" stop-color="#35D7A8" />
+            </linearGradient>
+          </defs>
+          <circle cx="256" cy="256" r="256" fill="#0F1318" />
+          <circle cx="256" cy="256" r="202" fill="none" stroke="#FFFFFF" stroke-opacity="0.13" stroke-width="30" />
+          <path d="M255.99998 54 A202 202 0 1 1 61.6 315.9" fill="none" stroke="url(#anel)" stroke-width="30" stroke-linecap="round" />
+          <g transform="translate(256,274) scale(0.6) translate(-256,-288)">
+            <path d="M168 158H344C392 158 424 186 436 232L462 330C476 382 452 418 414 418C386 418 366 400 352 372L330 328C322 312 308 304 292 304H220C204 304 190 312 182 328L160 372C146 400 126 418 98 418C60 418 36 382 50 330L76 232C88 186 120 158 168 158Z M81 228 a48.3 48.3 0 1 0 96.6 0 a48.3 48.3 0 1 0 -96.6 0 Z M334.4 228 a48.3 48.3 0 1 0 96.6 0 a48.3 48.3 0 1 0 -96.6 0 Z" fill="#E8ECEF" fill-rule="evenodd" />
+          </g>
+        </svg>
+        <span>Kontro</span>
+      </div>
+
+      <h1>Quanto ainda<br />dá <em>pra jogar?</em></h1>
+
+      <p class="chamada">
+        A carga do seu controle na bandeja do Windows, em horas e minutos de jogo.
+      </p>
+
+      <p class="selo">Grátis · código aberto · instala sem pedir administrador</p>
+    </div>
+
+    <div class="mostruario">
+      <div class="pilula">
+        <svg viewBox="0 0 512 512">
+          <circle cx="256" cy="256" r="226" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="60" />
+          <path d="M255.99998 30 A226 226 0 1 1 33.1 294.6" fill="none" stroke="#5FE083" stroke-width="60" stroke-linecap="round" />
+          <g transform="translate(256,268) scale(0.42) translate(-256,-288)">
+            <path d="M168 158H344C392 158 424 186 436 232L462 330C476 382 452 418 414 418C386 418 366 400 352 372L330 328C322 312 308 304 292 304H220C204 304 190 312 182 328L160 372C146 400 126 418 98 418C60 418 36 382 50 330L76 232C88 186 120 158 168 158Z M81 228 a48.3 48.3 0 1 0 96.6 0 a48.3 48.3 0 1 0 -96.6 0 Z M334.4 228 a48.3 48.3 0 1 0 96.6 0 a48.3 48.3 0 1 0 -96.6 0 Z" fill="#E8ECEF" fill-rule="evenodd" />
+          </g>
+        </svg>
+        <span>72%</span>
+      </div>
+
+      <p class="legenda">o anel enche com a carga,<br />ao lado do relógio</p>
+    </div>
+  </div>
+</body>
+</html>
