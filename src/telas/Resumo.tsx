@@ -31,13 +31,17 @@ export function Resumo() {
     <>
       <h1 className="titulo-da-pagina">Resumo</h1>
 
-      <section className="cartao estado">
+      <section
+        className="cartao estado"
+        style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
+      >
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
           espessura={38}
           tamanho={96}
           girando={estado.girando}
+          marcas={estado.temNumero ? limiares : null}
         >
           {estado.temNumero ? (
             <span className="numero grande">{estado.percentual}%</span>
@@ -68,6 +72,7 @@ export function Resumo() {
               ? { inicio: sessao.inicio, fim: sessao.fim, titulo: rotuloDaSessao(sessao) }
               : null
           }
+          autonomiaMinutos={estado.autonomiaMinutos}
           aoSairDaJanela={() => setSessao(null)}
         />
         <Saude saude={saude} />

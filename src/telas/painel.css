@@ -32,9 +32,28 @@
   color: var(--text-primary);
 }
 .painel .topo {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-4);
+}
+
+.painel .topo::before {
+  content: "";
+  position: absolute;
+  inset: -8px -12px;
+  border-radius: var(--radius-card);
+  background: radial-gradient(
+    110px 110px at 56px 50%,
+    color-mix(in srgb, var(--cor-do-estado) 14%, transparent),
+    transparent 70%
+  );
+  transition: background var(--motion-base) var(--curva);
+  pointer-events: none;
+}
+
+.painel .topo > * {
+  position: relative;
 }
 .painel .numero {
   font-family: var(--font-display);

@@ -4,6 +4,16 @@
 
 .anel > svg {
   display: block;
+  overflow: visible;
+}
+
+.anel .carga {
+  filter: drop-shadow(0 0 18px currentColor);
+  transition: filter var(--motion-base) var(--curva);
+}
+
+.anel .marcas {
+  opacity: 0.85;
 }
 
 .anel .giro {

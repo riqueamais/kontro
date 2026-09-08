@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 
-import { Amostra } from "../estado";
-import { momento } from "../formato";
+import { Amostra, useLimiares } from "../estado";
+import { hora, momento } from "../formato";
 import "./historico.css";
 
 const DIA = 86_400_000;
@@ -28,19 +28,34 @@ interface Props {
   trocadaEm?: number | null;
   compacto?: boolean;
   janela?: Janela | null;
+  autonomiaMinutos?: number | null;
   aoSairDaJanela?: () => void;
 }
 
-export function Historico({ serie, trocadaEm, compacto, janela, aoSairDaJanela }: Props) {
+export function Historico({
+  serie,
+  trocadaEm,
+  compacto,
+  janela,
+  autonomiaMinutos,
+  aoSairDaJanela,
+}: Props) {
   const [dias, setDias] = useState(7);
   const [sob, setSob] = useState<Amostra | null>(null);
   const area = useRef<SVGSVGElement>(null);
+  const limiares = useLimiares();
+  const tinta = useId().replace(/:/g, "");
 
   const M = compacto ? BAIXO : ALTO;
   const ALTURA = M.altura;
   const folga = janela ? Math.max((janela.fim - janela.inicio) * 0.06, 60_000) : 0;
-  const fim = janela ? janela.fim + folga : Date.now();
-  const inicio = janela ? janela.inicio - folga : fim - (compacto ? 7 : dias) * DIA;
+  const agora = Date.now();
+  const zeraEm =
+    !janela && autonomiaMinutos && autonomiaMinutos > 0
+      ? agora + autonomiaMinutos * 60_000
+      : null;
+  const fim = janela ? janela.fim + folga : Math.max(agora, zeraEm ?? 0);
+  const inicio = janela ? janela.inicio - folga : agora - (compacto ? 7 : dias) * DIA;
 
   const trechos = useMemo(() => segmentar(serie, inicio, fim), [serie, inicio, fim]);
   const amostras = useMemo(() => trechos.flat(), [trechos]);
@@ -53,6 +68,9 @@ export function Historico({ serie, trocadaEm, compacto, janela, aoSairDaJanela }
   const altura = ALTURA - M.topo - M.base;
   const x = (t: number) => M.esquerda + ((t - inicio) / (fim - inicio)) * largura;
   const y = (p: number) => M.topo + (1 - p / 100) * altura;
+
+  const ultima = amostras[amostras.length - 1];
+  const projecao = zeraEm && ultima && zeraEm > ultima.t ? { de: ultima, zeraEm } : null;
 
   const aoMover = (e: React.MouseEvent<SVGSVGElement>) => {
     const svg = area.current;
@@ -101,6 +119,30 @@ export function Historico({ serie, trocadaEm, compacto, janela, aoSairDaJanela }
         onMouseMove={aoMover}
         onMouseLeave={() => setSob(null)}
       >
+        <defs>
+          <linearGradient id={tinta} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--accent-green)" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="var(--accent-green)" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        <g className="faixas-de-limiar">
+          <rect
+            x={M.esquerda}
+            y={y(limiares.aviso)}
+            width={largura}
+            height={Math.max(0, y(limiares.critico) - y(limiares.aviso))}
+            className="faixa-aviso"
+          />
+          <rect
+            x={M.esquerda}
+            y={y(limiares.critico)}
+            width={largura}
+            height={Math.max(0, y(0) - y(limiares.critico))}
+            className="faixa-critica"
+          />
+        </g>
+
         {[0, 50, 100].map((p) => (
           <g key={p}>
             <line x1={M.esquerda} x2={LARGURA - M.direita} y1={y(p)} y2={y(p)} className="grade" />
@@ -141,11 +183,31 @@ export function Historico({ serie, trocadaEm, compacto, janela, aoSairDaJanela }
               <path
                 d={`${caminho(trecho, x, y)} L${x(trecho[trecho.length - 1].t)} ${y(0)} L${x(trecho[0].t)} ${y(0)} Z`}
                 className="area"
+                fill={`url(#${tinta})`}
               />
             )}
             <path d={caminho(trecho, x, y)} className="linha" />
           </g>
         ))}
+
+        {projecao && (
+          <g className="projecao">
+            <path
+              d={`M${x(projecao.de.t)} ${y(projecao.de.p)} L${x(projecao.zeraEm)} ${y(0)}`}
+              className="linha-projetada"
+            />
+            {!compacto && (
+              <text
+                x={Math.min(x(projecao.zeraEm), LARGURA - M.direita) - 4}
+                y={y(0) - 6}
+                className="rotulo-projecao"
+                textAnchor="end"
+              >
+                zera {hora(new Date(projecao.zeraEm))}
+              </text>
+            )}
+          </g>
+        )}
 
         {sob && (
           <g>

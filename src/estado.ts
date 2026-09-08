@@ -28,6 +28,7 @@ export interface Estado {
   conectadoSemCarga: boolean;
   girando: boolean;
   autonomia: string | null;
+  autonomiaMinutos: number | null;
 }
 
 export interface Amostra {

@@ -453,7 +453,16 @@ impl Monitor {
             chave: chave.clone(),
             quantos_conhecidos: self.conhecidos.quantidade(),
             autonomia: self.autonomia(&chave, &registro, modo),
+            autonomia_minutos: self.autonomia_minutos(&chave, &registro, modo),
         })
+    }
+
+    fn autonomia_minutos(&self, chave: &str, registro: &Registro, modo: Via) -> Option<i64> {
+        if modo == Via::Desligado || modo == Via::Cabo {
+            return None;
+        }
+        let percentual = registro.percentual.filter(|_| registro.precisao == Precisao::Exata)?;
+        self.historico.autonomia_em_minutos(chave, percentual)
     }
 
     fn autonomia(&self, chave: &str, registro: &Registro, modo: Via) -> Option<String> {

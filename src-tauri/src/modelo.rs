@@ -84,6 +84,7 @@ pub struct Bruto {
     pub chave: String,
     pub quantos_conhecidos: usize,
     pub autonomia: Option<String>,
+    pub autonomia_minutos: Option<i64>,
 }
 
 impl Default for Precisao {
@@ -115,6 +116,7 @@ pub struct EstadoDoControle {
     pub girando: bool,
 
     pub autonomia: Option<String>,
+    pub autonomia_minutos: Option<i64>,
 }
 
 impl EstadoDoControle {
@@ -132,6 +134,7 @@ impl EstadoDoControle {
             chave,
             quantos_conhecidos,
             autonomia,
+            autonomia_minutos,
         } = bruto;
 
         let preenchimento = match precisao {
@@ -183,6 +186,7 @@ impl EstadoDoControle {
             conectado_sem_carga,
             girando,
             autonomia,
+            autonomia_minutos,
         }
     }
 

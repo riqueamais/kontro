@@ -128,9 +128,28 @@ body[data-janela="principal"] .cartao {
 }
 
 body[data-janela="principal"] .cartao.estado {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-5);
+  overflow: hidden;
+}
+
+body[data-janela="principal"] .cartao.estado::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120px 120px at 64px 50%,
+    color-mix(in srgb, var(--cor-do-estado) 12%, transparent),
+    transparent 70%
+  );
+  transition: background var(--motion-base) var(--curva);
+  pointer-events: none;
+}
+
+body[data-janela="principal"] .cartao.estado > * {
+  position: relative;
 }
 
 body[data-janela="principal"] .cartao .leitura {
