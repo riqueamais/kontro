@@ -2,7 +2,7 @@ body[data-janela="principal"] .app {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--ink);
+  background: var(--fundo-janela);
   overflow: hidden;
 }
 
@@ -13,7 +13,7 @@ body[data-janela="principal"] .barra {
   align-items: center;
   justify-content: space-between;
   padding-left: var(--space-4);
-  background: var(--ink);
+  background: var(--fundo-barra);
   border-bottom: 1px solid var(--stroke);
   user-select: none;
 }
@@ -67,7 +67,7 @@ body[data-janela="principal"] .corpo > .trilho {
   flex-direction: column;
   gap: 2px;
   padding: var(--space-3) var(--space-2);
-  background: var(--surface);
+  background: var(--fundo-trilho);
   border-right: 1px solid var(--stroke);
 }
 

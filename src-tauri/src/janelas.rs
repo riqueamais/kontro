@@ -1,16 +1,15 @@
-use tauri::window::Monitor;
+use tauri::window::{Effect, EffectsBuilder, Monitor};
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
 
 use crate::configuracoes::Settings;
+use crate::sistema;
 use crate::tela;
 
-pub const LARGURA_DO_PAINEL: f64 = 392.0;
+pub const LARGURA_DO_PAINEL: f64 = 328.0;
 
-const SANGRIA_LATERAL_DO_PAINEL: f64 = 32.0;
-const SANGRIA_INFERIOR_DO_PAINEL: f64 = 56.0;
 const MARGEM_LATERAL_DO_PAINEL: f64 = 12.0;
 const MARGEM_INFERIOR_DO_PAINEL: f64 = 8.0;
 
@@ -37,7 +36,7 @@ pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
 }
 
 fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let janela = WebviewWindowBuilder::new(
+    let mut construtor = WebviewWindowBuilder::new(
         app,
         PRINCIPAL,
         WebviewUrl::App("index.html?janela=principal".into()),
@@ -47,8 +46,15 @@ fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     .min_inner_size(720.0, 520.0)
     .decorations(false)
     .visible(false)
-    .center()
-    .build()?;
+    .center();
+
+    if sistema::material_disponivel() {
+        construtor = construtor
+            .transparent(true)
+            .effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+    }
+
+    let janela = construtor.build()?;
 
     arredondar_cantos(&janela);
     vestir_icone(&janela);
@@ -82,17 +88,26 @@ fn arredondar_cantos(janela: &WebviewWindow) {
 }
 
 fn criar_painel(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    WebviewWindowBuilder::new(app, PAINEL, WebviewUrl::App("index.html?janela=painel".into()))
-        .title("Kontro")
-        .inner_size(LARGURA_DO_PAINEL, 360.0)
-        .decorations(false)
-        .transparent(true)
-        .shadow(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .resizable(false)
-        .visible(false)
-        .build()
+    let mut construtor =
+        WebviewWindowBuilder::new(app, PAINEL, WebviewUrl::App("index.html?janela=painel".into()))
+            .title("Kontro")
+            .inner_size(LARGURA_DO_PAINEL, 360.0)
+            .decorations(false)
+            .transparent(true)
+            .shadow(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .visible(false);
+
+    if sistema::material_disponivel() {
+        construtor = construtor.effects(EffectsBuilder::new().effect(Effect::Acrylic).build());
+    }
+
+    let janela = construtor.build()?;
+
+    arredondar_cantos(&janela);
+    Ok(janela)
 }
 
 fn criar_sobreposicao(app: &AppHandle) -> tauri::Result<WebviewWindow> {
@@ -282,10 +297,8 @@ pub fn posicionar_painel(app: &AppHandle) {
     let canto = area.position.to_logical::<f64>(escala);
     let util = area.size.to_logical::<f64>(escala);
 
-    let x = canto.x + util.width - tam_janela.width + SANGRIA_LATERAL_DO_PAINEL
-        - MARGEM_LATERAL_DO_PAINEL;
-    let y = canto.y + util.height - tam_janela.height + SANGRIA_INFERIOR_DO_PAINEL
-        - MARGEM_INFERIOR_DO_PAINEL;
+    let x = canto.x + util.width - tam_janela.width - MARGEM_LATERAL_DO_PAINEL;
+    let y = canto.y + util.height - tam_janela.height - MARGEM_INFERIOR_DO_PAINEL;
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }
 

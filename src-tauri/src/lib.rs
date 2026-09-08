@@ -15,6 +15,8 @@ mod janelas;
 mod modelo;
 mod monitor;
 mod orquestra;
+mod registro;
+mod sistema;
 mod tela;
 mod tempo;
 
@@ -142,6 +144,7 @@ pub fn executar() {
             salvar_configuracoes,
             ler_agora,
             versao_do_app,
+            material_da_janela,
             marcar_atualizacao,
             versao_disponivel,
             procurar_atualizacao,
@@ -554,6 +557,11 @@ fn consumir_marca_de_atualizacao() -> bool {
 fn marcar_atualizacao() {
     caminhos::garantir_dir();
     let _ = std::fs::write(caminhos::arquivo("atualizando"), env!("CARGO_PKG_VERSION"));
+}
+
+#[tauri::command]
+fn material_da_janela() -> bool {
+    sistema::material_disponivel()
 }
 
 #[tauri::command]

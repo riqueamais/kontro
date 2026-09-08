@@ -1,17 +1,15 @@
 .painel {
   position: relative;
-  margin: 24px 32px 56px;
   padding: var(--space-4);
-  border-radius: var(--radius-window);
-  background: var(--ink);
-  border: 1px solid var(--stroke);
-  box-shadow: 0 18px 32px rgba(0, 0, 0, 0.45);
+  background: var(--fundo-painel);
+  border: 1px solid var(--contorno-painel);
+  box-shadow: var(--sombra-painel);
   animation: kontro-subir var(--motion-slow) var(--curva);
 }
 @keyframes kontro-subir {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: scale(0.985);
   }
 }
 .painel .fechar {

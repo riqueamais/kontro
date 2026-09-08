@@ -17,6 +17,13 @@
 
   --ring-track: rgba(255, 255, 255, 0.13);
 
+  --fundo-janela: var(--ink);
+  --fundo-barra: var(--ink);
+  --fundo-trilho: var(--surface);
+  --fundo-painel: var(--ink);
+  --contorno-painel: var(--stroke);
+  --sombra-painel: 0 18px 32px rgba(0, 0, 0, 0.45);
+
   --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: Consolas, ui-monospace, monospace;
@@ -36,4 +43,13 @@
   --motion-base: 180ms;
   --motion-slow: 240ms;
   --curva: cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+body[data-material="sim"] {
+  --fundo-janela: rgba(11, 14, 17, 0.52);
+  --fundo-barra: transparent;
+  --fundo-trilho: transparent;
+  --fundo-painel: rgba(11, 14, 17, 0.42);
+  --contorno-painel: transparent;
+  --sombra-painel: none;
 }

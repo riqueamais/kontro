@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect } from "react";
 
 import { qualJanela } from "./estado";
@@ -11,6 +12,16 @@ export function App() {
   useEffect(() => {
     document.body.dataset.janela = janela;
   }, [janela]);
+
+  useEffect(() => {
+    invoke<boolean>("material_da_janela")
+      .then((tem) => {
+        document.body.dataset.material = tem ? "sim" : "nao";
+      })
+      .catch(() => {
+        document.body.dataset.material = "nao";
+      });
+  }, []);
   switch (janela) {
     case "painel":
       return <Painel />;
