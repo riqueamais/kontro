@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
-import { Config, OverlayMode, useAtalhosRecusados, usePilulaSolta } from "../estado";
+import { Config, OverlayMode, Theme, useAtalhosRecusados, usePilulaSolta } from "../estado";
 
 const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
 
@@ -48,6 +48,13 @@ const OPACIDADES: [number, string][] = [
   [0.9, "90%"],
   [0.75, "75%"],
   [0.55, "55%"],
+];
+
+const TEMAS: { id: Theme; rotulo: string }[] = [
+  { id: "Sistema", rotulo: "Do Windows" },
+  { id: "Noite", rotulo: "Noite" },
+  { id: "Preto", rotulo: "Preto" },
+  { id: "Dia", rotulo: "Dia" },
 ];
 
 const MODOS: Record<OverlayMode, string> = {
@@ -192,6 +199,26 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
           {cfg.CloseAction === "MinimizeToTray" ? "Minimizar" : "Encerrar"}
         </button>
       </Linha>
+      <h2>Aparência</h2>
+      <Linha titulo="Tema" descricao="O chão da janela. As cores de carga não mudam.">
+        <div className="temas">
+          {TEMAS.map((t) => (
+            <button
+              key={t.id}
+              className={`amostra-de-tema${cfg.Theme === t.id ? " escolhida" : ""}`}
+              data-tema={t.id.toLowerCase()}
+              title={t.rotulo}
+              aria-label={t.rotulo}
+              aria-pressed={cfg.Theme === t.id}
+              onClick={() => gravar({ Theme: t.id })}
+            >
+              <span className="chao" />
+              <span className="pingo" />
+            </button>
+          ))}
+        </div>
+      </Linha>
+
       <h2>Avisos</h2>
       <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
         <Chave

@@ -45,11 +45,40 @@
   --curva: cubic-bezier(0.33, 1, 0.68, 1);
 }
 
+body[data-tema="preto"] {
+  --ink: #000000;
+  --surface: #08090b;
+  --surface-alt: #12161a;
+  --stroke: #1b2127;
+  --stroke-strong: #2b343c;
+  --ring-track: rgba(255, 255, 255, 0.1);
+}
+
+body[data-tema="dia"] {
+  --ink: #eef1f5;
+  --surface: #ffffff;
+  --surface-alt: #e6eaf0;
+  --stroke: #d8dee6;
+  --stroke-strong: #b9c3ce;
+
+  --text-primary: #10161c;
+  --text-secondary: #4a5560;
+  --text-tertiary: #6d7883;
+
+  --accent-green: #12924a;
+  --accent-teal: #0b8f6f;
+  --amber: #9a6606;
+  --red: #c1362e;
+  --gray: #6d7883;
+
+  --ring-track: rgba(16, 22, 28, 0.12);
+}
+
 body[data-material="sim"] {
-  --fundo-janela: rgba(11, 14, 17, 0.52);
+  --fundo-janela: color-mix(in srgb, var(--ink) 55%, transparent);
   --fundo-barra: transparent;
   --fundo-trilho: transparent;
-  --fundo-painel: rgba(11, 14, 17, 0.42);
+  --fundo-painel: color-mix(in srgb, var(--ink) 45%, transparent);
   --contorno-painel: transparent;
   --sombra-painel: none;
 }

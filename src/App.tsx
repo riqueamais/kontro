@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect } from "react";
 
-import { qualJanela } from "./estado";
+import { qualJanela, useTema } from "./estado";
 import { Aviso } from "./telas/Aviso";
 import { Painel } from "./telas/Painel";
 import { Principal } from "./telas/Principal";
@@ -9,9 +9,14 @@ import { Sobreposicao } from "./telas/Sobreposicao";
 
 export function App() {
   const janela = qualJanela();
+  const tema = useTema();
   useEffect(() => {
     document.body.dataset.janela = janela;
   }, [janela]);
+
+  useEffect(() => {
+    document.body.dataset.tema = tema;
+  }, [tema]);
 
   useEffect(() => {
     invoke<boolean>("material_da_janela")

@@ -258,12 +258,40 @@ discreto não engole a transição para vermelho.
 
 ---
 
+# Movimento 5 — o chao muda, a semantica nao
+
+## T15. Temas
+
+**Onde:** `src-tauri/src/configuracoes.rs`, `sistema.rs`, `janelas.rs`, `src/estilo/tokens.css`,
+`src/estado.ts`, `src/telas/Configuracoes.tsx`.
+
+O app inteiro já roda em cima de tokens, então um tema é um bloco de override e nada mais.
+Quatro opções: **Do Windows** (lê `AppsUseLightTheme`), **Noite**, **Preto** (OLED, chao em
+`#000`) e **Dia**.
+
+**A regra que separa tema de decoração:** o tema troca o chão — `ink`, `surface`, `stroke`,
+os textos e a trilha do anel. **Verde, âmbar e vermelho são semântica de carga e continuam
+significando a mesma coisa em todo tema.** No Dia eles escurecem só o quanto o contraste
+exige (§8 do `DESIGN.md` pede 4,5:1), nunca mudam de família.
+
+A pílula em jogo fica de fora: ela precisa ser legível sobre qualquer cena, então segue
+escura em todo tema.
+
+O Mica acompanha — `MicaLight` no Dia, `MicaDark` nos outros — e é reaplicado com
+`set_effects` na hora em que o tema muda, sem reiniciar.
+
+**Pronto quando:** trocar o tema muda a janela na hora, o texto passa no contraste nos
+quatro, e a pílula continua legível sobre um jogo claro.
+
+---
+
 # Ordem
 
     T1 -> T2 -> T3 -> T4 -> T5        material e luz, na ordem de retorno
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
+    T15                               independente de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

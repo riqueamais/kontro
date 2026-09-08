@@ -145,6 +145,7 @@ pub fn executar() {
             ler_agora,
             versao_do_app,
             material_da_janela,
+            windows_no_claro,
             marcar_atualizacao,
             versao_disponivel,
             procurar_atualizacao,
@@ -161,6 +162,7 @@ pub fn executar() {
         .setup(move |app| {
             let handle = app.handle().clone();
             janelas::criar_todas(&handle)?;
+            janelas::vestir_material(&handle, compartilhado.config.lock().unwrap().tema_claro());
             montar_bandeja(&handle)?;
 
             {
@@ -467,6 +469,13 @@ fn salvar_configuracoes(
     novas.salvar();
 
     {
+        let anterior = compartilhado.config.lock().unwrap().theme;
+        if novas.theme != anterior {
+            janelas::vestir_material(&app, novas.tema_claro());
+        }
+    }
+
+    {
         let recusados = atalho::aplicar(&app, &novas);
         let _ = app.emit("kontro://atalhos", &recusados);
         *compartilhado.atalhos_recusados.lock().unwrap() = recusados;
@@ -562,6 +571,11 @@ fn marcar_atualizacao() {
 #[tauri::command]
 fn material_da_janela() -> bool {
     sistema::material_disponivel()
+}
+
+#[tauri::command]
+fn windows_no_claro() -> bool {
+    sistema::windows_no_claro()
 }
 
 #[tauri::command]

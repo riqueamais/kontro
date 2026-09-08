@@ -11,6 +11,12 @@ pub fn material_disponivel() -> bool {
     build() >= PRIMEIRO_BUILD_COM_MATERIAL && transparencia_ligada()
 }
 
+pub fn windows_no_claro() -> bool {
+    registro::numero(HKEY_CURRENT_USER, PERSONALIZACAO, "AppsUseLightTheme")
+        .map(|v| v != 0)
+        .unwrap_or(false)
+}
+
 pub fn transparencia_ligada() -> bool {
     registro::numero(HKEY_CURRENT_USER, PERSONALIZACAO, "EnableTransparency")
         .map(|v| v != 0)

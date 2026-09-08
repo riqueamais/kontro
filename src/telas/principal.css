@@ -400,3 +400,65 @@ body[data-janela="principal"] .cartao.novidade .notas li {
 body[data-janela="principal"] .cartao.novidade .notas li::marker {
   color: var(--stroke-strong);
 }
+
+body[data-janela="principal"] .temas {
+  display: flex;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .amostra-de-tema {
+  position: relative;
+  width: 40px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--stroke-strong);
+  border-radius: var(--radius-field);
+  background: transparent;
+  overflow: hidden;
+  transition: border-color var(--motion-fast), transform var(--motion-fast) var(--curva);
+}
+
+body[data-janela="principal"] .amostra-de-tema:hover {
+  transform: translateY(-1px);
+}
+
+body[data-janela="principal"] .amostra-de-tema.escolhida {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 1px var(--accent-green);
+}
+
+body[data-janela="principal"] .amostra-de-tema .chao {
+  position: absolute;
+  inset: 0;
+  background: var(--amostra-chao);
+}
+
+body[data-janela="principal"] .amostra-de-tema .pingo {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2.5px solid var(--amostra-cor);
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="noite"] {
+  --amostra-chao: #0b0e11;
+  --amostra-cor: #5fe083;
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="preto"] {
+  --amostra-chao: #000000;
+  --amostra-cor: #5fe083;
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="dia"] {
+  --amostra-chao: #eef1f5;
+  --amostra-cor: #12924a;
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="sistema"] {
+  --amostra-chao: linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%);
+  --amostra-cor: #35d7a8;
+}

@@ -1,5 +1,6 @@
 export type CloseAction = "MinimizeToTray" | "Exit";
 export type OverlayMode = "Desligada" | "EmJogo" | "Sempre";
+export type Theme = "Sistema" | "Noite" | "Preto" | "Dia";
 
 export interface Config {
   StartWithWindows: boolean;
@@ -20,4 +21,5 @@ export interface Config {
   OverlayShortcut: string;
   OverlayMoveShortcut: string;
   FirstRunDone: boolean;
+  Theme: Theme;
 }

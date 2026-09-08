@@ -13,6 +13,14 @@ pub enum CloseAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Theme {
+    Sistema,
+    Noite,
+    Preto,
+    Dia,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OverlayMode {
     Desligada,
     EmJogo,
@@ -32,6 +40,7 @@ impl Limiares {
 pub const ENUMS_DA_CONFIG: &[(&str, &[&str])] = &[
     ("CloseAction", &["MinimizeToTray", "Exit"]),
     ("OverlayMode", &["Desligada", "EmJogo", "Sempre"]),
+    ("Theme", &["Sistema", "Noite", "Preto", "Dia"]),
 ];
 
 pub const CAMPOS_DA_CONFIG: &[(&str, &str)] = &[
@@ -53,6 +62,7 @@ pub const CAMPOS_DA_CONFIG: &[(&str, &str)] = &[
     ("OverlayShortcut", "string"),
     ("OverlayMoveShortcut", "string"),
     ("FirstRunDone", "boolean"),
+    ("Theme", "Theme"),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -76,6 +86,7 @@ pub struct Settings {
     pub overlay_shortcut: String,
     pub overlay_move_shortcut: String,
     pub first_run_done: bool,
+    pub theme: Theme,
 }
 
 impl Default for Settings {
@@ -99,6 +110,7 @@ impl Default for Settings {
             overlay_shortcut: ATALHO_DA_PILULA.to_string(),
             overlay_move_shortcut: ATALHO_DE_MOVER.to_string(),
             first_run_done: false,
+            theme: Theme::Sistema,
         }
     }
 }
@@ -123,6 +135,14 @@ impl Settings {
                 let _ = std::fs::rename(&caminho, caminho.with_extension("json.invalido"));
                 Settings::default()
             }
+        }
+    }
+
+    pub fn tema_claro(&self) -> bool {
+        match self.theme {
+            Theme::Dia => true,
+            Theme::Noite | Theme::Preto => false,
+            Theme::Sistema => crate::sistema::windows_no_claro(),
         }
     }
 

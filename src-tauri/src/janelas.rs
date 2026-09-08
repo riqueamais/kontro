@@ -61,6 +61,15 @@ fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     Ok(janela)
 }
 
+pub fn vestir_material(app: &AppHandle, claro: bool) {
+    if !sistema::material_disponivel() {
+        return;
+    }
+    let Some(janela) = app.get_webview_window(PRINCIPAL) else { return };
+    let efeito = if claro { Effect::MicaLight } else { Effect::MicaDark };
+    let _ = janela.set_effects(EffectsBuilder::new().effect(efeito).build());
+}
+
 fn vestir_icone(janela: &WebviewWindow) {
     if let Some(icone) = crate::bandeja::icone_do_app(crate::bandeja::tamanho_do_icone_grande()) {
         let _ = janela.set_icon(icone);

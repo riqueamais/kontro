@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { Config } from "./config.gerada";
 
-export type { CloseAction, Config, OverlayMode } from "./config.gerada";
+export type { CloseAction, Config, OverlayMode, Theme } from "./config.gerada";
 
 export type Via = "Desligado" | "Bluetooth" | "Cabo" | "SemFio";
 export type Precisao = "Nenhuma" | "Aproximada" | "Exata";
@@ -103,6 +103,32 @@ export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO):
   if (estado.preenchimento < limiares.critico) return "var(--red)";
   if (estado.preenchimento < limiares.aviso) return "var(--amber)";
   return "var(--accent-green)";
+}
+
+export function useTema(): string {
+  const cfg = useConfig();
+  const [doSistema, setDoSistema] = useState("noite");
+
+  useEffect(() => {
+    let vivo = true;
+    const perguntar = () => {
+      invoke<boolean>("windows_no_claro")
+        .then((claro) => {
+          if (vivo) setDoSistema(claro ? "dia" : "noite");
+        })
+        .catch(() => {});
+    };
+
+    perguntar();
+    const relogio = setInterval(perguntar, 30_000);
+    return () => {
+      vivo = false;
+      clearInterval(relogio);
+    };
+  }, []);
+
+  const escolha = cfg?.Theme ?? "Sistema";
+  return escolha === "Sistema" ? doSistema : escolha.toLowerCase();
 }
 
 export function useLimiares(): Limiares {
