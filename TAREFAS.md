@@ -404,6 +404,35 @@ de CRLF e LF que vinha sujando os diffs.
 
 ---
 
+## Resolvido na 2.12.4
+
+### 39. Atualizar e reiniciar o PC devolvia a versão anterior
+
+**Sintoma:** instalar a versão nova pela tela de configurações funcionava — o app voltava
+com o número novo. Depois de reiniciar o PC ele subia na versão anterior, avisava que
+havia atualização, e o ciclo recomeçava sem fim.
+
+**Causa:** o `inicio_automatico` grava em `HKCU\...\Run` o caminho de `current_exe()` do
+momento em que a chave foi ligada, e `ligado()` só perguntava se o valor existia — nunca
+se ele ainda apontava para o binário certo. Nesta máquina o valor apontava para
+`D:\Kontro\kontro-bandeja.exe`, um binário antigo que sobrou de quando o executável
+tinha outro nome. O instalador NSIS apaga o binário antigo (`$OldMainBinaryName`) e
+reaponta os atalhos, mas só quando a chave `MainBinaryName` do registro já existe — e
+ela só passou a ser escrita depois. O arquivo velho ficou, com a versão velha dentro.
+
+Então a atualização escrevia o `kontro.exe` novo e o instalador subia esse, mas o boot
+seguinte executava o `kontro-bandeja.exe` de sempre. A atualização nunca era perdida: era
+o atalho que nunca tinha sido atualizado. Os atalhos do menu iniciar e da área de trabalho
+apontavam para o mesmo arquivo velho, pelo mesmo motivo.
+
+**Correção:** `conferir()` roda na subida e compara o executável registrado com o que está
+rodando. Se forem diferentes e o registrado tiver sumido, ou estiver na mesma pasta, a
+chave é reescrita para o executável atual. A mesma pasta é a condição que separa uma troca
+de binário de uma build de desenvolvimento — um `target/debug` nunca sequestra o início
+automático do app instalado.
+
+---
+
 ## Em aberto
 
 ### 23. Limiar e aviso por controle

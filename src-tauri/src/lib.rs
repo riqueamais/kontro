@@ -89,6 +89,8 @@ pub fn executar() {
         return;
     }
 
+    inicio_automatico::conferir();
+
     let mut config = Settings::carregar();
 
     config.start_with_windows = inicio_automatico::ligado();
