@@ -7,6 +7,7 @@ use crate::dispositivo::gatt::{self, AvisoGatt, VinculoGatt};
 use crate::dispositivo::vigia::{self, Vigia};
 use crate::dispositivo::{gaming, hid, pnp, xinput};
 use crate::historico::History;
+use crate::jogo;
 use crate::modelo::{Bruto, EstadoDoControle, Leitura, Precisao, Via};
 use crate::tempo;
 
@@ -81,6 +82,7 @@ pub struct Monitor {
     tentativa_de_vinculo: i64,
 
     ultima_gravacao: i64,
+    jogo_agora: Option<jogo::Jogo>,
 
     ultimo: Option<EstadoDoControle>,
 }
@@ -127,12 +129,14 @@ impl Monitor {
             conectado_desde: None,
             tentativa_de_vinculo: 0,
             ultima_gravacao: agora,
+            jogo_agora: None,
             ultimo: None,
         }
     }
 
     pub fn ciclo(&mut self) -> Option<Panorama> {
         let agora = tempo::agora();
+        self.jogo_agora = jogo::em_foco();
 
         self.talvez_descobrir(agora);
 
@@ -293,7 +297,8 @@ impl Monitor {
         registro.em = Some(agora);
         registro.provisorio = false;
         registro.incerto = false;
-        self.historico.adicionar(chave, percentual, agora, via);
+        let jogo = self.jogo_agora.clone();
+        self.historico.adicionar(chave, percentual, agora, via, jogo.as_ref());
     }
 
     fn confirmar_em_observacao(&mut self, agora: i64) {
@@ -377,7 +382,8 @@ impl Monitor {
             registro.percentual = Some(leitura.valor);
             registro.nivel = None;
             if !incerto {
-                self.historico.adicionar(&chave, leitura.valor, em, modo);
+                let jogo = self.jogo_agora.clone();
+                self.historico.adicionar(&chave, leitura.valor, em, modo, jogo.as_ref());
             }
         } else {
             registro.nivel = Some(leitura.valor);

@@ -15,24 +15,66 @@
 
 .sessoes .sessao {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
-  padding: 5px 8px;
+  padding: var(--space-2);
   font-size: 12.5px;
 }
 
-.sessoes .sessao-quando {
+.sessoes .sessao-icone {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+.sessoes .sessao-icone img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.sessoes .sessao-texto {
   flex: 1;
   min-width: 0;
-  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sessoes .sessao-titulo {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.sessoes .sessao-quando {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sessoes .sessao-numeros {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
 .sessoes .sessao-carga {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -41,11 +83,9 @@
   color: var(--text-primary);
 }
 
-.sessoes .sessao-duracao {
-  min-width: 56px;
-  text-align: right;
+.sessoes .sessao-taxa {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -58,6 +98,7 @@
   font-family: inherit;
   text-align: left;
   cursor: default;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
 }
 
 .sessoes button.sessao:hover {

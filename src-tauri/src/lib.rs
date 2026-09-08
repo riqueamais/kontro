@@ -9,9 +9,11 @@ mod dispositivo;
 mod geometria;
 mod gerados;
 mod historico;
+mod icone_do_jogo;
 mod icones;
 mod inicio_automatico;
 mod janelas;
+mod jogo;
 mod modelo;
 mod monitor;
 mod orquestra;
@@ -20,6 +22,7 @@ mod sistema;
 mod tela;
 mod tempo;
 
+use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
@@ -43,6 +46,8 @@ pub struct Compartilhado {
     atalhos_recusados: Mutex<Vec<String>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
+    jogos: Mutex<Vec<historico::JogoSalvo>>,
+    icones: Mutex<HashMap<String, Option<String>>>,
 }
 
 enum Pedido {
@@ -113,6 +118,8 @@ pub fn executar() {
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
+        jogos: Mutex::new(Vec::new()),
+        icones: Mutex::new(HashMap::new()),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
@@ -144,6 +151,7 @@ pub fn executar() {
             salvar_configuracoes,
             ler_agora,
             versao_do_app,
+            icone_do_jogo,
             material_da_janela,
             windows_no_claro,
             marcar_atualizacao,
@@ -267,6 +275,10 @@ fn iniciar_ciclo(
                 {
                     let mut sessoes = compartilhado.sessoes.lock().unwrap();
                     *sessoes = monitor.historico().sessoes(&principal.chave);
+                }
+                {
+                    let mut jogos = compartilhado.jogos.lock().unwrap();
+                    *jogos = monitor.historico().jogos_conhecidos();
                 }
 
                 let _ = app.emit("kontro://estado", &principal);
@@ -566,6 +578,29 @@ fn consumir_marca_de_atualizacao() -> bool {
 fn marcar_atualizacao() {
     caminhos::garantir_dir();
     let _ = std::fs::write(caminhos::arquivo("atualizando"), env!("CARGO_PKG_VERSION"));
+}
+
+#[tauri::command]
+fn icone_do_jogo(compartilhado: tauri::State<Arc<Compartilhado>>, nome: String) -> Option<String> {
+    if let Some(guardado) = compartilhado.icones.lock().unwrap().get(&nome) {
+        return guardado.clone();
+    }
+
+    let caminho = compartilhado
+        .jogos
+        .lock()
+        .unwrap()
+        .iter()
+        .find(|j| j.nome == nome)
+        .map(|j| j.caminho.clone());
+
+    let uri = caminho
+        .map(std::path::PathBuf::from)
+        .filter(|c| c.exists())
+        .and_then(|c| icone_do_jogo::como_uri(&c));
+
+    compartilhado.icones.lock().unwrap().insert(nome, uri.clone());
+    uri
 }
 
 #[tauri::command]

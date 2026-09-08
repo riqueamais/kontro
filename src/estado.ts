@@ -42,6 +42,7 @@ export interface Sessao {
   fim: number;
   de: number;
   ate: number;
+  jogo: string | null;
 }
 
 export function useEstado(): Estado | null {

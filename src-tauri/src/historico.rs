@@ -13,6 +13,32 @@ struct AmostraEmDisco {
     p: i32,
     #[serde(rename = "V", default, skip_serializing_if = "Option::is_none")]
     v: Option<Via>,
+    #[serde(rename = "J", default, skip_serializing_if = "Option::is_none")]
+    j: Option<u16>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JogoSalvo {
+    #[serde(rename = "N")]
+    pub nome: String,
+    #[serde(rename = "C")]
+    pub caminho: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum EmDisco {
+    ComJogos { jogos: Vec<JogoSalvo>, controles: HashMap<String, Vec<AmostraEmDisco>> },
+    SoControles(HashMap<String, Vec<AmostraEmDisco>>),
+}
+
+impl EmDisco {
+    fn abrir(self) -> (Vec<JogoSalvo>, HashMap<String, Vec<AmostraEmDisco>>) {
+        match self {
+            EmDisco::ComJogos { jogos, controles } => (jogos, controles),
+            EmDisco::SoControles(controles) => (Vec::new(), controles),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -20,6 +46,7 @@ pub struct Amostra {
     pub t: i64,
     pub p: i32,
     pub via: Option<Via>,
+    pub jogo: Option<u16>,
 }
 
 impl Amostra {
@@ -35,6 +62,7 @@ impl Amostra {
 #[derive(Debug, Default)]
 pub struct History {
     por_controle: HashMap<String, Vec<Amostra>>,
+    jogos: Vec<JogoSalvo>,
     sujo: bool,
 }
 
@@ -51,15 +79,17 @@ const SALTO_DE_SEGURANCA_MS: i64 = 6 * 60 * 60 * 1000;
 const SUBIDA_QUE_DENUNCIA_TROCA: i32 = 15;
 const SUBIDA_INSTANTANEA_MS: i64 = 5 * 60 * 1000;
 const DURACAO_MINIMA_DE_SESSAO_MS: i64 = 10 * 60 * 1000;
+const FATIA_QUE_BATIZA_A_SESSAO: f64 = 0.6;
 const QUEDA_QUE_SUSTENTA_UMA_PROJECAO: f64 = 5.0;
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Sessao {
     pub inicio: i64,
     pub fim: i64,
     pub de: i32,
     pub ate: i32,
+    pub jogo: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -84,8 +114,8 @@ pub struct Saude {
 impl History {
     pub fn carregar() -> Self {
         let bruto = caminhos::ler("history.json").unwrap_or_default();
-        let mapa: HashMap<String, Vec<AmostraEmDisco>> =
-            serde_json::from_str(&bruto).unwrap_or_default();
+        let (jogos, mapa) =
+            serde_json::from_str::<EmDisco>(&bruto).map(EmDisco::abrir).unwrap_or_default();
         let corte = tempo::agora() - JANELA_MS;
 
         let lidas: usize = mapa.values().map(|s| s.len()).sum();
@@ -95,7 +125,9 @@ impl History {
             .map(|(chave, serie)| {
                 let mut convertida: Vec<Amostra> = serie
                     .into_iter()
-                    .filter_map(|a| tempo::de_texto(&a.t).map(|t| Amostra { t, p: a.p, via: a.v }))
+                    .filter_map(|a| {
+                        tempo::de_texto(&a.t).map(|t| Amostra { t, p: a.p, via: a.v, jogo: a.j })
+                    })
                     .filter(|a| a.t >= corte)
                     .collect();
                 convertida.sort_by_key(|a| a.t);
@@ -105,7 +137,7 @@ impl History {
 
         let podou = quantas(&por_controle) != lidas;
 
-        History { por_controle, sujo: podou }
+        History { por_controle, jogos, sujo: podou }
     }
 
     pub fn precisa_salvar(&self) -> bool {
@@ -127,7 +159,15 @@ impl History {
         }
     }
 
-    pub fn adicionar(&mut self, chave: &str, percentual: i32, quando: i64, via: Via) {
+    pub fn adicionar(
+        &mut self,
+        chave: &str,
+        percentual: i32,
+        quando: i64,
+        via: Via,
+        jogo: Option<&crate::jogo::Jogo>,
+    ) {
+        let indice = jogo.map(|j| self.indice_do_jogo(j));
         let serie = self.por_controle.entry(chave.to_string()).or_default();
 
         if let Some(u) = serie.last().copied() {
@@ -141,9 +181,28 @@ impl History {
             }
         }
 
-        serie.push(Amostra { t: quando, p: percentual, via: Some(via) });
+        serie.push(Amostra { t: quando, p: percentual, via: Some(via), jogo: indice });
         serie.sort_by_key(|a| a.t);
         self.sujo = true;
+    }
+
+    fn indice_do_jogo(&mut self, jogo: &crate::jogo::Jogo) -> u16 {
+        if let Some(i) = self.jogos.iter().position(|j| j.nome == jogo.nome) {
+            return i as u16;
+        }
+        self.jogos.push(JogoSalvo {
+            nome: jogo.nome.clone(),
+            caminho: jogo.caminho.to_string_lossy().to_string(),
+        });
+        (self.jogos.len() - 1) as u16
+    }
+
+    fn nome_do_jogo(&self, indice: u16) -> Option<&str> {
+        self.jogos.get(indice as usize).map(|j| j.nome.as_str())
+    }
+
+    pub fn jogos_conhecidos(&self) -> Vec<JogoSalvo> {
+        self.jogos.clone()
     }
 
     pub fn marcar_desligado(&mut self, chave: &str, percentual: i32, quando: i64) {
@@ -156,24 +215,31 @@ impl History {
             _ => {}
         }
 
-        serie.push(Amostra { t: quando, p: percentual, via: Some(Via::Desligado) });
+        serie.push(Amostra { t: quando, p: percentual, via: Some(Via::Desligado), jogo: None });
         self.sujo = true;
     }
 
     pub fn salvar(&mut self) {
         caminhos::garantir_dir();
-        let em_disco: HashMap<&String, Vec<AmostraEmDisco>> = self
+        let controles: HashMap<String, Vec<AmostraEmDisco>> = self
             .por_controle
             .iter()
             .filter(|(_, serie)| !serie.is_empty())
             .map(|(chave, serie)| {
                 let convertida = serie
                     .iter()
-                    .map(|a| AmostraEmDisco { t: tempo::para_texto(a.t), p: a.p, v: a.via })
+                    .map(|a| AmostraEmDisco {
+                        t: tempo::para_texto(a.t),
+                        p: a.p,
+                        v: a.via,
+                        j: a.jogo,
+                    })
                     .collect();
-                (chave, convertida)
+                (chave.clone(), convertida)
             })
             .collect();
+
+        let em_disco = EmDisco::ComJogos { jogos: self.jogos.clone(), controles };
 
         if let Ok(t) = serde_json::to_string(&em_disco) {
             if std::fs::write(caminhos::arquivo("history.json"), t).is_ok() {
@@ -212,6 +278,7 @@ impl History {
                     fim: serie[i].t,
                     de: serie[inicio].p,
                     ate: serie[i].p,
+                    jogo: self.jogo_da_faixa(&serie[inicio..=i]),
                 });
             }
             i += 1;
@@ -219,6 +286,26 @@ impl History {
 
         saida.reverse();
         saida
+    }
+
+    fn jogo_da_faixa(&self, faixa: &[Amostra]) -> Option<String> {
+        if faixa.is_empty() {
+            return None;
+        }
+
+        let mut contagem: HashMap<u16, usize> = HashMap::new();
+        for amostra in faixa {
+            if let Some(i) = amostra.jogo {
+                *contagem.entry(i).or_default() += 1;
+            }
+        }
+
+        let (indice, quantas) = contagem.into_iter().max_by_key(|(_, n)| *n)?;
+        if (quantas as f64) / (faixa.len() as f64) < FATIA_QUE_BATIZA_A_SESSAO {
+            return None;
+        }
+
+        self.nome_do_jogo(indice).map(|n| n.to_string())
     }
 
     pub fn saude(&self, chave: &str) -> Saude {
@@ -376,11 +463,11 @@ mod testes {
     const HORA: i64 = 60 * MINUTO;
 
     fn amostra(t: i64, p: i32) -> Amostra {
-        Amostra { t, p, via: None }
+        Amostra { t, p, via: None, jogo: None }
     }
 
     fn com_via(t: i64, p: i32, via: Via) -> Amostra {
-        Amostra { t, p, via: Some(via) }
+        Amostra { t, p, via: Some(via), jogo: None }
     }
 
     fn sessao(comeca_h_atras: i64, duracao_h: i64, de: i32, ate: i32) -> Vec<Amostra> {
@@ -400,7 +487,83 @@ mod testes {
         amostras.sort_by_key(|a| a.t);
         let mut por_controle = HashMap::new();
         por_controle.insert("c".to_string(), amostras);
-        History { por_controle, sujo: false }
+        History { por_controle, jogos: Vec::new(), sujo: false }
+    }
+
+    fn com_jogos(amostras: Vec<Amostra>, jogos: &[&str]) -> History {
+        let mut h = historico(amostras);
+        h.jogos = jogos
+            .iter()
+            .map(|j| JogoSalvo { nome: j.to_string(), caminho: format!("D:/{j}.exe") })
+            .collect();
+        h
+    }
+
+    fn jogando(comeca_h_atras: i64, duracao_h: i64, de: i32, ate: i32, jogo: u16) -> Vec<Amostra> {
+        sessao(comeca_h_atras, duracao_h, de, ate)
+            .into_iter()
+            .map(|a| Amostra { jogo: Some(jogo), ..a })
+            .collect()
+    }
+
+    #[test]
+    fn a_sessao_herda_o_jogo_que_ocupou_ela() {
+        let h = com_jogos(jogando(4, 3, 100, 55, 0), &["ELDEN RING"]);
+        assert_eq!(h.sessoes("c")[0].jogo.as_deref(), Some("ELDEN RING"));
+    }
+
+    #[test]
+    fn sessao_dividida_entre_dois_jogos_fica_sem_nome() {
+        let mut a = jogando(4, 3, 100, 55, 0);
+        for (i, amostra) in a.iter_mut().enumerate() {
+            amostra.jogo = Some(if i % 2 == 0 { 0 } else { 1 });
+        }
+        let h = com_jogos(a, &["ELDEN RING", "HADES"]);
+        assert_eq!(h.sessoes("c")[0].jogo, None);
+    }
+
+    #[test]
+    fn sessao_sem_jogo_nenhum_fica_sem_nome() {
+        let h = com_jogos(sessao(4, 3, 100, 55), &["ELDEN RING"]);
+        assert_eq!(h.sessoes("c")[0].jogo, None);
+    }
+
+    #[test]
+    fn um_history_json_da_versao_anterior_continua_abrindo() {
+        let antigo = r#"{"wired":[{"T":"2026-09-01T10:00:00Z","P":80,"V":"SemFio"}]}"#;
+        let (jogos, mapa) = serde_json::from_str::<EmDisco>(antigo).map(EmDisco::abrir).unwrap();
+        assert!(jogos.is_empty());
+        assert_eq!(mapa["wired"].len(), 1);
+        assert_eq!(mapa["wired"][0].j, None);
+    }
+
+    #[test]
+    fn o_arquivo_novo_traz_a_tabela_de_jogos() {
+        let novo = r#"{"jogos":[{"N":"ELDEN RING","C":"D:/er.exe"}],"controles":{"wired":[{"T":"2026-09-01T10:00:00Z","P":80,"J":0}]}}"#;
+        let (jogos, mapa) = serde_json::from_str::<EmDisco>(novo).map(EmDisco::abrir).unwrap();
+        assert_eq!(jogos[0].nome, "ELDEN RING");
+        assert_eq!(jogos[0].caminho, "D:/er.exe");
+        assert_eq!(mapa["wired"][0].j, Some(0));
+    }
+
+    #[test]
+    fn o_mesmo_jogo_entra_uma_vez_so_na_tabela() {
+        let mut h = historico(Vec::new());
+        let agora = tempo::agora();
+        let er = crate::jogo::Jogo {
+            nome: "ELDEN RING".to_string(),
+            caminho: std::path::PathBuf::from("D:/er.exe"),
+        };
+        let hades = crate::jogo::Jogo {
+            nome: "HADES".to_string(),
+            caminho: std::path::PathBuf::from("D:/hades.exe"),
+        };
+        h.adicionar("c", 80, agora, Via::SemFio, Some(&er));
+        h.adicionar("c", 79, agora + HORA, Via::SemFio, Some(&er));
+        h.adicionar("c", 78, agora + 2 * HORA, Via::SemFio, Some(&hades));
+        assert_eq!(h.jogos.len(), 2);
+        assert_eq!(h.serie("c")[0].jogo, Some(0));
+        assert_eq!(h.serie("c")[2].jogo, Some(1));
     }
 
     #[test]
@@ -538,11 +701,12 @@ mod testes {
 
     #[test]
     fn a_amostra_sem_via_nao_ganha_o_campo_ao_ser_gravada() {
-        let sem = AmostraEmDisco { t: "2026-08-20T00:28:00-03:00".into(), p: 73, v: None };
+        let sem = AmostraEmDisco { t: "2026-08-20T00:28:00-03:00".into(), p: 73, v: None, j: None };
         let com = AmostraEmDisco {
             t: "2026-08-20T00:28:00-03:00".into(),
             p: 73,
             v: Some(Via::Bluetooth),
+            j: None,
         };
 
         assert!(!serde_json::to_string(&sem).unwrap().contains("\"V\""));
