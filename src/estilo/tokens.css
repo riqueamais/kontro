@@ -78,7 +78,7 @@ body[data-material="sim"] {
   --fundo-janela: color-mix(in srgb, var(--ink) 55%, transparent);
   --fundo-barra: transparent;
   --fundo-trilho: transparent;
-  --fundo-painel: color-mix(in srgb, var(--ink) 45%, transparent);
-  --contorno-painel: transparent;
+  --fundo-painel: color-mix(in srgb, var(--ink) 86%, transparent);
+  --contorno-painel: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --sombra-painel: none;
 }

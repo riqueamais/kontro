@@ -1,0 +1,127 @@
+body[data-janela="principal"] .diario-cabeca {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+body[data-janela="principal"] .diario-numero {
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+body[data-janela="principal"] .diario-rotulo {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .diario-titulo {
+  margin: 0 0 var(--space-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .diario-vazio {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .mapa {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 6px;
+}
+
+body[data-janela="principal"] .mapa .celula {
+  aspect-ratio: 1;
+  border-radius: 5px;
+  background: var(--accent-green);
+  transition: opacity var(--motion-base) var(--curva);
+}
+
+body[data-janela="principal"] .mapa .celula.baixa {
+  background: var(--amber);
+}
+
+body[data-janela="principal"] .mapa .celula.critica {
+  background: var(--red);
+}
+
+body[data-janela="principal"] .mapa .celula.vazia {
+  background: transparent;
+  border: 1px solid var(--stroke);
+}
+
+body[data-janela="principal"] .ranking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+body[data-janela="principal"] .faminto {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+
+body[data-janela="principal"] .faminto-nome {
+  min-width: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-janela="principal"] .faminto-barra {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-alt);
+  overflow: hidden;
+}
+
+body[data-janela="principal"] .faminto-barra span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent-green);
+}
+
+body[data-janela="principal"] .faminto-taxa {
+  min-width: 62px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+body[data-janela="principal"] .faminto-quantas {
+  min-width: 74px;
+  text-align: right;
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+body[data-janela="principal"] .exportar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .exportar-erro {
+  max-width: 320px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  text-align: right;
+  color: var(--red);
+}

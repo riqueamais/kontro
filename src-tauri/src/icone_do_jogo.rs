@@ -160,6 +160,11 @@ fn base64(bytes: &[u8]) -> String {
 }
 
 #[cfg(test)]
+pub fn base64_para_teste(bytes: &[u8]) -> String {
+    base64(bytes)
+}
+
+#[cfg(test)]
 mod testes {
     use super::*;
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -15,6 +16,9 @@ import {
 } from "../estado";
 import "./sobreposicao.css";
 
+const ESPERA_PARA_RECOLHER_MS = 8_000;
+const QUANTO_RECOLHE = 0.5;
+
 export function Sobreposicao() {
   const estado = useEstado();
   const todos = useControles();
@@ -23,6 +27,8 @@ export function Sobreposicao() {
   const solta = usePilulaSolta();
   const raiz = useRef<HTMLDivElement>(null);
   const medida = useRef("");
+  const [recolhida, setRecolhida] = useState(false);
+  const [entradas, setEntradas] = useState(0);
 
   const medir = useCallback(() => {
     const alvo = raiz.current;
@@ -43,6 +49,16 @@ export function Sobreposicao() {
   useLayoutEffect(medir);
 
   useEffect(() => {
+    const parar = listen("kontro://pilula-apareceu", () => {
+      setEntradas((n) => n + 1);
+      setRecolhida(false);
+    });
+    return () => {
+      void parar.then((f) => f());
+    };
+  }, []);
+
+  useEffect(() => {
     const alvo = raiz.current;
     if (!alvo) return;
 
@@ -51,20 +67,41 @@ export function Sobreposicao() {
     return () => observador.disconnect();
   }, [medir]);
 
+  const marca = estado
+    ? `${estado.preenchimento}|${estado.via}|${estado.girando}|${estado.carregando}`
+    : "";
+
+  useEffect(() => {
+    setRecolhida(false);
+    if (solta) return;
+    const relogio = setTimeout(() => setRecolhida(true), ESPERA_PARA_RECOLHER_MS);
+    return () => clearTimeout(relogio);
+  }, [marca, solta]);
+
   if (!estado) return null;
   const escala = cfg?.OverlayScale ?? 1;
   const opacidade = cfg?.OverlayOpacity ?? 0.9;
+  const critica =
+    !estado.carregando &&
+    !estado.leituraAntiga &&
+    estado.preenchimento !== null &&
+    estado.preenchimento <= limiares.critico;
+  const discreta = recolhida && !solta && !critica;
   const acompanhantes = todos.filter((c) => c.via !== "Desligado" && c.chave !== estado.chave);
   return (
     <div
       ref={raiz}
-      className={classes(solta, (cfg?.OverlayX ?? 1) > 0.5)}
+      key={entradas}
+      className={classes(solta, (cfg?.OverlayX ?? 1) > 0.5, critica)}
       style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}
       onMouseDown={(evento) => {
         if (solta && evento.button === 0) void getCurrentWindow().startDragging();
       }}
     >
-      <div className="pilula" style={{ opacity: solta ? 1 : opacidade }}>
+      <div
+        className="pilula"
+        style={{ opacity: solta ? 1 : opacidade * (discreta ? QUANTO_RECOLHE : 1) }}
+      >
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
@@ -107,8 +144,10 @@ export function Sobreposicao() {
     </div>
   );
 }
-function classes(solta: boolean, aDireita: boolean): string {
-  return ["sobreposicao", solta && "solta", aDireita && "espelhada"].filter(Boolean).join(" ");
+function classes(solta: boolean, aDireita: boolean, critica: boolean): string {
+  return ["sobreposicao", solta && "solta", aDireita && "espelhada", critica && "critica"]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function Cadeado() {

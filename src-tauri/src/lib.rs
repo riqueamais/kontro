@@ -152,6 +152,7 @@ pub fn executar() {
             ler_agora,
             versao_do_app,
             icone_do_jogo,
+            salvar_cartao,
             material_da_janela,
             windows_no_claro,
             marcar_atualizacao,
@@ -604,6 +605,46 @@ fn icone_do_jogo(compartilhado: tauri::State<Arc<Compartilhado>>, nome: String) 
 }
 
 #[tauri::command]
+fn salvar_cartao(png: String) -> Result<String, String> {
+    let bytes = de_base64(&png).ok_or("a imagem veio ilegivel")?;
+
+    let pasta = std::env::var("USERPROFILE")
+        .map(|casa| std::path::PathBuf::from(casa).join("Downloads"))
+        .map_err(|_| "nao achei a pasta de downloads")?;
+    std::fs::create_dir_all(&pasta).map_err(|e| e.to_string())?;
+
+    let destino = pasta.join(format!("kontro-{}.png", tempo::agora()));
+    std::fs::write(&destino, bytes).map_err(|e| e.to_string())?;
+
+    let _ = std::process::Command::new("explorer").arg("/select,").arg(&destino).spawn();
+
+    Ok(destino.to_string_lossy().to_string())
+}
+
+fn de_base64(texto: &str) -> Option<Vec<u8>> {
+    const ALFABETO: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    let mut juntos: u32 = 0;
+    let mut quantos = 0;
+    let mut saida = Vec::with_capacity(texto.len() / 4 * 3);
+
+    for letra in texto.bytes() {
+        if letra == b'=' || letra.is_ascii_whitespace() {
+            continue;
+        }
+        let valor = ALFABETO.iter().position(|c| *c == letra)? as u32;
+        juntos = (juntos << 6) | valor;
+        quantos += 6;
+        if quantos >= 8 {
+            quantos -= 8;
+            saida.push((juntos >> quantos) as u8);
+        }
+    }
+
+    Some(saida)
+}
+
+#[tauri::command]
 fn material_da_janela() -> bool {
     sistema::material_disponivel()
 }
@@ -714,5 +755,22 @@ fn ajustar_altura_do_painel(app: AppHandle, altura: f64) {
 fn esconder_janela(app: AppHandle, rotulo: String) {
     if let Some(j) = app.get_webview_window(&rotulo) {
         let _ = j.hide();
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    #[test]
+    fn o_base64_que_o_front_manda_volta_a_ser_bytes() {
+        let bytes: Vec<u8> = (0u8..=255).collect();
+        let texto = crate::icone_do_jogo::base64_para_teste(&bytes);
+        assert_eq!(de_base64(&texto), Some(bytes));
+    }
+
+    #[test]
+    fn base64_com_quebra_de_linha_ainda_volta() {
+        assert_eq!(de_base64("Zm9v\nYmFy"), Some(b"foobar".to_vec()));
     }
 }

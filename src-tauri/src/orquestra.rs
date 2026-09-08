@@ -93,6 +93,7 @@ impl Orquestrador {
             janelas::posicionar_sobreposicao(app, cfg);
             if !janela.is_visible().unwrap_or(false) {
                 let _ = janela.show();
+                let _ = app.emit("kontro://pilula-apareceu", ());
             }
         } else if janela.is_visible().unwrap_or(false) {
             let _ = janela.hide();

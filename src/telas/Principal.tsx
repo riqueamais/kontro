@@ -3,11 +3,12 @@ import { useEffect, useState } from "react";
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
 import { useConfig } from "../estado";
 import { Configuracoes } from "./Configuracoes";
+import { Diario } from "./Diario";
 import { Passos } from "./Passos";
 import { Resumo } from "./Resumo";
 import "./principal.css";
 
-type Pagina = "resumo" | "config";
+type Pagina = "resumo" | "diario" | "config";
 
 const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   {
@@ -23,6 +24,17 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
           strokeWidth="1.4"
           strokeLinecap="round"
         />
+      </svg>
+    ),
+  },
+  {
+    id: "diario",
+    rotulo: "Diário",
+    icone: (
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="2" y="3.4" width="12" height="10.2" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M2 6.6 H14" stroke="currentColor" strokeWidth="1.4" />
+        <path d="M5.4 2.2 V4.4 M10.6 2.2 V4.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
       </svg>
     ),
   },
@@ -79,7 +91,9 @@ export function Principal() {
           ))}
         </nav>
         <main className="pagina">
-          {pagina === "resumo" ? <Resumo /> : <Configuracoes aoRever={() => setPassos(true)} />}
+          {pagina === "resumo" && <Resumo />}
+          {pagina === "diario" && <Diario />}
+          {pagina === "config" && <Configuracoes aoRever={() => setPassos(true)} />}
         </main>
       </div>
     </div>
