@@ -323,6 +323,26 @@ Seis temas: **Do Windows**, **Noite**, **Preto** (OLED), **Ardósia** (frio, azu
 **Pronto quando:** cada tela — resumo, sessões, diário, configurações — e a pílula foram
 vistas nos seis temas, sem nada ilegível. Conferido por captura, tema a tema.
 
+## T17. A landing page falava de protocolo, não de produto
+
+**Onde:** `docs/index.html`, `docs/tela-*.png`.
+
+A página descrevia GATT Battery Service, enumeração HID e extração de endereço Bluetooth
+antes de dizer o que o app faz por quem usa. E estava parada na 1.5.0 — sem diário, sem
+sessões com jogo, sem temas, sem pílula.
+
+**A ordem virou:** primeiro a pergunta que o app responde ("quanto ainda dá pra jogar"),
+depois o que ele mostra, com captura de tela de verdade em cada seção. O trecho técnico
+sobrou em **uma** seção, e reenquadrado como confiança: por que o número é confiável, e
+por que no cabo ele prefere não responder.
+
+De quebra, a página deixou de ser um bundle de 347 KB que só renderiza com JavaScript.
+Virou HTML estático de 26 KB — o único `<script>` que restou é o JSON-LD, que não executa
+nada. Abre sem JS.
+
+**Pronto quando:** a página foi percorrida de cima a baixo no navegador, sem texto
+ilegível nem seção com metade vazia.
+
 ---
 
 # Ordem
@@ -331,7 +351,7 @@ vistas nos seis temas, sem nada ilegível. Conferido por captura, tema a tema.
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
-    T15 -> T16                        independentes de todas
+    T15 -> T16 -> T17                 independentes de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale
