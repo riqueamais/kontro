@@ -17,6 +17,8 @@ pub enum Theme {
     Sistema,
     Noite,
     Preto,
+    Ardosia,
+    Brasa,
     Dia,
 }
 
@@ -40,7 +42,7 @@ impl Limiares {
 pub const ENUMS_DA_CONFIG: &[(&str, &[&str])] = &[
     ("CloseAction", &["MinimizeToTray", "Exit"]),
     ("OverlayMode", &["Desligada", "EmJogo", "Sempre"]),
-    ("Theme", &["Sistema", "Noite", "Preto", "Dia"]),
+    ("Theme", &["Sistema", "Noite", "Preto", "Ardosia", "Brasa", "Dia"]),
 ];
 
 pub const CAMPOS_DA_CONFIG: &[(&str, &str)] = &[
@@ -141,7 +143,7 @@ impl Settings {
     pub fn tema_claro(&self) -> bool {
         match self.theme {
             Theme::Dia => true,
-            Theme::Noite | Theme::Preto => false,
+            Theme::Noite | Theme::Preto | Theme::Ardosia | Theme::Brasa => false,
             Theme::Sistema => crate::sistema::windows_no_claro(),
         }
     }

@@ -297,6 +297,32 @@ O Mica acompanha — `MicaLight` no Dia, `MicaDark` nos outros — e é reaplica
 **Pronto quando:** trocar o tema muda a janela na hora, o texto passa no contraste nos
 quatro, e a pílula continua legível sobre um jogo claro.
 
+## T16. Auditar os temas, e fazer tema de verdade
+
+**Onde:** `src/estilo/tokens.css`, `base.css`, `principal.css`, `configuracoes.rs`.
+
+A T15 entregou os temas, mas com um buraco: **a pílula tem fundo escuro fixo e usava
+`--text-primary`**. No tema Dia esse token vira quase preto — texto preto sobre pílula
+preta, ilegível em jogo, que é justamente onde ela existe. O mesmo valia para o botão de
+prender.
+
+**A regra que faltava:** quem tem fundo próprio precisa de paleta própria. A janela da
+sobreposição agora fixa a paleta escura inteira, independente do tema — inclusive as cores
+de carga, que no Dia são escurecidas para fundo claro e ficariam lambuzadas sobre a pílula.
+
+Junto: o polegar da barra de rolagem era `#3a444d` cravado, invisível no Dia; virou token.
+
+**E os temas passaram a ter identidade.** Entrou `--realce`, separando a cor de *interface*
+— aba ativa, foco, chave ligada, botão primário — da cor de *carga*, que continua sendo
+semântica em todos. Com isso o Ardósia pode ser azul sem que verde deixe de significar
+bateria boa.
+
+Seis temas: **Do Windows**, **Noite**, **Preto** (OLED), **Ardósia** (frio, azulado),
+**Brasa** (quente, noturno) e **Dia**.
+
+**Pronto quando:** cada tela — resumo, sessões, diário, configurações — e a pílula foram
+vistas nos seis temas, sem nada ilegível. Conferido por captura, tema a tema.
+
 ---
 
 # Ordem
@@ -305,7 +331,7 @@ quatro, e a pílula continua legível sobre um jogo claro.
     T6 -> T7 -> T8 -> T9 -> T10       a cadeia do jogo, cada uma depende da anterior
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
-    T15                               independente de todas
+    T15 -> T16                        independentes de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

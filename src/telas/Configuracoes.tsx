@@ -54,6 +54,8 @@ const TEMAS: { id: Theme; rotulo: string }[] = [
   { id: "Sistema", rotulo: "Do Windows" },
   { id: "Noite", rotulo: "Noite" },
   { id: "Preto", rotulo: "Preto" },
+  { id: "Ardosia", rotulo: "Ardósia" },
+  { id: "Brasa", rotulo: "Brasa" },
   { id: "Dia", rotulo: "Dia" },
 ];
 

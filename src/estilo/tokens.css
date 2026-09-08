@@ -15,7 +15,9 @@
   --red: #f2564e;
   --gray: #8d979f;
 
+  --realce: var(--accent-teal);
   --ring-track: rgba(255, 255, 255, 0.13);
+  --polegar: #3a444d;
 
   --fundo-janela: var(--ink);
   --fundo-barra: var(--ink);
@@ -48,30 +50,66 @@
 body[data-tema="preto"] {
   --ink: #000000;
   --surface: #08090b;
-  --surface-alt: #12161a;
-  --stroke: #1b2127;
-  --stroke-strong: #2b343c;
-  --ring-track: rgba(255, 255, 255, 0.1);
+  --surface-alt: #14181c;
+  --stroke: #1c2228;
+  --stroke-strong: #2e373f;
+  --polegar: #3f4952;
+  --ring-track: rgba(255, 255, 255, 0.11);
+}
+
+body[data-tema="ardosia"] {
+  --ink: #0d1219;
+  --surface: #131b24;
+  --surface-alt: #1c2531;
+  --stroke: #25303d;
+  --stroke-strong: #35424f;
+
+  --text-primary: #e7edf4;
+  --text-secondary: #9aa9b9;
+  --text-tertiary: #6d7d8e;
+
+  --realce: #4ea8ff;
+  --gray: #8797a7;
+  --polegar: #44515f;
+  --ring-track: rgba(200, 220, 240, 0.14);
+}
+
+body[data-tema="brasa"] {
+  --ink: #100c0a;
+  --surface: #18120f;
+  --surface-alt: #221a16;
+  --stroke: #2d231e;
+  --stroke-strong: #3f312a;
+
+  --text-primary: #f2ebe5;
+  --text-secondary: #b5a79c;
+  --text-tertiary: #8a7c72;
+
+  --gray: #9a8c81;
+  --polegar: #4e3e35;
+  --ring-track: rgba(255, 235, 220, 0.13);
 }
 
 body[data-tema="dia"] {
   --ink: #eef1f5;
   --surface: #ffffff;
-  --surface-alt: #e6eaf0;
-  --stroke: #d8dee6;
-  --stroke-strong: #b9c3ce;
+  --surface-alt: #e4e9f0;
+  --stroke: #d7dee7;
+  --stroke-strong: #b6c1ce;
 
-  --text-primary: #10161c;
-  --text-secondary: #4a5560;
-  --text-tertiary: #6d7883;
+  --text-primary: #0f151b;
+  --text-secondary: #465260;
+  --text-tertiary: #67727f;
 
-  --accent-green: #12924a;
-  --accent-teal: #0b8f6f;
-  --amber: #9a6606;
-  --red: #c1362e;
-  --gray: #6d7883;
+  --accent-green: #10864a;
+  --accent-teal: #0a7f68;
+  --amber: #8a5b04;
+  --red: #b8302b;
+  --gray: #5f6b78;
 
-  --ring-track: rgba(16, 22, 28, 0.12);
+  --realce: #0a7f68;
+  --polegar: #9aa6b4;
+  --ring-track: rgba(15, 21, 27, 0.14);
 }
 
 body[data-material="sim"] {
@@ -81,4 +119,18 @@ body[data-material="sim"] {
   --fundo-painel: color-mix(in srgb, var(--ink) 86%, transparent);
   --contorno-painel: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --sombra-painel: none;
+}
+
+body[data-janela="sobreposicao"] {
+  --text-primary: #e8ecef;
+  --text-secondary: #9aa4ad;
+  --text-tertiary: #6b757d;
+
+  --accent-green: #5fe083;
+  --accent-teal: #35d7a8;
+  --amber: #f2c14e;
+  --red: #f2564e;
+  --gray: #8d979f;
+
+  --ring-track: rgba(255, 255, 255, 0.16);
 }

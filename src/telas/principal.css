@@ -94,7 +94,7 @@ body[data-janela="principal"] .aba.ativa {
   background: var(--surface-alt);
   color: var(--text-primary);
   font-weight: 500;
-  box-shadow: inset 2px 0 0 var(--accent-teal);
+  box-shadow: inset 2px 0 0 var(--realce);
 }
 
 body[data-janela="principal"] .pagina {
@@ -229,8 +229,8 @@ body[data-janela="principal"] .chave {
   transition: background var(--motion-base), border-color var(--motion-base);
 }
 body[data-janela="principal"] .chave.ligada {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
+  background: var(--realce);
+  border-color: var(--realce);
 }
 body[data-janela="principal"] .chave .bolinha {
   position: absolute;
@@ -248,11 +248,11 @@ body[data-janela="principal"] .chave.ligada .bolinha {
 }
 
 body[data-janela="principal"] .ciclo.destaque {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
+  border-color: var(--realce);
+  color: var(--realce);
 }
 body[data-janela="principal"] .ciclo.destaque:hover {
-  background: var(--accent-green);
+  background: var(--realce);
   color: var(--ink);
 }
 body[data-janela="principal"] .ciclo:disabled {
@@ -276,7 +276,7 @@ body[data-janela="principal"] .mini-tela {
   transition: border-color var(--motion-fast);
 }
 body[data-janela="principal"] .mini-tela.solta {
-  border-color: var(--accent-green);
+  border-color: var(--realce);
 }
 body[data-janela="principal"] .mini-tela .mini-pilula {
   position: absolute;
@@ -423,8 +423,8 @@ body[data-janela="principal"] .amostra-de-tema:hover {
 }
 
 body[data-janela="principal"] .amostra-de-tema.escolhida {
-  border-color: var(--accent-green);
-  box-shadow: 0 0 0 1px var(--accent-green);
+  border-color: var(--realce);
+  box-shadow: 0 0 0 1px var(--realce);
 }
 
 body[data-janela="principal"] .amostra-de-tema .chao {
@@ -445,7 +445,17 @@ body[data-janela="principal"] .amostra-de-tema .pingo {
 
 body[data-janela="principal"] .amostra-de-tema[data-tema="noite"] {
   --amostra-chao: #0b0e11;
-  --amostra-cor: #5fe083;
+  --amostra-cor: #35d7a8;
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="ardosia"] {
+  --amostra-chao: #0d1219;
+  --amostra-cor: #4ea8ff;
+}
+
+body[data-janela="principal"] .amostra-de-tema[data-tema="brasa"] {
+  --amostra-chao: #100c0a;
+  --amostra-cor: #d98a4a;
 }
 
 body[data-janela="principal"] .amostra-de-tema[data-tema="preto"] {
@@ -455,10 +465,15 @@ body[data-janela="principal"] .amostra-de-tema[data-tema="preto"] {
 
 body[data-janela="principal"] .amostra-de-tema[data-tema="dia"] {
   --amostra-chao: #eef1f5;
-  --amostra-cor: #12924a;
+  --amostra-cor: #0a7f68;
 }
 
 body[data-janela="principal"] .amostra-de-tema[data-tema="sistema"] {
   --amostra-chao: linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%);
   --amostra-cor: #35d7a8;
+}
+
+body[data-janela="principal"] .temas {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }

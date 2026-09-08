@@ -40,7 +40,7 @@ body[data-janela="principal"] {
   background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a444d;
+  background: var(--polegar);
   background-clip: content-box;
 }
 ::-webkit-scrollbar-corner {
@@ -54,7 +54,7 @@ button {
 }
 
 :focus-visible {
-  outline: 2px solid var(--accent-teal);
+  outline: 2px solid var(--realce);
   outline-offset: 2px;
   border-radius: 4px;
 }
