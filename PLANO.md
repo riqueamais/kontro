@@ -415,6 +415,40 @@ Agora a opacidade é só a das Configurações. Quem quer discreto escolhe 55% e
 
 **Pronto quando:** a pílula tem o mesmo brilho no primeiro segundo e dez minutos depois.
 
+## T21. O Diário não sabia o nome de nenhum jogo
+
+**Onde:** `src-tauri/src/historico.rs`, `monitor.rs`.
+
+Dois dias jogando com a 2.13 e o ranking do Diário continuava em "Nenhuma sessão trouxe o
+nome do jogo ainda". O `history.json` desta máquina explicava: das 160 amostras, uma só
+carregava jogo.
+
+**Causa:** a T7 pendurou o jogo na amostra de bateria, e amostra de bateria é rara. O GATT só
+avisa quando a carga muda, e ela muda em degraus de 5 pontos — gastando entre 5 e 9 %/h, é
+uma amostra a cada meia hora ou mais. O jogo em foco só era consultado nesses instantes. A
+T8 então contava amostras, exigindo 60% delas com o mesmo jogo, e toda sessão tem duas que
+nunca levam jogo: a leitura da conexão, feita antes de o jogo abrir, e o marcador de
+desligado. A sessão de 08/09 tinha quatro amostras e uma com o FC 26 — 25%, sem nome,
+embora o jogo tenha ocupado 87 dos 124 minutos.
+
+**Correção:** o jogo virou uma linha do tempo própria, `partidas` no `history.json`, com
+início, fim e jogo. A cada ciclo de 2 s, se algum controle está ligado, o monitor consulta
+o jogo em foco e estende a partida em curso. Sair do jogo por até 5 minutos não a encerra —
+um alt-tab para o Discord ainda é jogar.
+
+A sessão agora é batizada pelo tempo, não pela contagem: leva o jogo que ocupou pelo menos
+60% da duração dela. As amostras gravadas com jogo pela 2.13 continuam valendo, cada uma
+pelo trecho até a amostra seguinte, e é assim que a sessão de 08/09 ganha o nome. A amostra
+de bateria deixa de guardar o jogo, porque mantê-la gravando contaria o mesmo tempo duas
+vezes.
+
+Uma linha à parte, e não amostras extras na série de bateria, porque uma amostra repetida
+no começo de um patamar muda o ponto onde `descargas` começa a contar a queda — a projeção
+de autonomia pularia a cada troca de jogo.
+
+**Pronto quando:** a sessão de 08/09 aparece como EA SPORTS FC 26, o Diário mostra um jogo
+em medição, e um teste reproduz as quatro amostras dela.
+
 ---
 
 # Ordem
@@ -424,6 +458,7 @@ Agora a opacidade é só a das Configurações. Quem quer discreto escolhe 55% e
     T11 -> T12 -> T13                 só faz sentido com dado de jogo gravado
     T14                               depende só da T1
     T15 -> ... -> T19 -> T20          independentes de todas
+    T21                               conserta a T7 e a T8
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

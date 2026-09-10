@@ -82,7 +82,6 @@ pub struct Monitor {
     tentativa_de_vinculo: i64,
 
     ultima_gravacao: i64,
-    jogo_agora: Option<jogo::Jogo>,
 
     ultimo: Option<EstadoDoControle>,
 }
@@ -129,14 +128,12 @@ impl Monitor {
             conectado_desde: None,
             tentativa_de_vinculo: 0,
             ultima_gravacao: agora,
-            jogo_agora: None,
             ultimo: None,
         }
     }
 
     pub fn ciclo(&mut self) -> Option<Panorama> {
         let agora = tempo::agora();
-        self.jogo_agora = jogo::em_foco();
 
         self.talvez_descobrir(agora);
 
@@ -180,6 +177,12 @@ impl Monitor {
         if !vinculado {
             self.soltar_vinculo();
             self.em_observacao = None;
+        }
+
+        if estados.iter().any(|e| e.via != Via::Desligado) {
+            if let Some(jogo) = jogo::em_foco() {
+                self.historico.anotar_jogo(agora, &jogo);
+            }
         }
 
         if estados.is_empty() {
@@ -297,8 +300,7 @@ impl Monitor {
         registro.em = Some(agora);
         registro.provisorio = false;
         registro.incerto = false;
-        let jogo = self.jogo_agora.clone();
-        self.historico.adicionar(chave, percentual, agora, via, jogo.as_ref());
+        self.historico.adicionar(chave, percentual, agora, via);
     }
 
     fn confirmar_em_observacao(&mut self, agora: i64) {
@@ -382,8 +384,7 @@ impl Monitor {
             registro.percentual = Some(leitura.valor);
             registro.nivel = None;
             if !incerto {
-                let jogo = self.jogo_agora.clone();
-                self.historico.adicionar(&chave, leitura.valor, em, modo, jogo.as_ref());
+                self.historico.adicionar(&chave, leitura.valor, em, modo);
             }
         } else {
             registro.nivel = Some(leitura.valor);
