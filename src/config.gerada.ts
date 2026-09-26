@@ -17,6 +17,7 @@ export interface Config {
   OverlayScale: number;
   OverlayOpacity: number;
   AutoCheckUpdates: boolean;
+  BetaUpdates: boolean;
   OverlayShortcutEnabled: boolean;
   OverlayShortcut: string;
   OverlayMoveShortcut: string;

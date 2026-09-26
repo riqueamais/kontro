@@ -449,6 +449,33 @@ de autonomia pularia a cada troca de jogo.
 **Pronto quando:** a sessão de 08/09 aparece como EA SPORTS FC 26, o Diário mostra um jogo
 em medição, e um teste reproduz as quatro amostras dela.
 
+## T22. Versões beta, antes da final
+
+**Onde:** `.github/workflows/release.yml`, `src-tauri/src/atualizacao.rs`, `lib.rs`,
+`src/telas/Configuracoes.tsx`.
+
+Até a 2.13.4 havia um canal só: a versão saía para todo mundo no instante em que a tag era
+empurrada, e não havia como rodar uma mudança em uso real antes de ela virar a versão de
+todos.
+
+Agora são dois canais, um por branch. A `develop` publica uma beta a cada push, numa
+release rolante `beta` com o próprio `beta.json`; a `main` publica a estável quando o
+número do `tauri.conf.json` ainda não saiu. *Receber versões beta*, em Configurações, faz o
+app consultar os dois manifestos e ficar com o maior. A consulta saiu do front para o
+Rust, que é quem sabe o canal.
+
+A beta nunca fica abaixo da última estável publicada — com a `develop` num número que já
+saiu, ela é da correção seguinte. Sem isso quem liga a opção não recebe nada.
+
+A instalação consulta de novo antes de baixar, em vez de reaproveitar o achado da última
+busca: a release `beta` é recriada a cada push, o instalador leva a versão no nome, e o
+endereço guardado vira 404 na build seguinte. Trocar a opção também refaz a busca, para o
+cartão de versão nova nunca oferecer o canal que a pessoa acabou de desligar.
+
+**Pronto quando:** um push na `develop` publica `X.Y.Z-beta.N` acima da última estável, o
+app com a opção ligada oferece essa beta e instala, e um push na `main` com número novo
+publica a estável — que quem está na beta recebe.
+
 ---
 
 # Ordem
@@ -459,6 +486,7 @@ em medição, e um teste reproduz as quatro amostras dela.
     T14                               depende só da T1
     T15 -> ... -> T19 -> T20          independentes de todas
     T21                               conserta a T7 e a T8
+    T22                               independente de todas
 
 T1 e T6 são independentes: dá para tocar o visual e a detecção em paralelo. Tudo de T11 para
 frente precisa de duas semanas de dados gravados com jogo para ser visto de verdade — vale

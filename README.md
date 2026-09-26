@@ -69,7 +69,7 @@ Pelo ícone na bandeja, em Configurações:
 - Atalhos, que valem por cima do jogo: `Ctrl + Shift + K` mostra e esconde a pílula e
   `Ctrl + Shift + M` solta ela para arrastar. As duas combinações são trocáveis — clique
   no atalho e tecle a que você quiser
-- Verificação automática de atualizações
+- Verificação automática de atualizações, e a opção de receber versões beta
 
 > O Windows 11 esconde ícones novos da bandeja atrás da setinha `^`. Arraste o ícone do
 > Kontro para fora uma vez e ele fica fixo.
@@ -131,16 +131,29 @@ Arquivos `*.gerada.ts` não se editam: a próxima execução sobrescreve. Um cam
 
 ## Publicando uma versão
 
-A build de release é automática. Basta empurrar uma tag:
+Há dois canais, um por branch, e a build é automática nos dois:
 
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
+- **`develop` → beta.** Cada push publica `X.Y.Z-beta.N` na release rolante `beta`, com o
+  `beta.json` que o app consulta quando a pessoa liga *Receber versões beta* em
+  Configurações. Só o instalador da última build fica anexado.
+- **`main` → estável.** Cada push publica a versão que está no `tauri.conf.json` como
+  `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
+  pipeline não faz nada.
 
-O GitHub Actions compila, gera o instalador NSIS, assina o pacote e publica o `latest.json`
-que o próprio app consulta para se atualizar. A versão sai da própria tag e é carimbada no
-`Cargo.toml` e no `tauri.conf.json`, então não existe número duplicado em dois lugares.
+Para lançar, o commit `Versao X.Y.Z` sobe o número nos lugares de sempre — `tauri.conf.json`,
+`Cargo.toml`, `Cargo.lock`, `package.json` e o `softwareVersion` do `docs/index.html` — e
+vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo número no
+`Cargo.toml` na hora da build, então o binário nunca sai dizendo outro número.
+
+A nota da release é a lista dos assuntos dos commits desde a última estável publicada,
+sem os commits `Versao`: o assunto do commit é o que a pessoa lê em Configurações. Quem
+quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge.
+
+A beta parte do número da `develop`, mas nunca fica abaixo da última estável: com a
+`v2.13.4` publicada e a `develop` ainda em `2.13.4`, a beta sai `2.13.5-beta.N`. Assim
+quem liga a opção sempre recebe a beta, e quem está numa beta recebe a estável seguinte
+assim que ela sai, porque `2.14.0` é maior que `2.14.0-beta.9`. Desligar a opção não volta
+para a estável: o app fica na beta até sair uma estável maior que ela.
 
 ## Licença
 
