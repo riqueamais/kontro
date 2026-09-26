@@ -2130,6 +2130,7 @@ version = "2.13.4"
 dependencies = [
  "chrono",
  "resvg",
+ "semver",
  "serde",
  "serde_json",
  "tauri",

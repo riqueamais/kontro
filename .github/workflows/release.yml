@@ -1,15 +1,21 @@
 name: release
 
-# A tag e a fonte da versao: empurrar v2.1.0 gera a release 2.1.0. Assim o numero nunca
-# fica duplicado entre o Cargo.toml, o tauri.conf.json e o repositorio.
+# Dois canais, um por branch. A main publica a versao estavel que esta no
+# tauri.conf.json e a develop publica uma beta dessa versao, numerada pela
+# execucao. O app so consulta o canal beta quando a pessoa liga a opcao.
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+      - develop
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -18,8 +24,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # a nota da release sai da anotacao da tag, e a versao sai do nome dela:
-          # sem o historico completo nao ha nem uma coisa nem outra
+          # As tags anteriores e a anotacao da tag desta versao, quando existir,
+          # so aparecem com o historico completo.
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -27,38 +33,56 @@ jobs:
           node-version: "20"
           cache: npm
 
-      - name: Trazer a anotacao da tag
-        shell: pwsh
-        run: |
-          # O checkout deixa a tag como referencia leve, apontando direto para o commit.
-          # `git tag -l --format=%(contents)` entao devolve a mensagem do commit, e a
-          # release saia com o texto escrito para quem le codigo no lugar do escrito para
-          # quem usa o app -- em silencio, porque a guarda de "sem anotacao" nunca via
-          # vazio. Buscar a tag de novo, a forca, traz o objeto anotado de verdade.
-          git fetch --force origin "refs/tags/${{ github.ref_name }}:refs/tags/${{ github.ref_name }}"
-          $tipo = git cat-file -t "${{ github.ref_name }}"
-          Write-Host "a tag e um objeto do tipo: $tipo"
-
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
 
-      - name: Versao a partir da tag
+      - name: Decidir canal e versao
         id: ver
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.ref_name }}"
-          $v = $tag -replace '^v', ''
-          if ($v -notmatch '^\d+\.\d+\.\d+$') {
-            Write-Error "Tag '$tag' nao esta no formato vX.Y.Z"
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+          $conf = [System.IO.File]::ReadAllText((Join-Path (Get-Location) "src-tauri/tauri.conf.json"), $utf8)
+          $base = ([regex]::Match($conf, '(?m)^\s*"version": "([^"]+)"')).Groups[1].Value
+          if ($base -notmatch '^\d+\.\d+\.\d+$') {
+            Write-Error "A versao do tauri.conf.json ('$base') nao esta no formato X.Y.Z"
             exit 1
           }
-          "version=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "versao: $v"
+
+          $canal = if ("${{ github.ref_name }}" -eq "main") { "estavel" } else { "beta" }
+          $jaPublicada = (gh release view "v$base" --json tagName 2>$null) -ne $null
+
+          if ($canal -eq "estavel") {
+            if ($jaPublicada) {
+              Write-Host "A v$base ja esta publicada. Suba a versao no package.json, no Cargo.toml e no tauri.conf.json para publicar outra."
+              "pular=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+              exit 0
+            }
+            $versao = $base
+            $tag = "v$base"
+          } else {
+            # Uma beta precisa ficar acima da estavel que ja saiu: se a base ja
+            # foi publicada, a beta e da correcao seguinte.
+            if ($jaPublicada) {
+              $partes = $base.Split('.')
+              $base = "$($partes[0]).$($partes[1]).$([int]$partes[2] + 1)"
+            }
+            $versao = "$base-beta.${{ github.run_number }}"
+            $tag = "beta"
+          }
+
+          "pular=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "canal=$canal" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "version=$versao" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "canal: $canal  versao: $versao  tag: $tag"
 
       - name: Carimbar a versao no projeto
+        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
@@ -95,6 +119,7 @@ jobs:
           Set-Content src-tauri/Cargo.toml $cargo -Encoding utf8 -NoNewline
 
       - name: Conferir o carimbo
+        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
@@ -103,7 +128,7 @@ jobs:
             Select-Object -First 1).Matches.Groups[1].Value
           $noConf = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
 
-          Write-Host "tag=$v  cargo=$noCargo  conf=$noConf"
+          Write-Host "versao=$v  cargo=$noCargo  conf=$noConf"
           if ($noCargo -ne $v -or $noConf -ne $v) {
             Write-Error "A versao nao foi carimbada em todos os lugares."
             exit 1
@@ -120,9 +145,11 @@ jobs:
           }
 
       - name: Instalar dependencias do front
+        if: steps.ver.outputs.pular == 'false'
         run: npm ci
 
       - name: Empacotar
+        if: steps.ver.outputs.pular == 'false'
         env:
           # Assinar e o que permite ao app confiar no pacote que ele mesmo baixa. Sem
           # isto o updater recusa a atualizacao, e com razao.
@@ -131,10 +158,46 @@ jobs:
         run: npx tauri build
 
       - name: Listar o que saiu
+        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: Get-ChildItem src-tauri/target/release/bundle -Recurse -File | Select-Object Name, Length | Format-Table -AutoSize
 
+      - name: Escrever as notas
+        if: steps.ver.outputs.pular == 'false'
+        shell: pwsh
+        run: |
+          $canal = "${{ steps.ver.outputs.canal }}"
+          $tag = "${{ steps.ver.outputs.tag }}"
+
+          # Na estavel, uma tag anotada empurrada a mao continua valendo como nota
+          # escrita para quem usa o app. Sem ela, e no canal beta, a nota e a lista
+          # do que entrou desde a ultima estavel: os assuntos dos commits, que aqui
+          # ja sao escritos como frases.
+          $notas = ""
+          if ($canal -eq "estavel" -and (git tag -l $tag) -and ((git cat-file -t $tag) -eq "tag")) {
+            $notas = (git tag -l --format='%(contents)' $tag) -join "`n"
+          }
+
+          if ([string]::IsNullOrWhiteSpace($notas)) {
+            $ultima = git tag -l 'v*' --sort=-v:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
+            $faixa = if ($ultima) { "$ultima..HEAD" } else { "HEAD" }
+            $assuntos = git log $faixa --no-merges --format='%s' |
+              Where-Object { $_ -and $_ -notmatch '^Versao \d' }
+            $linhas = @()
+            if ($canal -eq "beta") {
+              $linhas += "Versao beta, publicada a partir da develop antes da versao final."
+              $linhas += ""
+            }
+            $linhas += "O que entrou"
+            $linhas += ($assuntos | ForEach-Object { "- $_" })
+            $notas = $linhas -join "`n"
+          }
+
+          $notas | Out-File -FilePath notas.md -Encoding utf8
+          Get-Content notas.md
+
       - name: Publicar a release
+        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -143,58 +206,59 @@ jobs:
           # aqui. Foi assim que o manifesto saiu com a versao nula e o app recusou a
           # atualizacao dizendo "invalid type: null".
           $v = "${{ steps.ver.outputs.version }}"
-
-          # A anotacao da tag e onde a release foi escrita para gente ler, e ela serve
-          # duas vezes: como nota da release e como `notes` do manifesto, que e o texto
-          # que o proprio app mostra em Configuracoes ao encontrar versao nova.
-          #
-          # A conferencia do tipo e o que torna a escolha honesta: numa tag leve o
-          # `%(contents)` cai na mensagem do commit, que nunca esta vazia, e o galho de
-          # baixo jamais era alcancado.
-          $notas = ""
-          if ((git cat-file -t "${{ github.ref_name }}") -eq "tag") {
-            $notas = (git tag -l --format='%(contents)' "${{ github.ref_name }}") -join "`n"
-          }
+          $canal = "${{ steps.ver.outputs.canal }}"
+          $tag = "${{ steps.ver.outputs.tag }}"
+          $manifestoNome = if ($canal -eq "estavel") { "latest.json" } else { "beta.json" }
 
           $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi, *.sig).FullName
 
-          # O manifesto que o app consulta. O endereco fixo `latest/download/latest.json`
-          # so funciona porque o arquivo entra como anexo da release.
+          # O manifesto que o app consulta. Na estavel ele mora em
+          # `latest/download/latest.json`, que o GitHub aponta para a release estavel
+          # mais nova. Na beta mora em `download/beta/beta.json`: uma release rolante,
+          # sempre com a mesma tag, que cada build substitui por inteiro.
           $instalador = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter *-setup.exe | Select-Object -First 1
           $assinatura = Get-Content "$($instalador.FullName).sig" -Raw
+          $notas = Get-Content notas.md -Raw
           $manifesto = @{
             version = $v
-            notes = if ([string]::IsNullOrWhiteSpace($notas)) { "Veja a pagina da release para o que mudou." } else { $notas }
+            notes = $notas.Trim()
             pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
             platforms = @{
               "windows-x86_64" = @{
                 signature = $assinatura.Trim()
-                url = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$($instalador.Name)"
+                url = "https://github.com/${{ github.repository }}/releases/download/$tag/$($instalador.Name)"
               }
             }
           }
-          $manifesto | ConvertTo-Json -Depth 10 | Set-Content latest.json -Encoding utf8
+          $manifesto | ConvertTo-Json -Depth 10 | Set-Content $manifestoNome -Encoding utf8
 
-          $conferido = Get-Content latest.json -Raw | ConvertFrom-Json
+          $conferido = Get-Content $manifestoNome -Raw | ConvertFrom-Json
           if (-not $conferido.version -or -not $conferido.platforms.'windows-x86_64'.signature) {
             Write-Error "O manifesto saiu incompleto -- o app recusaria a atualizacao."
             exit 1
           }
 
-          $arquivos += (Resolve-Path latest.json).Path
+          $arquivos += (Resolve-Path $manifestoNome).Path
 
-          if ([string]::IsNullOrWhiteSpace($notas)) {
-            gh release create "${{ github.ref_name }}" $arquivos `
-              --title "Kontro ${{ github.ref_name }}" `
-              --generate-notes
+          if ($canal -eq "estavel") {
+            gh release create $tag $arquivos `
+              --target "${{ github.sha }}" `
+              --title "Kontro $tag" `
+              --notes-file notas.md
           } else {
-            $notas | Out-File -FilePath notas.md -Encoding utf8
-            gh release create "${{ github.ref_name }}" $arquivos `
-              --title "Kontro ${{ github.ref_name }}" `
+            # A tag `beta` anda junto com a develop. Apagar a release e a tag antes
+            # de recriar garante que so o instalador desta build fica anexado.
+            gh release delete $tag --cleanup-tag --yes 2>$null
+            git push origin ":refs/tags/$tag" 2>$null
+            gh release create $tag $arquivos `
+              --target "${{ github.sha }}" `
+              --prerelease `
+              --title "Kontro $v" `
               --notes-file notas.md
           }
 
       - name: Guardar o instalador como artefato
+        if: steps.ver.outputs.pular == 'false'
         uses: actions/upload-artifact@v4
         with:
           name: kontro-${{ steps.ver.outputs.version }}

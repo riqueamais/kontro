@@ -69,7 +69,7 @@ Pelo ícone na bandeja, em Configurações:
 - Atalhos, que valem por cima do jogo: `Ctrl + Shift + K` mostra e esconde a pílula e
   `Ctrl + Shift + M` solta ela para arrastar. As duas combinações são trocáveis — clique
   no atalho e tecle a que você quiser
-- Verificação automática de atualizações
+- Verificação automática de atualizações, e a opção de receber versões beta
 
 > O Windows 11 esconde ícones novos da bandeja atrás da setinha `^`. Arraste o ícone do
 > Kontro para fora uma vez e ele fica fixo.
@@ -131,16 +131,24 @@ Arquivos `*.gerada.ts` não se editam: a próxima execução sobrescreve. Um cam
 
 ## Publicando uma versão
 
-A build de release é automática. Basta empurrar uma tag:
+Há dois canais, um por branch, e a build é automática nos dois:
 
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
+- **`develop` → beta.** Cada push publica `X.Y.Z-beta.N` na release rolante `beta`, com o
+  `beta.json` que o app consulta quando a pessoa liga *Receber versões beta* em
+  Configurações. Só o instalador da última build fica anexado.
+- **`main` → estável.** Cada push publica a versão que está no `tauri.conf.json` como
+  `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
+  pipeline não faz nada — suba o número no `package.json`, no `Cargo.toml` e no
+  `tauri.conf.json` antes de fazer o merge.
 
-O GitHub Actions compila, gera o instalador NSIS, assina o pacote e publica o `latest.json`
-que o próprio app consulta para se atualizar. A versão sai da própria tag e é carimbada no
-`Cargo.toml` e no `tauri.conf.json`, então não existe número duplicado em dois lugares.
+O número no `tauri.conf.json` é a fonte. A pipeline carimba o `Cargo.toml` na hora da
+build, então não existe versão duplicada de propósito. Quem quiser escrever a nota da
+release à mão empurra uma tag anotada `vX.Y.Z` antes do merge; sem ela, a nota é a lista
+dos assuntos dos commits desde a última estável.
+
+Quem está numa beta recebe a estável seguinte assim que ela sai, porque `2.14.0` é maior
+que `2.14.0-beta.9`. Quem está na estável e liga a opção recebe a próxima beta, porque a
+beta é sempre de uma versão acima da última estável publicada.
 
 ## Licença
 

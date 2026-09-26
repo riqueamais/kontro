@@ -46,6 +46,7 @@ pub struct Compartilhado {
     atalhos_recusados: Mutex<Vec<String>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
+    atualizacao: Mutex<Option<tauri_plugin_updater::Update>>,
     jogos: Mutex<Vec<historico::JogoSalvo>>,
     icones: Mutex<HashMap<String, Option<String>>>,
 }
@@ -118,6 +119,7 @@ pub fn executar() {
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
+        atualizacao: Mutex::new(None),
         jogos: Mutex::new(Vec::new()),
         icones: Mutex::new(HashMap::new()),
     });
@@ -158,6 +160,7 @@ pub fn executar() {
             marcar_atualizacao,
             versao_disponivel,
             procurar_atualizacao,
+            instalar_atualizacao,
             mostrar_janela,
             esconder_janela,
             soltar_a_pilula,
@@ -290,9 +293,9 @@ fn iniciar_ciclo(
 
             if tempo::agora() >= proxima_checagem {
                 proxima_checagem = tempo::agora() + atualizacao::JANELA_MS;
-                let liberado = compartilhado.config.lock().unwrap().auto_check_updates;
-                if liberado {
-                    avisar_versao_nova(&app);
+                let cfg = compartilhado.config.lock().unwrap().clone();
+                if cfg.auto_check_updates {
+                    avisar_versao_nova(&app, cfg.beta_updates);
                 }
             }
 
@@ -395,22 +398,30 @@ fn atualizar_bandeja(
     }
 }
 
-fn avisar_versao_nova(app: &AppHandle) {
+fn avisar_versao_nova(app: &AppHandle, beta: bool) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let atualizacao::Consulta::Nova(novidade) = atualizacao::procurar_bloqueando(&app) else {
+        let atualizacao::Consulta::Nova(novidade, pacote) =
+            atualizacao::procurar_bloqueando(&app, beta)
+        else {
             return;
         };
 
+        let titulo = if novidade.beta {
+            format!("Kontro {} disponível (beta)", novidade.versao)
+        } else {
+            format!("Kontro {} disponível", novidade.versao)
+        };
         let _ = app
             .notification()
             .builder()
-            .title(format!("Kontro {} disponível", novidade.versao))
+            .title(titulo)
             .body("Abra as configurações do Kontro para instalar.")
             .show();
 
         let compartilhado = app.state::<Arc<Compartilhado>>();
         *compartilhado.novidade.lock().unwrap() = Some(novidade);
+        *compartilhado.atualizacao.lock().unwrap() = Some(pacote);
     });
 }
 
@@ -563,6 +574,7 @@ fn ler_agora(envio: tauri::State<mpsc::Sender<Pedido>>) {
 struct VersaoNova {
     versao: String,
     notas: Option<String>,
+    beta: bool,
     atual: String,
 }
 
@@ -664,6 +676,7 @@ fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<
     compartilhado.novidade.lock().unwrap().clone().map(|n| VersaoNova {
         versao: n.versao,
         notas: n.notas,
+        beta: n.beta,
         atual: env!("CARGO_PKG_VERSION").to_string(),
     })
 }
@@ -673,6 +686,7 @@ struct Busca {
     estado: &'static str,
     versao: Option<String>,
     notas: Option<String>,
+    beta: bool,
     atual: String,
     motivo: Option<String>,
 }
@@ -683,21 +697,49 @@ async fn procurar_atualizacao(
     compartilhado: tauri::State<'_, Arc<Compartilhado>>,
 ) -> Result<Busca, String> {
     let atual = env!("CARGO_PKG_VERSION").to_string();
-    let achado = atualizacao::procurar(&app).await;
+    let beta = compartilhado.config.lock().unwrap().beta_updates;
+    let achado = atualizacao::procurar(&app, beta).await;
 
     Ok(match achado {
-        atualizacao::Consulta::Nova(n) => {
+        atualizacao::Consulta::Nova(n, pacote) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
-            Busca { estado: "nova", versao: Some(n.versao), notas: n.notas, atual, motivo: None }
+            *compartilhado.atualizacao.lock().unwrap() = Some(pacote);
+            Busca {
+                estado: "nova",
+                versao: Some(n.versao),
+                notas: n.notas,
+                beta: n.beta,
+                atual,
+                motivo: None,
+            }
         }
         atualizacao::Consulta::EmDia => {
             *compartilhado.novidade.lock().unwrap() = None;
-            Busca { estado: "em-dia", versao: None, notas: None, atual, motivo: None }
+            *compartilhado.atualizacao.lock().unwrap() = None;
+            Busca { estado: "em-dia", versao: None, notas: None, beta: false, atual, motivo: None }
         }
-        atualizacao::Consulta::Falhou(motivo) => {
-            Busca { estado: "falhou", versao: None, notas: None, atual, motivo: Some(motivo) }
-        }
+        atualizacao::Consulta::Falhou(motivo) => Busca {
+            estado: "falhou",
+            versao: None,
+            notas: None,
+            beta: false,
+            atual,
+            motivo: Some(motivo),
+        },
     })
+}
+
+#[tauri::command]
+async fn instalar_atualizacao(
+    app: AppHandle,
+    compartilhado: tauri::State<'_, Arc<Compartilhado>>,
+) -> Result<(), String> {
+    let pacote = compartilhado.atualizacao.lock().unwrap().clone();
+    let Some(pacote) = pacote else {
+        return Err("nenhuma versão nova encontrada ainda".into());
+    };
+    marcar_atualizacao();
+    atualizacao::instalar(&app, pacote).await
 }
 
 #[tauri::command]

@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { check } from "@tauri-apps/plugin-updater";
 import { useEffect, useState } from "react";
 
 import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
@@ -68,6 +68,7 @@ const MODOS: Record<OverlayMode, string> = {
 interface VersaoNova {
   versao: string;
   notas: string | null;
+  beta: boolean;
   atual: string;
 }
 
@@ -75,9 +76,14 @@ interface Busca {
   estado: "nova" | "em-dia" | "falhou";
   versao: string | null;
   notas: string | null;
+  beta: boolean;
   atual: string;
   motivo: string | null;
 }
+
+type Andamento =
+  | { etapa: "baixando"; bytes: number; total: number | null }
+  | { etapa: "instalando" };
 
 type Passo =
   | { tipo: "parado" }
@@ -122,7 +128,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       }
 
       if (busca.estado === "nova" && busca.versao) {
-        setNova({ versao: busca.versao, notas: busca.notas, atual: busca.atual });
+        setNova({ versao: busca.versao, notas: busca.notas, beta: busca.beta, atual: busca.atual });
         setPasso({ tipo: "parado" });
         return;
       }
@@ -140,36 +146,26 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
 
   const atualizarAgora = async () => {
     setPasso({ tipo: "preparando" });
-    try {
-      const atualizacao = await check();
-      if (!atualizacao) {
-        setNova(null);
-        setPasso({ tipo: "parado" });
+    const parar = await listen<Andamento>("kontro://atualizacao", ({ payload }) => {
+      if (payload.etapa === "instalando") {
+        setPasso({ tipo: "instalando" });
         return;
       }
-      await invoke("marcar_atualizacao");
-
-      let total = 0;
-      let baixado = 0;
-      setPasso({ tipo: "baixando", porcento: null, bytes: 0 });
-
-      await atualizacao.downloadAndInstall((evento) => {
-        if (evento.event === "Started") {
-          total = evento.data.contentLength ?? 0;
-        } else if (evento.event === "Progress") {
-          baixado += evento.data.chunkLength;
-          setPasso({
-            tipo: "baixando",
-            porcento: total > 0 ? Math.min(100, Math.round((baixado / total) * 100)) : null,
-            bytes: baixado,
-          });
-        } else if (evento.event === "Finished") {
-          setPasso({ tipo: "instalando" });
-        }
+      const { bytes, total } = payload;
+      setPasso({
+        tipo: "baixando",
+        porcento: total ? Math.min(100, Math.round((bytes / total) * 100)) : null,
+        bytes,
       });
+    });
+    try {
+      setPasso({ tipo: "baixando", porcento: null, bytes: 0 });
+      await invoke("instalar_atualizacao");
       await relaunch();
     } catch (e) {
       setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
+    } finally {
+      parar();
     }
   };
 
@@ -395,6 +391,12 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       >
         <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
       </Linha>
+      <Linha
+        titulo="Receber versões beta"
+        descricao="Versões de teste, publicadas antes da versão final. Podem ter defeitos que a final não terá."
+      >
+        <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => gravar({ BetaUpdates: v })} />
+      </Linha>
       <h2>Problemas</h2>
       <Linha
         titulo="Passo a passo"
@@ -472,7 +474,9 @@ function Novidade({
     <section className="cartao novidade">
       <div className="cabeca">
         <div>
-          <div className="dispositivo">Versão {nova.versao} disponível</div>
+          <div className="dispositivo">
+            {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
+          </div>
           <div className="rodape">você está na {nova.atual}</div>
         </div>
         {!andando && (
