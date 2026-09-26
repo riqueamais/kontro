@@ -138,17 +138,22 @@ Há dois canais, um por branch, e a build é automática nos dois:
   Configurações. Só o instalador da última build fica anexado.
 - **`main` → estável.** Cada push publica a versão que está no `tauri.conf.json` como
   `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
-  pipeline não faz nada — suba o número no `package.json`, no `Cargo.toml` e no
-  `tauri.conf.json` antes de fazer o merge.
+  pipeline não faz nada.
 
-O número no `tauri.conf.json` é a fonte. A pipeline carimba o `Cargo.toml` na hora da
-build, então não existe versão duplicada de propósito. Quem quiser escrever a nota da
-release à mão empurra uma tag anotada `vX.Y.Z` antes do merge; sem ela, a nota é a lista
-dos assuntos dos commits desde a última estável.
+Para lançar, o commit `Versao X.Y.Z` sobe o número nos lugares de sempre — `tauri.conf.json`,
+`Cargo.toml`, `Cargo.lock`, `package.json` e o `softwareVersion` do `docs/index.html` — e
+vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo número no
+`Cargo.toml` na hora da build, então o binário nunca sai dizendo outro número.
 
-Quem está numa beta recebe a estável seguinte assim que ela sai, porque `2.14.0` é maior
-que `2.14.0-beta.9`. Quem está na estável e liga a opção recebe a próxima beta, porque a
-beta é sempre de uma versão acima da última estável publicada.
+A nota da release é a lista dos assuntos dos commits desde a última estável publicada,
+sem os commits `Versao`: o assunto do commit é o que a pessoa lê em Configurações. Quem
+quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge.
+
+A beta parte do número da `develop`, mas nunca fica abaixo da última estável: com a
+`v2.13.4` publicada e a `develop` ainda em `2.13.4`, a beta sai `2.13.5-beta.N`. Assim
+quem liga a opção sempre recebe a beta, e quem está numa beta recebe a estável seguinte
+assim que ela sai, porque `2.14.0` é maior que `2.14.0-beta.9`. Desligar a opção não volta
+para a estável: o app fica na beta até sair uma estável maior que ela.
 
 ## Licença
 

@@ -19,7 +19,7 @@ pub struct Novidade {
 }
 
 pub enum Consulta {
-    Nova(Novidade, Update),
+    Nova(Novidade, Box<Update>),
     EmDia,
     Falhou(String),
 }
@@ -71,7 +71,7 @@ pub async fn procurar(app: &AppHandle, beta: bool) -> Consulta {
                 notas: u.body.clone(),
                 beta: e_beta(&u.version),
             };
-            Consulta::Nova(novidade, u)
+            Consulta::Nova(novidade, Box::new(u))
         }
         (None, Some(motivo)) => Consulta::Falhou(motivo),
         (None, None) => {
@@ -89,7 +89,7 @@ async fn consultar(
     app.updater_builder().endpoints(vec![url])?.build()?.check().await
 }
 
-pub async fn instalar(app: &AppHandle, atualizacao: Update) -> Result<(), String> {
+pub async fn instalar(app: &AppHandle, atualizacao: Box<Update>) -> Result<(), String> {
     let mut baixado: u64 = 0;
     let progresso = app.clone();
     let fim = app.clone();

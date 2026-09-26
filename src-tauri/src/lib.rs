@@ -46,7 +46,6 @@ pub struct Compartilhado {
     atalhos_recusados: Mutex<Vec<String>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
-    atualizacao: Mutex<Option<tauri_plugin_updater::Update>>,
     jogos: Mutex<Vec<historico::JogoSalvo>>,
     icones: Mutex<HashMap<String, Option<String>>>,
 }
@@ -119,7 +118,6 @@ pub fn executar() {
         todos: Mutex::new(Vec::new()),
         config: Mutex::new(config),
         novidade: Mutex::new(None),
-        atualizacao: Mutex::new(None),
         jogos: Mutex::new(Vec::new()),
         icones: Mutex::new(HashMap::new()),
     });
@@ -401,8 +399,7 @@ fn atualizar_bandeja(
 fn avisar_versao_nova(app: &AppHandle, beta: bool) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let atualizacao::Consulta::Nova(novidade, pacote) =
-            atualizacao::procurar_bloqueando(&app, beta)
+        let atualizacao::Consulta::Nova(novidade, _) = atualizacao::procurar_bloqueando(&app, beta)
         else {
             return;
         };
@@ -421,7 +418,6 @@ fn avisar_versao_nova(app: &AppHandle, beta: bool) {
 
         let compartilhado = app.state::<Arc<Compartilhado>>();
         *compartilhado.novidade.lock().unwrap() = Some(novidade);
-        *compartilhado.atualizacao.lock().unwrap() = Some(pacote);
     });
 }
 
@@ -701,9 +697,8 @@ async fn procurar_atualizacao(
     let achado = atualizacao::procurar(&app, beta).await;
 
     Ok(match achado {
-        atualizacao::Consulta::Nova(n, pacote) => {
+        atualizacao::Consulta::Nova(n, _) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
-            *compartilhado.atualizacao.lock().unwrap() = Some(pacote);
             Busca {
                 estado: "nova",
                 versao: Some(n.versao),
@@ -715,7 +710,6 @@ async fn procurar_atualizacao(
         }
         atualizacao::Consulta::EmDia => {
             *compartilhado.novidade.lock().unwrap() = None;
-            *compartilhado.atualizacao.lock().unwrap() = None;
             Busca { estado: "em-dia", versao: None, notas: None, beta: false, atual, motivo: None }
         }
         atualizacao::Consulta::Falhou(motivo) => Busca {
@@ -733,13 +727,22 @@ async fn procurar_atualizacao(
 async fn instalar_atualizacao(
     app: AppHandle,
     compartilhado: tauri::State<'_, Arc<Compartilhado>>,
-) -> Result<(), String> {
-    let pacote = compartilhado.atualizacao.lock().unwrap().clone();
-    let Some(pacote) = pacote else {
-        return Err("nenhuma versão nova encontrada ainda".into());
-    };
-    marcar_atualizacao();
-    atualizacao::instalar(&app, pacote).await
+) -> Result<bool, String> {
+    let beta = compartilhado.config.lock().unwrap().beta_updates;
+
+    match atualizacao::procurar(&app, beta).await {
+        atualizacao::Consulta::Nova(novidade, pacote) => {
+            *compartilhado.novidade.lock().unwrap() = Some(novidade);
+            marcar_atualizacao();
+            atualizacao::instalar(&app, pacote).await?;
+            Ok(true)
+        }
+        atualizacao::Consulta::EmDia => {
+            *compartilhado.novidade.lock().unwrap() = None;
+            Ok(false)
+        }
+        atualizacao::Consulta::Falhou(motivo) => Err(motivo),
+    }
 }
 
 #[tauri::command]

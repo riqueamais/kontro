@@ -159,8 +159,12 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       });
     });
     try {
-      setPasso({ tipo: "baixando", porcento: null, bytes: 0 });
-      await invoke("instalar_atualizacao");
+      const achou = await invoke<boolean>("instalar_atualizacao");
+      if (!achou) {
+        setNova(null);
+        setPasso({ tipo: "atualizado" });
+        return;
+      }
       await relaunch();
     } catch (e) {
       setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
@@ -171,6 +175,18 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
 
   if (!cfg) return null;
   const gravar = (mudanca: Partial<Config>) => setCfg(salvar(cfg, mudanca));
+  const ocupado =
+    passo.tipo === "procurando" ||
+    passo.tipo === "preparando" ||
+    passo.tipo === "baixando" ||
+    passo.tipo === "instalando";
+
+  const trocarCanal = async (BetaUpdates: boolean) => {
+    const novas = { ...cfg, BetaUpdates };
+    setCfg(novas);
+    await invoke("salvar_configuracoes", { novas });
+    if (!ocupado) await procurar();
+  };
 
   return (
     <>
@@ -375,13 +391,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       <h2>Versão</h2>
       {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
-        <button
-          className="ciclo"
-          disabled={
-            passo.tipo === "procurando" || passo.tipo === "baixando" || passo.tipo === "instalando"
-          }
-          onClick={() => void procurar()}
-        >
+        <button className="ciclo" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
         </button>
       </Linha>
@@ -395,7 +405,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         titulo="Receber versões beta"
         descricao="Versões de teste, publicadas antes da versão final. Podem ter defeitos que a final não terá."
       >
-        <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => gravar({ BetaUpdates: v })} />
+        <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
       </Linha>
       <h2>Problemas</h2>
       <Linha

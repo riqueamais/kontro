@@ -1,8 +1,8 @@
 name: release
 
 # Dois canais, um por branch. A main publica a versao estavel que esta no
-# tauri.conf.json e a develop publica uma beta dessa versao, numerada pela
-# execucao. O app so consulta o canal beta quando a pessoa liga a opcao.
+# tauri.conf.json e a develop publica uma beta, sempre acima da ultima estavel e
+# numerada pela execucao. O app so consulta o canal beta quando a pessoa liga a opcao.
 on:
   push:
     branches:
@@ -19,6 +19,9 @@ concurrency:
 
 jobs:
   build:
+    # Disparada a mao em outra branch, a build cairia no canal beta e trocaria a beta
+    # de todo mundo por uma branch de trabalho.
+    if: github.ref_name == 'main' || github.ref_name == 'develop'
     runs-on: windows-latest
 
     steps:
@@ -53,33 +56,57 @@ jobs:
             exit 1
           }
 
+          # As estaveis ja publicadas decidem as duas coisas: se a main tem versao nova
+          # para soltar e de que numero a beta parte. Perguntar por uma so, com
+          # `gh release view`, nao servia: "nao existe" e "nao deu para perguntar" saem
+          # os dois com codigo 1, e o Actions encerra o script pwsh com o codigo do
+          # ultimo comando externo -- o passo caia justamente quando a versao era nova.
+          # A lista sai com 0 mesmo vazia, entao aqui qualquer outro codigo e falha.
+          $publicadas = @(gh release list --exclude-drafts --exclude-pre-releases --limit 1000 --json tagName --jq '.[].tagName')
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Nao deu para listar as releases publicadas."
+            exit 1
+          }
+          $ultima = $publicadas |
+            Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } |
+            ForEach-Object { [version]($_.Substring(1)) } |
+            Sort-Object -Descending |
+            Select-Object -First 1
+
           $canal = if ("${{ github.ref_name }}" -eq "main") { "estavel" } else { "beta" }
-          $jaPublicada = (gh release view "v$base" --json tagName 2>$null) -ne $null
 
           if ($canal -eq "estavel") {
-            if ($jaPublicada) {
-              Write-Host "A v$base ja esta publicada. Suba a versao no package.json, no Cargo.toml e no tauri.conf.json para publicar outra."
+            if ($publicadas -contains "v$base") {
+              Write-Host "A v$base ja esta publicada. Suba a versao no tauri.conf.json para publicar outra."
               "pular=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
               exit 0
+            }
+            if ($ultima -and [version]$base -lt $ultima) {
+              Write-Error "A v$base e anterior a v$ultima, que ja esta publicada."
+              exit 1
             }
             $versao = $base
             $tag = "v$base"
           } else {
-            # Uma beta precisa ficar acima da estavel que ja saiu: se a base ja
-            # foi publicada, a beta e da correcao seguinte.
-            if ($jaPublicada) {
-              $partes = $base.Split('.')
-              $base = "$($partes[0]).$($partes[1]).$([int]$partes[2] + 1)"
+            # Uma beta precisa ficar acima da ultima estavel, ou quem liga a opcao nao
+            # recebe nada. Com a develop num numero ja publicado -- ou abaixo dele,
+            # depois de uma correcao que foi direto para a main --, a beta e da
+            # correcao seguinte a ultima estavel.
+            $alvo = [version]$base
+            if ($ultima -and $alvo -le $ultima) {
+              $alvo = [version]::new($ultima.Major, $ultima.Minor, $ultima.Build + 1)
             }
-            $versao = "$base-beta.${{ github.run_number }}"
+            $versao = "$alvo-beta.${{ github.run_number }}"
             $tag = "beta"
           }
 
+          $anterior = if ($ultima) { "v$ultima" } else { "" }
           "pular=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "canal=$canal" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "version=$versao" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "canal: $canal  versao: $versao  tag: $tag"
+          "anterior=$anterior" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "canal: $canal  versao: $versao  tag: $tag  desde: $anterior"
 
       - name: Carimbar a versao no projeto
         if: steps.ver.outputs.pular == 'false'
@@ -179,8 +206,10 @@ jobs:
           }
 
           if ([string]::IsNullOrWhiteSpace($notas)) {
-            $ultima = git tag -l 'v*' --sort=-v:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
-            $faixa = if ($ultima) { "$ultima..HEAD" } else { "HEAD" }
+            # "Desde a ultima estavel" e desde a ultima release publicada, nao desde a
+            # ultima tag: uma tag anotada empurrada antes do merge ainda nao saiu.
+            $anterior = "${{ steps.ver.outputs.anterior }}"
+            $faixa = if ($anterior) { "$anterior..HEAD" } else { "HEAD" }
             $assuntos = git log $faixa --no-merges --format='%s' |
               Where-Object { $_ -and $_ -notmatch '^Versao \d' }
             $linhas = @()
@@ -247,7 +276,10 @@ jobs:
               --notes-file notas.md
           } else {
             # A tag `beta` anda junto com a develop. Apagar a release e a tag antes
-            # de recriar garante que so o instalador desta build fica anexado.
+            # de recriar garante que so o instalador desta build fica anexado. O push
+            # que apaga a tag cobre a release apagada a mao pela pagina, que deixa a
+            # tag para tras: com ela de pe o `--target` seria ignorado, e a beta nova
+            # sairia apontando para o commit velho.
             gh release delete $tag --cleanup-tag --yes 2>$null
             git push origin ":refs/tags/$tag" 2>$null
             gh release create $tag $arquivos `
