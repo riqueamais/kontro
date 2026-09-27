@@ -77,7 +77,7 @@
 .historico .grafico .rotulo-x {
   fill: var(--text-tertiary);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .historico .grafico .rotulo-y {
@@ -122,7 +122,7 @@
 .historico .grafico .rotulo-projecao {
   fill: var(--text-tertiary);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .historico .grafico .troca {
@@ -133,7 +133,7 @@
 .historico .grafico .rotulo-troca {
   fill: var(--text-tertiary);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .historico .grafico .mira {

@@ -368,13 +368,22 @@ fn iniciar_ciclo(
 const ESPERA_MAXIMA_PELA_PAGINA: Duration = Duration::from_secs(5);
 
 fn abrir_pendente(app: &AppHandle, rotulo: &str) {
-    let Some(janela) = app.get_webview_window(rotulo) else { return };
     if rotulo == janelas::PAINEL {
-        janelas::posicionar_painel(app);
+        abrir_painel(app);
+        return;
     }
+    let Some(janela) = app.get_webview_window(rotulo) else { return };
     let _ = janela.unminimize();
     let _ = janela.show();
     let _ = janela.set_focus();
+}
+
+fn abrir_painel(app: &AppHandle) {
+    let Some(painel) = app.get_webview_window(janelas::PAINEL) else { return };
+    janelas::posicionar_painel(app);
+    let _ = painel.show();
+    let _ = painel.set_focus();
+    let _ = app.emit("kontro://painel-abriu", ());
 }
 
 fn abrir_mesmo_sem_aviso(app: &AppHandle, compartilhado: Arc<Compartilhado>) {
@@ -457,9 +466,7 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
                     if painel.is_visible().unwrap_or(false) {
                         let _ = painel.hide();
                     } else {
-                        janelas::posicionar_painel(app);
-                        let _ = painel.show();
-                        let _ = painel.set_focus();
+                        abrir_painel(app);
                     }
                 }
             }
@@ -916,10 +923,11 @@ fn ajustar_tamanho_da_sobreposicao(
 #[tauri::command]
 fn ajustar_altura_do_painel(app: AppHandle, altura: f64) {
     let Some(janela) = app.get_webview_window(janelas::PAINEL) else { return };
+    if !janela.is_visible().unwrap_or(false) {
+        return;
+    }
 
-    let altura = altura.clamp(200.0, 900.0);
-    let _ = janela.set_size(tauri::LogicalSize::new(janelas::LARGURA_DO_PAINEL, altura));
-    janelas::posicionar_painel(&app);
+    janelas::redimensionar_painel(&janela, altura.clamp(200.0, 900.0));
 }
 
 #[tauri::command]

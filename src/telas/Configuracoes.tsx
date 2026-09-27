@@ -101,7 +101,7 @@ type Passo =
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
-export function Configuracoes({ aoRever }: { aoRever: () => void }) {
+export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
   const [cfg, setCfg] = useState<Config | null>(null);
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
@@ -115,11 +115,30 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   const recusados = useAtalhosRecusados();
 
   useEffect(() => {
-    invoke<Config>("configuracoes").then(setCfg).catch(() => {});
+    let vivo = true;
+
+    invoke<Config>("configuracoes")
+      .then((c) => {
+        if (vivo) setCfg(c);
+      })
+      .catch(() => {});
+    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
+
+    const parar = listen<Config>("kontro://config", ({ payload }) => {
+      if (vivo) setCfg(payload);
+    });
+
+    return () => {
+      vivo = false;
+      void parar.then((f) => f());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!ativa) return;
     invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
     invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
-    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
-  }, []);
+  }, [ativa]);
 
   const procurar = async () => {
     setPasso({ tipo: "procurando" });

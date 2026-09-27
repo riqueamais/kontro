@@ -10,7 +10,8 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T31 — o movimento da tela cheia inteiro e as quatro primeiras de desempenho e fluidez. Falta a parte que só um jogo responde — o `QUNS`
+T35 — o movimento da tela cheia inteiro e as oito primeiras de desempenho e fluidez —, mais a
+T89, que a T32 tornou obrigatória. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
@@ -650,6 +651,8 @@ As três páginas ficam montadas, cada uma num `<section className="folha" role=
 
 **Pronto quando:** ir ao Diário e voltar mantém "30 dias", a sessão escolhida e a posição de rolagem; a troca não mostra frame vazio; o conteúdo entra em fade de 180 ms e o traço da aba desliza entre os itens; Tab entra no trilho uma vez e as setas trocam de página; o Narrador diz "aba, 2 de 3, selecionada"; hover, ativa e pressionada são três tons distintos.
 
+**Entregue com a T89 junto.** Com as páginas montadas o tempo todo, a cópia da config que Configurações guarda envelheceria pela vida inteira da janela, e não só enquanto a aba está aberta: soltar a pílula no Resumo e ligar qualquer chave dias depois a devolveria ao lugar antigo. O que o remontar renovava de graça — a versão nova achada em segundo plano e o número de telas — passa a ser perguntado ao entrar na aba, e o Diário refaz a grade de dias ao entrar. O trilho é `div role="tablist"`, não `nav`: o ARIA em HTML não aceita outro papel em `nav`.
+
 ## T33. O gráfico desenha em pixel e para de recalcular
 
 **Onde:** `src/componentes/Historico.tsx`, `src/componentes/historico.css`.
@@ -669,6 +672,8 @@ Quando a carga cruza um limiar, ou o limiar muda nas Configurações, o arco mud
 `tokens.css` registra `@property --cor-do-anel` e `@property --cor-do-estado` (`syntax: "<color>"; inherits: true; initial-value: #8d979f`): propriedade registrada interpola, e o gradiente que a lê é reavaliado por frame. `Anel.tsx` passa `style={{ width, height, "--cor-do-anel": cor, "--anel-tamanho": tamanho + "px" }}` na raiz `.anel` e para de escrever `stopColor` e `color` inline. `anel.css`: `.anel { transition: --cor-do-anel var(--motion-base) var(--curva) }`, `.anel stop:first-child { stop-color: color-mix(in srgb, var(--cor-do-anel) 84%, #fff) }`, `.anel stop:last-child { stop-color: var(--cor-do-anel) }`, `.anel .carga { color: var(--cor-do-anel); filter: drop-shadow(0 0 calc(var(--anel-tamanho) * 0.125) color-mix(in srgb, currentColor 35%, transparent)) }`, o que dá 12px em 96, 5,5px em 44, 3,75px em 30 e 2,5px em 20, todos mortos antes do padding de quem os contém; o `.carga.apagada { filter: none }` da tarefa do cabo continua valendo. `principal.css` e `painel.css`: a `transition: background` dos `::before` vira `transition: --cor-do-estado var(--motion-base) var(--curva)` em `.cartao.estado` e `.painel .topo`, que são quem define a variável. `sobreposicao.css`: `.sobreposicao .pilula` ganha `box-shadow var(--motion-base) var(--curva)` na transição.
 
 **Pronto quando:** com o controle em ~35%, subir o limiar de carga baixa de 20% para 40% faz arco, halo, fundo do cartão e, na pílula, contorno passarem de verde a âmbar num fade contínuo de 180 ms, sem salto; no Resumo o halo tem ~12px a 35%; na captura da pílula o brilho não ultrapassa o contorno arredondado, no aviso não ultrapassa a borda do cartão, e na lista não passa da borda da linha.
+
+**Entregue com dois ajustes.** O diagnóstico do halo supunha o `drop-shadow` em px de tela, e num filho de `<svg>` ele não é: o Chromium mede o filtro no espaço do `viewBox`. Medido: os 18 do código antigo davam ~3,4 px de desfoque no anel de 96, e o `calc(var(--anel-tamanho) * 0.125)` daria ~2 px. O que entrega a conta da tarefa é 12,5% da caixa de 512, `--raio-do-halo` de 64 unidades, que sai idêntico, pixel a pixel, a um `drop-shadow` de `tamanho × 0,125` px em HTML — 12 px em 96, 3,75 em 30 — sem o anel precisar saber o próprio tamanho. E `box-shadow` só interpola entre listas com o mesmo `inset` em cada posição: a normal, a crítica e a solta da pílula passaram a ter quatro sombras alinhadas, senão o contorno vermelho continuaria aparecendo seco.
 
 ## T35. O flyout desliza a cada abertura, cresce sem pular e descansa quando está escondido
 

@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -10,46 +11,102 @@ import { Amostra, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from
 import { detalhe, quandoLeu } from "../formato";
 import "./painel.css";
 
+type Fase = "guardado" | "aberto" | "saindo";
+
+const PRAZO_DA_SAIDA_MS = 400;
+
 export function Painel() {
   const estado = useEstado();
   const limiares = useLimiares();
   const [serie, setSerie] = useState<Amostra[]>([]);
+  const [fase, setFase] = useState<Fase>("guardado");
+  const [aberturas, setAberturas] = useState(0);
+  const [ouvindo, setOuvindo] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
+  const faseAgora = useRef<Fase>("guardado");
+  const saida = useRef<number | undefined>(undefined);
 
+  const aberto = fase === "aberto";
   const chegou = estado !== null;
-  useEffect(() => {
-    if (chegou) void invoke("janela_pronta", { rotulo: "painel" });
-  }, [chegou]);
 
-  useAoMudarOHistorico(() => {
-    invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
-  }, [estado?.chave]);
+  const mudar = useCallback((nova: Fase) => {
+    faseAgora.current = nova;
+    setFase(nova);
+  }, []);
 
   useEffect(() => {
-    const janela = getCurrentWindow();
-    const fechar = () => void janela.hide();
+    let vivo = true;
 
-    const parar = janela.onFocusChanged(({ payload: temFoco }) => {
+    const parar = listen("kontro://painel-abriu", () => {
+      if (!vivo) return;
+      window.clearTimeout(saida.current);
+      mudar("aberto");
+      setAberturas((n) => n + 1);
+    });
+
+    void parar.then(() => {
+      if (!vivo) return;
+      setOuvindo(true);
+      void getCurrentWindow()
+        .isVisible()
+        .then((visivel) => {
+          if (!vivo || !visivel || faseAgora.current !== "guardado") return;
+          mudar("aberto");
+          setAberturas((n) => Math.max(n, 1));
+        });
+    });
+
+    return () => {
+      vivo = false;
+      window.clearTimeout(saida.current);
+      void parar.then((f) => f());
+    };
+  }, [mudar]);
+
+  useEffect(() => {
+    if (chegou && ouvindo) void invoke("janela_pronta", { rotulo: "painel" });
+  }, [chegou, ouvindo]);
+
+  const guardar = useCallback(() => {
+    window.clearTimeout(saida.current);
+    if (faseAgora.current !== "saindo") return;
+    mudar("guardado");
+    void getCurrentWindow().hide();
+  }, [mudar]);
+
+  const fechar = useCallback(() => {
+    if (faseAgora.current !== "aberto") return;
+    mudar("saindo");
+    window.clearTimeout(saida.current);
+    saida.current = window.setTimeout(guardar, PRAZO_DA_SAIDA_MS);
+  }, [mudar, guardar]);
+
+  useEffect(() => {
+    const parar = getCurrentWindow().onFocusChanged(({ payload: temFoco }) => {
       if (!temFoco) fechar();
     });
 
-    const aoPerderJanela = () => fechar();
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key === "Escape") fechar();
     };
-    window.addEventListener("blur", aoPerderJanela);
+    window.addEventListener("blur", fechar);
     window.addEventListener("keydown", aoTeclar);
 
     return () => {
       void parar.then((f) => f());
-      window.removeEventListener("blur", aoPerderJanela);
+      window.removeEventListener("blur", fechar);
       window.removeEventListener("keydown", aoTeclar);
     };
-  }, []);
+  }, [fechar]);
+
+  useAoMudarOHistorico(() => {
+    if (!aberto) return;
+    invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
+  }, [estado?.chave, aberto, aberturas]);
 
   useEffect(() => {
     const alvo = painel.current;
-    if (!alvo) return;
+    if (!aberto || !alvo) return;
 
     const medir = () => {
       const estilo = getComputedStyle(alvo);
@@ -60,22 +117,23 @@ export function Painel() {
       });
     };
 
-    medir();
     const observador = new ResizeObserver(medir);
     observador.observe(alvo);
     return () => observador.disconnect();
-  }, [estado, serie.length]);
+  }, [aberto, aberturas, chegou]);
 
   if (!estado) return null;
 
   return (
-    <div className="painel" ref={painel}>
-      <button
-        className="fechar"
-        aria-label="Fechar"
-        title="Fechar (Esc)"
-        onClick={() => void getCurrentWindow().hide()}
-      >
+    <div
+      key={aberturas}
+      className={fase === "aberto" ? "painel" : `painel ${fase}`}
+      ref={painel}
+      onAnimationEnd={(e) => {
+        if (e.target === e.currentTarget && e.animationName === "kontro-descer") guardar();
+      }}
+    >
+      <button className="fechar" aria-label="Fechar" title="Fechar (Esc)" onClick={fechar}>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           <path
             d="M1 1 L9 9 M9 1 L1 9"

@@ -372,18 +372,48 @@ pub fn posicionar_painel(app: &AppHandle) {
         .or_else(|| janela.current_monitor().ok().flatten())
         .or_else(|| janela.primary_monitor().ok().flatten());
     let Some(monitor) = monitor else { return };
+    let Ok(tamanho) = janela.outer_size() else { return };
 
+    let canto = canto_do_painel(&monitor, tamanho.width as i32, tamanho.height as i32);
+    let _ = janela.set_position(canto);
+}
+
+pub fn redimensionar_painel(janela: &WebviewWindow, altura: f64) {
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+
+    let monitor =
+        janela.current_monitor().ok().flatten().or_else(|| janela.primary_monitor().ok().flatten());
+    let Some(monitor) = monitor else { return };
+    let Some(alvo) = hwnd_de(janela) else { return };
+
+    let escala = janela.scale_factor().unwrap_or_else(|_| monitor.scale_factor());
+    let largura = (LARGURA_DO_PAINEL * escala).round() as i32;
+    let altura = (altura * escala).round() as i32;
+    let canto = canto_do_painel(&monitor, largura, altura);
+
+    unsafe {
+        let _ = SetWindowPos(
+            alvo,
+            None,
+            canto.x,
+            canto.y,
+            largura,
+            altura,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
+fn canto_do_painel(monitor: &Monitor, largura: i32, altura: i32) -> PhysicalPosition<i32> {
     let escala = monitor.scale_factor();
-    let Ok(tam_janela) = janela.outer_size() else { return };
-    let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
-
     let area = monitor.work_area();
-    let canto = area.position.to_logical::<f64>(escala);
-    let util = area.size.to_logical::<f64>(escala);
+    let margem_lateral = (MARGEM_LATERAL_DO_PAINEL * escala).round() as i32;
+    let margem_inferior = (MARGEM_INFERIOR_DO_PAINEL * escala).round() as i32;
 
-    let x = canto.x + util.width - tam_janela.width - MARGEM_LATERAL_DO_PAINEL;
-    let y = canto.y + util.height - tam_janela.height - MARGEM_INFERIOR_DO_PAINEL;
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+    PhysicalPosition::new(
+        area.position.x + area.size.width as i32 - largura - margem_lateral,
+        area.position.y + area.size.height as i32 - altura - margem_inferior,
+    )
 }
 
 fn monitor_em_foco(app: &AppHandle) -> Option<Monitor> {

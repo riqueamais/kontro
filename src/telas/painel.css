@@ -6,10 +6,23 @@
   box-shadow: var(--sombra-painel);
   animation: kontro-subir var(--motion-slow) var(--curva);
 }
+.painel.guardado {
+  opacity: 0;
+  animation: none;
+}
+.painel.saindo {
+  animation: kontro-descer var(--motion-fast) var(--curva) forwards;
+}
 @keyframes kontro-subir {
   from {
     opacity: 0;
-    transform: scale(0.985);
+    transform: translateY(8px);
+  }
+}
+@keyframes kontro-descer {
+  to {
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
 .painel .fechar {
@@ -36,6 +49,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  transition: --cor-do-estado var(--motion-base) var(--curva);
 }
 
 .painel .topo::before {
@@ -48,7 +62,6 @@
     color-mix(in srgb, var(--cor-do-estado) 14%, transparent),
     transparent 70%
   );
-  transition: background var(--motion-base) var(--curva);
   pointer-events: none;
 }
 

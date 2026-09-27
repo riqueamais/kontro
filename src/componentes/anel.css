@@ -1,5 +1,6 @@
 .anel {
   position: relative;
+  transition: --cor-do-anel var(--motion-base) var(--curva);
 }
 
 .anel > svg {
@@ -7,8 +8,19 @@
   overflow: visible;
 }
 
+.anel stop:first-child {
+  stop-color: color-mix(in srgb, var(--cor-do-anel) 84%, #fff);
+}
+
+.anel stop:last-child {
+  stop-color: var(--cor-do-anel);
+}
+
 .anel .carga {
-  filter: drop-shadow(0 0 18px currentColor);
+  color: var(--cor-do-anel);
+  filter: drop-shadow(
+    0 0 var(--raio-do-halo) color-mix(in srgb, currentColor 35%, transparent)
+  );
   transition: filter var(--motion-base) var(--curva);
 }
 

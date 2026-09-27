@@ -7,6 +7,8 @@ const CENTRO = CAIXA / 2;
 
 const COMPRIMENTO_DA_MARCA = 0.62;
 
+const RAIO_DO_HALO = CAIXA * 0.125;
+
 function ponto(raio: number, graus: number) {
   const rad = (graus * Math.PI) / 180;
   return { x: CENTRO + raio * Math.cos(rad), y: CENTRO + raio * Math.sin(rad) };
@@ -65,16 +67,26 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
 
   const cheio = !girando && suave >= 99.9;
   const apagada = cor === "var(--gray)";
-  const tinta = apagada ? cor : `url(#${luz})`;
+  const tinta = apagada ? "var(--cor-do-anel)" : `url(#${luz})`;
   const mostrarMarcas = marcas && !girando && valor !== null;
 
   return (
-    <div className="anel" style={{ width: tamanho, height: tamanho }}>
+    <div
+      className="anel"
+      style={
+        {
+          width: tamanho,
+          height: tamanho,
+          "--cor-do-anel": cor,
+          "--raio-do-halo": `${RAIO_DO_HALO}px`,
+        } as React.CSSProperties
+      }
+    >
       <svg width={tamanho} height={tamanho} viewBox={`0 0 ${CAIXA} ${CAIXA}`}>
         <defs>
           <linearGradient id={luz} x1="0.12" y1="0.08" x2="0.86" y2="0.94">
-            <stop offset="0%" stopColor={`color-mix(in srgb, ${cor} 84%, #ffffff)`} />
-            <stop offset="100%" stopColor={cor} />
+            <stop offset="0%" />
+            <stop offset="100%" />
           </linearGradient>
         </defs>
 
@@ -87,7 +99,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
           strokeWidth={espessura}
         />
 
-        <g className={apagada ? "carga apagada" : "carga"} style={{ color: cor }}>
+        <g className={apagada ? "carga apagada" : "carga"}>
           {girando || cheio ? (
             <circle
               cx={CENTRO}

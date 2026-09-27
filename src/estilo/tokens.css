@@ -1,3 +1,15 @@
+@property --cor-do-anel {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8d979f;
+}
+
+@property --cor-do-estado {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8d979f;
+}
+
 :root {
   --ink: #0b0e11;
   --surface: #0f1318;
