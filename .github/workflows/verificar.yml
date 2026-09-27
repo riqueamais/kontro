@@ -1,11 +1,21 @@
 name: verificar
 
 on:
-  push:
-    branches: ["**"]
-    tags-ignore: ["v*"]
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "assets/banner.html"
+      - "LICENSE"
+  workflow_call:
   workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verificar-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verificar:

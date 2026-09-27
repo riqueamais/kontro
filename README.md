@@ -140,6 +140,18 @@ Há dois canais, um por branch, e a build é automática nos dois:
   `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
   pipeline não faz nada.
 
+Nos dois canais a publicação passa pelo `verificar` antes de empacotar: formatação,
+testes, exemplos, build do front e artefatos gerados em dia. Se ele falha, nada sai. Quem
+decide se há o que publicar é um job curto no Linux, então um push sem versão nova nem
+chega a subir a máquina Windows. Push que só mexe em `docs/`, em `.md`, no
+`assets/banner.html` ou na `LICENSE` não gera versão; a landing sai pelo GitHub Pages, que
+publica o `docs/` da `main` sozinho. Na `develop`, um push novo cancela a beta que ainda
+estava sendo empacotada, porque ela já nasceria velha; na `main` cada versão espera a
+anterior terminar.
+
+Branch de trabalho não roda nada no push: ela é verificada quando vira PR, uma vez por
+push, e o push novo cancela a verificação anterior do mesmo PR.
+
 Para lançar, o commit `Versao X.Y.Z` sobe o número nos lugares de sempre — `tauri.conf.json`,
 `Cargo.toml`, `Cargo.lock`, `package.json` e o `softwareVersion` do `docs/index.html` — e
 vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo número no
