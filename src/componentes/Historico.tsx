@@ -1,4 +1,5 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { Amostra, useLimiares } from "../estado";
 import { hora, momento } from "../formato";
@@ -308,12 +309,13 @@ function useLargura(caixa: React.RefObject<HTMLDivElement | null>): number {
     const alvo = caixa.current;
     if (!alvo) return;
 
-    const guardar = (medida: number) => {
-      if (medida > 0) setLargura(medida);
-    };
+    const inicial = alvo.getBoundingClientRect().width;
+    if (inicial > 0) setLargura(inicial);
 
-    guardar(alvo.getBoundingClientRect().width);
-    const observador = new ResizeObserver(([entrada]) => guardar(entrada.contentRect.width));
+    const observador = new ResizeObserver(([entrada]) => {
+      const medida = entrada.contentRect.width;
+      if (medida > 0) flushSync(() => setLargura(medida));
+    });
     observador.observe(alvo);
     return () => observador.disconnect();
   }, [caixa]);

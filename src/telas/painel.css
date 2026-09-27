@@ -27,6 +27,7 @@
 }
 .painel .fechar {
   position: absolute;
+  z-index: 1;
   top: 10px;
   right: 10px;
   width: 24px;

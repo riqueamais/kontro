@@ -685,6 +685,8 @@ Os dois pontos que mostram o painel no `lib.rs`, o clique na bandeja e o `janela
 
 **Pronto quando:** a terceira abertura do flyout tem o mesmo deslize de 240 ms da primeira, e fechar pelo Esc tem os 120 ms de saída; quando a lista aparece, a borda de baixo do painel não se mexe e a de cima cresce num frame só; com o painel fechado, o processo do WebView2 dele não mostra picos de CPU a cada leitura no Gerenciador de Tarefas.
 
+**Entregue sem o `key={aberturas}`.** Remontar o painel a cada abertura remontava junto a lista de controles, que nasce vazia até o `invoke` voltar: medido, toda abertura mandava duas alturas, 275 e 422, e a borda de cima pulava duas vezes — o contrário do critério. A troca de classe já recomeça a animação, porque `animation-name` sai de `none` (guardado) ou de `kontro-descer` para `kontro-subir`; o painel só remonta no caso raro de o Rust ter escondido a janela sem a página saber. E o `SetWindowPos` recebe o tamanho da janela, não o do conteúdo: o painel nasce com `shadow(true)`, que põe borda invisível em volta, e sem somar essa moldura o WebView encolheria uns 16 × 9 px a cada medida. O X, que o `.topo` cobria desde a T2, ganhou `z-index`.
+
 ## T36. Uma fonte por dado, não uma por hook
 
 **Onde:** `src/estado.ts`.

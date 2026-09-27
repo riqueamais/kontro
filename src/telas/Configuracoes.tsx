@@ -404,6 +404,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <Captura
           combinacao={cfg.OverlayShortcut}
           desabilitado={!cfg.OverlayShortcutEnabled}
+          ativa={ativa}
           aoTrocar={(c) => gravar({ OverlayShortcut: c })}
         />
       </Linha>
@@ -418,6 +419,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <Captura
           combinacao={cfg.OverlayMoveShortcut}
           desabilitado={!cfg.OverlayShortcutEnabled}
+          ativa={ativa}
           aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
         />
       </Linha>
@@ -636,15 +638,21 @@ function Captura({
   combinacao,
   aoTrocar,
   desabilitado,
+  ativa,
 }: {
   combinacao: string;
   aoTrocar: (combinacao: string) => void;
   desabilitado: boolean;
+  ativa: boolean;
 }) {
   const [ouvindo, setOuvindo] = useState(false);
 
   useEffect(() => {
-    if (!ouvindo) return;
+    if (!ativa) setOuvindo(false);
+  }, [ativa]);
+
+  useEffect(() => {
+    if (!ouvindo || !ativa) return;
 
     const aoTeclar = (evento: KeyboardEvent) => {
       evento.preventDefault();
@@ -664,7 +672,7 @@ function Captura({
 
     window.addEventListener("keydown", aoTeclar, true);
     return () => window.removeEventListener("keydown", aoTeclar, true);
-  }, [ouvindo, aoTrocar]);
+  }, [ouvindo, ativa, aoTrocar]);
 
   return (
     <button

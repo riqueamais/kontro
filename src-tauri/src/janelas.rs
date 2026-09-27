@@ -385,10 +385,13 @@ pub fn redimensionar_painel(janela: &WebviewWindow, altura: f64) {
         janela.current_monitor().ok().flatten().or_else(|| janela.primary_monitor().ok().flatten());
     let Some(monitor) = monitor else { return };
     let Some(alvo) = hwnd_de(janela) else { return };
+    let (Ok(fora), Ok(dentro)) = (janela.outer_size(), janela.inner_size()) else { return };
 
     let escala = janela.scale_factor().unwrap_or_else(|_| monitor.scale_factor());
-    let largura = (LARGURA_DO_PAINEL * escala).round() as i32;
-    let altura = (altura * escala).round() as i32;
+    let moldura_x = fora.width as i32 - dentro.width as i32;
+    let moldura_y = fora.height as i32 - dentro.height as i32;
+    let largura = (LARGURA_DO_PAINEL * escala).round() as i32 + moldura_x;
+    let altura = (altura * escala).round() as i32 + moldura_y;
     let canto = canto_do_painel(&monitor, largura, altura);
 
     unsafe {

@@ -21,6 +21,7 @@ export function Painel() {
   const [serie, setSerie] = useState<Amostra[]>([]);
   const [fase, setFase] = useState<Fase>("guardado");
   const [aberturas, setAberturas] = useState(0);
+  const [remontagens, setRemontagens] = useState(0);
   const [ouvindo, setOuvindo] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
   const faseAgora = useRef<Fase>("guardado");
@@ -40,6 +41,7 @@ export function Painel() {
     const parar = listen("kontro://painel-abriu", () => {
       if (!vivo) return;
       window.clearTimeout(saida.current);
+      if (faseAgora.current === "aberto") setRemontagens((n) => n + 1);
       mudar("aberto");
       setAberturas((n) => n + 1);
     });
@@ -126,7 +128,7 @@ export function Painel() {
 
   return (
     <div
-      key={aberturas}
+      key={remontagens}
       className={fase === "aberto" ? "painel" : `painel ${fase}`}
       ref={painel}
       onAnimationEnd={(e) => {
