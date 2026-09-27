@@ -8,6 +8,7 @@ pub struct AoVivo<'a> {
     pub principal: &'a str,
     pub estados: &'a [EstadoDoControle],
     pub sessoes: &'a [Sessao],
+    pub pilula: Option<isize>,
 }
 
 pub fn escrever(caminho: &str, ao_vivo: Option<AoVivo>) -> std::io::Result<()> {
@@ -23,6 +24,7 @@ pub fn escrever(caminho: &str, ao_vivo: Option<AoVivo>) -> std::io::Result<()> {
     secao_pnp(&mut t);
     secao_hid(&mut t);
     secao_descoberta(&mut t);
+    secao_tela(&mut t, ao_vivo.as_ref().and_then(|v| v.pilula));
     match ao_vivo {
         Some(v) => secao_do_app(&mut t, &v),
         None => {
@@ -148,8 +150,99 @@ fn secao_monitor(t: &mut String) {
             principal: &panorama.principal.chave,
             estados: &panorama.todos,
             sessoes: &sessoes,
+            pilula: None,
         },
     );
+}
+
+fn secao_tela(t: &mut String, pilula: Option<isize>) {
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowLongPtrW, IsWindowVisible, GWL_EXSTYLE, WS_EX_APPWINDOW,
+        WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_EX_TRANSPARENT,
+    };
+
+    use crate::tela::{self, Tela};
+
+    let _ = writeln!(t, "=== Tela ===");
+    let _ =
+        writeln!(t, "   Quem entra aqui e so o nome do programa, nunca o caminho nem o titulo.");
+
+    let estado = Tela::atual();
+    let _ = writeln!(t, "   QUNS={}   {}", estado.bruto(), estado.descrever());
+    let _ = writeln!(t, "   conta como jogo: {}", estado.conta_como_jogo());
+
+    let em_foco = unsafe { GetForegroundWindow() };
+    if em_foco.is_invalid() {
+        let _ = writeln!(t, "   em foco: (nenhuma janela)");
+    } else {
+        let nome = crate::jogo::executavel_de(em_foco)
+            .map(|c| crate::jogo::batizar(&c))
+            .unwrap_or_else(|| "(sem acesso ao processo)".into());
+        let _ = writeln!(t, "   em foco: {nome}");
+
+        let mut info =
+            MONITORINFO { cbSize: std::mem::size_of::<MONITORINFO>() as u32, ..Default::default() };
+        let monitor = unsafe { MonitorFromWindow(em_foco, MONITOR_DEFAULTTONEAREST) };
+        let tem_monitor = unsafe { GetMonitorInfoW(monitor, &mut info).as_bool() };
+        match (tela::retangulo(em_foco), tem_monitor) {
+            (Some(j), true) => {
+                let m = info.rcMonitor;
+                let cobre = j.left <= m.left
+                    && j.top <= m.top
+                    && j.right >= m.right
+                    && j.bottom >= m.bottom;
+                let _ = writeln!(
+                    t,
+                    "   janela {}x{} em ({},{})   monitor {}x{} em ({},{})   cobre o monitor: {cobre}",
+                    j.right - j.left,
+                    j.bottom - j.top,
+                    j.left,
+                    j.top,
+                    m.right - m.left,
+                    m.bottom - m.top,
+                    m.left,
+                    m.top
+                );
+            }
+            _ => {
+                let _ = writeln!(t, "   janela em foco sem retangulo legivel");
+            }
+        }
+    }
+
+    let Some(valor) = pilula else {
+        let _ = writeln!(t, "   (sem pilula: modo --diagnose)");
+        let _ = writeln!(t);
+        return;
+    };
+
+    let alvo = crate::janelas::hwnd_de_valor(valor);
+    let estilo = unsafe { GetWindowLongPtrW(alvo, GWL_EXSTYLE) } as u32;
+    let nomes = [
+        (WS_EX_TOPMOST.0, "TOPMOST"),
+        (WS_EX_TOOLWINDOW.0, "TOOLWINDOW"),
+        (WS_EX_NOACTIVATE.0, "NOACTIVATE"),
+        (WS_EX_LAYERED.0, "LAYERED"),
+        (WS_EX_TRANSPARENT.0, "TRANSPARENT"),
+        (WS_EX_APPWINDOW.0, "APPWINDOW"),
+    ];
+    let ligados: Vec<&str> =
+        nomes.iter().filter(|(bit, _)| estilo & bit != 0).map(|(_, nome)| *nome).collect();
+    let _ = writeln!(t, "   pilula: EXSTYLE=0x{estilo:08x}   {}", ligados.join(" | "));
+    let _ = writeln!(t, "   pilula visivel: {}", unsafe { IsWindowVisible(alvo).as_bool() });
+
+    let por_cima = tela::alguem_por_cima(alvo)
+        .map(|j| {
+            crate::jogo::executavel_de(j)
+                .map(|c| crate::jogo::batizar(&c))
+                .unwrap_or_else(|| "(sem acesso ao processo)".into())
+        })
+        .unwrap_or_else(|| "ninguem".into());
+    let _ = writeln!(t, "   por cima da pilula: {por_cima}");
+    let _ = writeln!(t);
 }
 
 fn secao_do_app(t: &mut String, v: &AoVivo) {

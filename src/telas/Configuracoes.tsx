@@ -588,7 +588,7 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
     case "falhou":
       return "Não deu para gravar o arquivo.";
     default:
-      return "Grava o que o app enxerga de cada fonte de carga: Bluetooth, HID, XInput e o que o Windows guarda.";
+      return "Grava o que o app enxerga de cada fonte de carga: Bluetooth, HID, XInput e o que o Windows guarda. Inclui o nome do programa em primeiro plano na hora do clique.";
   }
 }
 

@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use windows::core::{PCWSTR, PWSTR};
-use windows::Win32::Foundation::CloseHandle;
+use windows::Win32::Foundation::{CloseHandle, HWND};
 use windows::Win32::Storage::FileSystem::{
     GetFileVersionInfoSizeW, GetFileVersionInfoW, VerQueryValueW,
 };
@@ -84,13 +84,16 @@ fn maiuscula_no_comeco(palavra: &str) -> String {
     }
 }
 
-fn executavel_em_foco() -> Option<PathBuf> {
-    unsafe {
-        let janela = GetForegroundWindow();
-        if janela.is_invalid() {
-            return None;
-        }
+pub(crate) fn executavel_em_foco() -> Option<PathBuf> {
+    let janela = unsafe { GetForegroundWindow() };
+    if janela.is_invalid() {
+        return None;
+    }
+    executavel_de(janela)
+}
 
+pub(crate) fn executavel_de(janela: HWND) -> Option<PathBuf> {
+    unsafe {
         let mut processo = 0u32;
         GetWindowThreadProcessId(janela, Some(&mut processo));
         if processo == 0 {

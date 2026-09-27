@@ -66,7 +66,7 @@ impl Orquestrador {
 
         if solta {
             if !janela.is_visible().unwrap_or(false) {
-                let _ = janela.show();
+                janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
             }
             return;
         }
@@ -92,7 +92,7 @@ impl Orquestrador {
         if mostrar {
             janelas::posicionar_sobreposicao(app, cfg);
             if !janela.is_visible().unwrap_or(false) {
-                let _ = janela.show();
+                janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
                 let _ = app.emit("kontro://pilula-apareceu", ());
             }
         } else if janela.is_visible().unwrap_or(false) {
@@ -194,6 +194,6 @@ fn mostrar_aviso(app: &AppHandle, estado: &EstadoDoControle, assunto: AvisoDeLig
     let Some(janela) = app.get_webview_window(janelas::AVISO) else { return };
 
     janelas::posicionar_aviso(app);
-    let _ = janela.show();
+    janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
     let _ = app.emit("kontro://aviso", Pacote { assunto, estado });
 }

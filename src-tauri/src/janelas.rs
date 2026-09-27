@@ -3,6 +3,7 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
+use windows::Win32::Foundation::HWND;
 
 use crate::configuracoes::Settings;
 use crate::sistema;
@@ -76,14 +77,57 @@ fn vestir_icone(janela: &WebviewWindow) {
     }
 }
 
+pub fn hwnd_de(janela: &WebviewWindow) -> Option<HWND> {
+    let bruto = janela.hwnd().ok()?;
+    Some(HWND(bruto.0 as *mut core::ffi::c_void))
+}
+
+pub fn hwnd_de_valor(valor: isize) -> HWND {
+    HWND(valor as *mut core::ffi::c_void)
+}
+
+pub fn vestir_estilos(janela: &WebviewWindow) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos, GWL_EXSTYLE, HWND_TOPMOST,
+        SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOOWNERZORDER, SWP_NOSIZE,
+        WS_EX_APPWINDOW, WS_EX_TOOLWINDOW,
+    };
+
+    let Some(alvo) = hwnd_de(janela) else { return };
+
+    unsafe {
+        let antes = GetWindowLongPtrW(alvo, GWL_EXSTYLE);
+        let depois = (antes | WS_EX_TOOLWINDOW.0 as isize) & !(WS_EX_APPWINDOW.0 as isize);
+        if depois != antes {
+            SetWindowLongPtrW(alvo, GWL_EXSTYLE, depois);
+        }
+        let _ = SetWindowPos(
+            alvo,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED,
+        );
+    }
+}
+
+pub fn mostrar_por_cima(janela: &WebviewWindow) {
+    let _ = janela.show();
+    vestir_estilos(janela);
+}
+
+pub fn mostrar_por_cima_da_thread_da_interface(app: &AppHandle, janela: WebviewWindow) {
+    let _ = app.run_on_main_thread(move || mostrar_por_cima(&janela));
+}
+
 fn arredondar_cantos(janela: &WebviewWindow) {
-    use windows::Win32::Foundation::HWND;
     use windows::Win32::Graphics::Dwm::{
         DwmSetWindowAttribute, DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND,
     };
 
-    let Ok(bruto) = janela.hwnd() else { return };
-    let alvo = HWND(bruto.0 as *mut core::ffi::c_void);
+    let Some(alvo) = hwnd_de(janela) else { return };
     let preferencia = DWMWCP_ROUND;
 
     unsafe {
@@ -134,10 +178,12 @@ fn criar_sobreposicao(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     .skip_taskbar(true)
     .resizable(false)
     .focused(false)
+    .focusable(false)
     .visible(false)
     .build()?;
 
     let _ = janela.set_ignore_cursor_events(true);
+    vestir_estilos(&janela);
     Ok(janela)
 }
 
@@ -153,10 +199,12 @@ fn criar_aviso(app: &AppHandle) -> tauri::Result<WebviewWindow> {
             .skip_taskbar(true)
             .resizable(false)
             .focused(false)
+            .focusable(false)
             .visible(false)
             .build()?;
 
     let _ = janela.set_ignore_cursor_events(true);
+    vestir_estilos(&janela);
     Ok(janela)
 }
 
