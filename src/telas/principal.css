@@ -63,12 +63,25 @@ body[data-janela="principal"] .corpo {
 }
 
 body[data-janela="principal"] .corpo > .trilho {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
   padding: var(--space-3) var(--space-2);
   background: var(--fundo-trilho);
   border-right: 1px solid var(--stroke);
+}
+
+body[data-janela="principal"] .trilho > .indicador {
+  position: absolute;
+  top: 0;
+  left: var(--space-2);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--realce);
+  transition: transform var(--motion-base) var(--curva);
+  pointer-events: none;
 }
 
 body[data-janela="principal"] .aba {
@@ -86,21 +99,38 @@ body[data-janela="principal"] .aba {
 }
 
 body[data-janela="principal"] .aba:hover {
-  background: var(--surface-alt);
+  background: color-mix(in srgb, var(--text-primary) 6%, transparent);
   color: var(--text-primary);
+}
+
+body[data-janela="principal"] .aba:active {
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
 }
 
 body[data-janela="principal"] .aba.ativa {
-  background: var(--surface-alt);
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
   color: var(--text-primary);
   font-weight: 500;
-  box-shadow: inset 2px 0 0 var(--realce);
 }
 
 body[data-janela="principal"] .pagina {
+  display: grid;
   min-width: 0;
+  min-height: 0;
+}
+
+body[data-janela="principal"] .pagina > .folha {
+  min-height: 0;
   overflow-y: auto;
   padding: var(--space-5) var(--space-5) var(--space-6);
+  animation: kontro-entrar var(--motion-base) var(--curva);
+}
+
+@keyframes kontro-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 body[data-janela="principal"] .titulo-da-pagina {
@@ -133,6 +163,7 @@ body[data-janela="principal"] .cartao.estado {
   align-items: center;
   gap: var(--space-5);
   overflow: hidden;
+  transition: --cor-do-estado var(--motion-base) var(--curva);
 }
 
 body[data-janela="principal"] .cartao.estado::before {
@@ -144,7 +175,6 @@ body[data-janela="principal"] .cartao.estado::before {
     color-mix(in srgb, var(--cor-do-estado) 12%, transparent),
     transparent 70%
   );
-  transition: background var(--motion-base) var(--curva);
   pointer-events: none;
 }
 

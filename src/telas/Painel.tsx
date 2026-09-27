@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -14,6 +15,9 @@ export function Painel() {
   const estado = useEstado();
   const limiares = useLimiares();
   const [serie, setSerie] = useState<Amostra[]>([]);
+  const [aberto, setAberto] = useState(false);
+  const [aberturas, setAberturas] = useState(0);
+  const [saindo, setSaindo] = useState(false);
   const painel = useRef<HTMLDivElement>(null);
 
   const chegou = estado !== null;
@@ -21,61 +25,77 @@ export function Painel() {
     if (chegou) void invoke("janela_pronta", { rotulo: "painel" });
   }, [chegou]);
 
+  useEffect(() => {
+    const parar = listen("kontro://painel-abriu", () => {
+      setAberto(true);
+      setSaindo(false);
+      setAberturas((n) => n + 1);
+    });
+    return () => {
+      void parar.then((f) => f());
+    };
+  }, []);
+
   useAoMudarOHistorico(() => {
+    if (!aberto) return;
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
-  }, [estado?.chave]);
+  }, [estado?.chave, aberto]);
+
+  const fechar = useCallback(() => {
+    setAberto(false);
+    setSaindo(true);
+  }, []);
 
   useEffect(() => {
     const janela = getCurrentWindow();
-    const fechar = () => void janela.hide();
-
     const parar = janela.onFocusChanged(({ payload: temFoco }) => {
       if (!temFoco) fechar();
     });
 
-    const aoPerderJanela = () => fechar();
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key === "Escape") fechar();
     };
-    window.addEventListener("blur", aoPerderJanela);
+    window.addEventListener("blur", fechar);
     window.addEventListener("keydown", aoTeclar);
 
     return () => {
       void parar.then((f) => f());
-      window.removeEventListener("blur", aoPerderJanela);
+      window.removeEventListener("blur", fechar);
       window.removeEventListener("keydown", aoTeclar);
     };
-  }, []);
+  }, [fechar]);
 
   useEffect(() => {
     const alvo = painel.current;
-    if (!alvo) return;
+    if (!alvo || !aberto) return;
 
-    const medir = () => {
+    const observador = new ResizeObserver(() => {
       const estilo = getComputedStyle(alvo);
       const folga =
         parseFloat(estilo.marginTop || "0") + parseFloat(estilo.marginBottom || "0");
       void invoke("ajustar_altura_do_painel", {
         altura: Math.ceil(alvo.offsetHeight + folga),
       });
-    };
-
-    medir();
-    const observador = new ResizeObserver(medir);
+    });
     observador.observe(alvo);
     return () => observador.disconnect();
-  }, [estado, serie.length]);
+  }, [aberto, aberturas, chegou]);
 
   if (!estado) return null;
 
   return (
-    <div className="painel" ref={painel}>
-      <button
-        className="fechar"
-        aria-label="Fechar"
-        title="Fechar (Esc)"
-        onClick={() => void getCurrentWindow().hide()}
-      >
+    <div
+      key={aberturas}
+      className={saindo ? "painel saindo" : "painel"}
+      ref={painel}
+      onAnimationEnd={(e) => {
+        if (saindo && e.target === e.currentTarget) {
+          setSaindo(false);
+          void getCurrentWindow().hide();
+        }
+      }}
+    >
+      <button className="fechar" aria-label="Fechar" title="Fechar (Esc)" onClick={fechar}>
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
           <path
             d="M1 1 L9 9 M9 1 L1 9"
