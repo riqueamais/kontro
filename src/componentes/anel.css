@@ -21,10 +21,9 @@
 }
 
 .anel .carga {
-  color: var(--cor-do-anel);
-  filter: drop-shadow(
-    0 0 calc(var(--anel-tamanho) * 0.125) color-mix(in srgb, currentColor 35%, transparent)
-  );
+  color: color-mix(in srgb, var(--cor-do-anel) 35%, transparent);
+  filter: drop-shadow(0 0 var(--raio-do-halo) currentColor);
+  transition: filter var(--motion-base) var(--curva);
 }
 
 .anel.apagada .carga {
