@@ -65,16 +65,26 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
 
   const cheio = !girando && suave >= 99.9;
   const apagada = cor === "var(--gray)";
-  const tinta = apagada ? cor : `url(#${luz})`;
+  const tinta = `url(#${luz})`;
   const mostrarMarcas = marcas && !girando && valor !== null;
 
   return (
-    <div className="anel" style={{ width: tamanho, height: tamanho }}>
+    <div
+      className={apagada ? "anel apagada" : "anel"}
+      style={
+        {
+          width: tamanho,
+          height: tamanho,
+          "--cor-do-anel": cor,
+          "--anel-tamanho": `${tamanho}px`,
+        } as React.CSSProperties
+      }
+    >
       <svg width={tamanho} height={tamanho} viewBox={`0 0 ${CAIXA} ${CAIXA}`}>
         <defs>
           <linearGradient id={luz} x1="0.12" y1="0.08" x2="0.86" y2="0.94">
-            <stop offset="0%" stopColor={`color-mix(in srgb, ${cor} 84%, #ffffff)`} />
-            <stop offset="100%" stopColor={cor} />
+            <stop offset="0%" />
+            <stop offset="100%" />
           </linearGradient>
         </defs>
 
@@ -87,7 +97,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
           strokeWidth={espessura}
         />
 
-        <g className={apagada ? "carga apagada" : "carga"} style={{ color: cor }}>
+        <g className="carga">
           {girando || cheio ? (
             <circle
               cx={CENTRO}

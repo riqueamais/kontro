@@ -1,16 +1,17 @@
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 
 import { Amostra, useLimiares } from "../estado";
 import { hora, momento } from "../formato";
 import "./historico.css";
 
 const DIA = 86_400_000;
+const MINUTO = 60_000;
 const SALTO_SEM_VIA_GRAVADA = 30 * 60_000;
 const SALTO_DE_SEGURANCA = 6 * 60 * 60_000;
 
-const LARGURA = 520;
-const ALTO = { topo: 10, direita: 10, base: 20, esquerda: 32, altura: 150 };
-const BAIXO = { topo: 6, direita: 4, base: 6, esquerda: 4, altura: 70 };
+const LARGURA_ATE_MEDIR = 520;
+const ALTO = { topo: 10, direita: 10, base: 22, esquerda: 36, altura: 150 };
+const BAIXO = { topo: 6, direita: 4, base: 6, esquerda: 4, altura: 64 };
 
 const FAIXAS = [
   { dias: 7, rotulo: "7 dias" },
@@ -32,6 +33,31 @@ interface Props {
   aoSairDaJanela?: () => void;
 }
 
+function useMinutoAtual(): number {
+  const [agora, setAgora] = useState(() => Math.floor(Date.now() / MINUTO) * MINUTO);
+  useEffect(() => {
+    const relogio = setInterval(() => setAgora(Math.floor(Date.now() / MINUTO) * MINUTO), MINUTO);
+    return () => clearInterval(relogio);
+  }, []);
+  return agora;
+}
+
+function useLarguraMedida(elemento: HTMLElement | null): number {
+  const [largura, setLargura] = useState(LARGURA_ATE_MEDIR);
+  useLayoutEffect(() => {
+    if (!elemento) return;
+    const medir = () => {
+      const agora = Math.round(elemento.getBoundingClientRect().width);
+      if (agora > 0) setLargura(agora);
+    };
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(elemento);
+    return () => observador.disconnect();
+  }, [elemento]);
+  return largura;
+}
+
 export function Historico({
   serie,
   trocadaEm,
@@ -42,14 +68,15 @@ export function Historico({
 }: Props) {
   const [dias, setDias] = useState(7);
   const [sob, setSob] = useState<Amostra | null>(null);
-  const area = useRef<SVGSVGElement>(null);
+  const [raiz, setRaiz] = useState<HTMLDivElement | null>(null);
+  const LARGURA = useLarguraMedida(raiz);
   const limiares = useLimiares();
   const tinta = useId().replace(/:/g, "");
+  const agora = useMinutoAtual();
 
   const M = compacto ? BAIXO : ALTO;
   const ALTURA = M.altura;
   const folga = janela ? Math.max((janela.fim - janela.inicio) * 0.06, 60_000) : 0;
-  const agora = Date.now();
   const zeraEm =
     !janela && autonomiaMinutos && autonomiaMinutos > 0
       ? agora + autonomiaMinutos * 60_000
@@ -60,14 +87,6 @@ export function Historico({
   const trechos = useMemo(() => segmentar(serie, inicio, fim), [serie, inicio, fim]);
   const amostras = useMemo(() => trechos.flat(), [trechos]);
 
-  if (amostras.length < 2) {
-    return (
-      <div className={`historico vazio${compacto ? " compacto" : ""}`}>
-        sem histórico nesta janela
-      </div>
-    );
-  }
-
   const largura = LARGURA - M.esquerda - M.direita;
   const altura = ALTURA - M.topo - M.base;
   const x = (t: number) => M.esquerda + ((t - inicio) / (fim - inicio)) * largura;
@@ -76,53 +95,9 @@ export function Historico({
   const ultima = amostras[amostras.length - 1];
   const projecao = zeraEm && ultima && zeraEm > ultima.t ? { de: ultima, zeraEm } : null;
 
-  const aoMover = (e: React.MouseEvent<SVGSVGElement>) => {
-    const svg = area.current;
-    if (!svg) return;
-    const caixa = svg.getBoundingClientRect();
-    const t = inicio + ((e.clientX - caixa.left) / caixa.width) * (fim - inicio);
-    let perto = amostras[0];
-    for (const a of amostras) {
-      if (Math.abs(a.t - t) < Math.abs(perto.t - t)) perto = a;
-    }
-    setSob(perto);
-  };
-
-  return (
-    <div className={`historico${compacto ? " compacto" : ""}`}>
-      {!compacto && (
-        <div className="historico-topo">
-          <span className={`historico-titulo${janela ? " livre" : ""}`}>
-            {janela ? janela.titulo : "Carga"}
-          </span>
-          <div className="faixas">
-            {janela ? (
-              <button className="faixa ativa" onClick={aoSairDaJanela}>
-                voltar
-              </button>
-            ) : (
-              FAIXAS.map((f) => (
-                <button
-                  key={f.dias}
-                  className={`faixa${dias === f.dias ? " ativa" : ""}`}
-                  onClick={() => setDias(f.dias)}
-                >
-                  {f.rotulo}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      <svg
-        ref={area}
-        viewBox={`0 0 ${LARGURA} ${ALTURA}`}
-        preserveAspectRatio="none"
-        className="grafico"
-        onMouseMove={aoMover}
-        onMouseLeave={() => setSob(null)}
-      >
+  const estatico = useMemo(
+    () => (
+      <>
         <defs>
           <linearGradient id={tinta} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--accent-green)" stopOpacity="0.28" />
@@ -151,7 +126,7 @@ export function Historico({
           <g key={p}>
             <line x1={M.esquerda} x2={LARGURA - M.direita} y1={y(p)} y2={y(p)} className="grade" />
             {!compacto && (
-              <text x={M.esquerda - 6} y={y(p) + 3} className="rotulo-y">
+              <text x={M.esquerda - 6} y={y(p) + 4} className="rotulo-y">
                 {p}
               </text>
             )}
@@ -170,10 +145,10 @@ export function Historico({
             <line x1={x(trocadaEm)} x2={x(trocadaEm)} y1={M.topo} y2={y(0)} className="troca" />
             {!compacto && (
               <text
-                x={x(trocadaEm) + (x(trocadaEm) > LARGURA - 90 ? -4 : 4)}
-                y={M.topo + 9}
+                x={x(trocadaEm) + (x(trocadaEm) > LARGURA - 110 ? -4 : 4)}
+                y={M.topo + 11}
                 className="rotulo-troca"
-                textAnchor={x(trocadaEm) > LARGURA - 90 ? "end" : "start"}
+                textAnchor={x(trocadaEm) > LARGURA - 110 ? "end" : "start"}
               >
                 bateria nova
               </text>
@@ -181,18 +156,21 @@ export function Historico({
           </g>
         )}
 
-        {trechos.map((trecho, i) => (
-          <g key={i}>
-            {trecho.length > 1 && (
-              <path
-                d={`${caminho(trecho, x, y)} L${x(trecho[trecho.length - 1].t)} ${y(0)} L${x(trecho[0].t)} ${y(0)} Z`}
-                className="area"
-                fill={`url(#${tinta})`}
-              />
-            )}
-            <path d={caminho(trecho, x, y)} className="linha" />
-          </g>
-        ))}
+        {trechos.map((trecho, i) => {
+          const linha = caminho(trecho, x, y);
+          return (
+            <g key={i}>
+              {trecho.length > 1 && (
+                <path
+                  d={`${linha} L${x(trecho[trecho.length - 1].t)} ${y(0)} L${x(trecho[0].t)} ${y(0)} Z`}
+                  className="area"
+                  fill={`url(#${tinta})`}
+                />
+              )}
+              <path d={linha} className="linha" />
+            </g>
+          );
+        })}
 
         {projecao && (
           <g className="projecao">
@@ -212,6 +190,75 @@ export function Historico({
             )}
           </g>
         )}
+      </>
+    ),
+    [
+      trechos,
+      inicio,
+      fim,
+      LARGURA,
+      compacto,
+      limiares.aviso,
+      limiares.critico,
+      trocadaEm,
+      janela,
+      projecao?.zeraEm,
+      tinta,
+    ],
+  );
+
+  if (amostras.length < 2) {
+    return (
+      <div ref={setRaiz} className={`historico vazio${compacto ? " compacto" : ""}`}>
+        sem histórico nesta janela
+      </div>
+    );
+  }
+
+  const aoMover = (e: React.MouseEvent<SVGSVGElement>) => {
+    const caixa = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - caixa.left;
+    const t = inicio + ((px - M.esquerda) / largura) * (fim - inicio);
+    const perto = maisPerto(amostras, t);
+    setSob((atual) => (atual === perto ? atual : perto));
+  };
+
+  return (
+    <div ref={setRaiz} className={`historico${compacto ? " compacto" : ""}`}>
+      {!compacto && (
+        <div className="historico-topo">
+          <span className={`historico-titulo${janela ? " livre" : ""}`}>
+            {janela ? janela.titulo : "Carga"}
+          </span>
+          <div className="faixas">
+            {janela ? (
+              <button className="faixa ativa" onClick={aoSairDaJanela}>
+                voltar
+              </button>
+            ) : (
+              FAIXAS.map((f) => (
+                <button
+                  key={f.dias}
+                  className={`faixa${dias === f.dias ? " ativa" : ""}`}
+                  onClick={() => setDias(f.dias)}
+                >
+                  {f.rotulo}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      <svg
+        width={LARGURA}
+        height={ALTURA}
+        viewBox={`0 0 ${LARGURA} ${ALTURA}`}
+        className="grafico"
+        onMouseMove={aoMover}
+        onMouseLeave={() => setSob(null)}
+      >
+        {estatico}
 
         {sob && (
           <g>
@@ -233,6 +280,19 @@ export function Historico({
       </div>
     </div>
   );
+}
+
+function maisPerto(amostras: Amostra[], t: number): Amostra {
+  let baixo = 0;
+  let alto = amostras.length - 1;
+  while (baixo < alto) {
+    const meio = (baixo + alto) >> 1;
+    if (amostras[meio].t < t) baixo = meio + 1;
+    else alto = meio;
+  }
+  const depois = amostras[baixo];
+  const antes = amostras[Math.max(0, baixo - 1)];
+  return Math.abs(antes.t - t) <= Math.abs(depois.t - t) ? antes : depois;
 }
 
 function segmentar(serie: Amostra[], inicio: number, fim: number): Amostra[][] {

@@ -1,5 +1,6 @@
 .anel {
   position: relative;
+  transition: --cor-do-anel var(--motion-base) var(--curva);
 }
 
 .anel > svg {
@@ -7,12 +8,26 @@
   overflow: visible;
 }
 
-.anel .carga {
-  filter: drop-shadow(0 0 18px currentColor);
-  transition: filter var(--motion-base) var(--curva);
+.anel stop:first-child {
+  stop-color: color-mix(in srgb, var(--cor-do-anel) 84%, #ffffff);
 }
 
-.anel .carga.apagada {
+.anel stop:last-child {
+  stop-color: var(--cor-do-anel);
+}
+
+.anel.apagada stop:first-child {
+  stop-color: var(--cor-do-anel);
+}
+
+.anel .carga {
+  color: var(--cor-do-anel);
+  filter: drop-shadow(
+    0 0 calc(var(--anel-tamanho) * 0.125) color-mix(in srgb, currentColor 35%, transparent)
+  );
+}
+
+.anel.apagada .carga {
   filter: none;
 }
 

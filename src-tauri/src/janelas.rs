@@ -365,6 +365,28 @@ pub fn posicionar_aviso(app: &AppHandle) {
     let _ = janela.set_position(LogicalPosition::new(x, y));
 }
 
+pub fn assentar_painel(janela: &WebviewWindow, altura: f64) {
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+
+    let Some(monitor) = janela.current_monitor().ok().flatten() else { return };
+    let Some(alvo) = hwnd_de(janela) else { return };
+
+    let escala = monitor.scale_factor();
+    let area = monitor.work_area();
+    let largura = (LARGURA_DO_PAINEL * escala).round() as i32;
+    let alto = (altura * escala).round() as i32;
+    let x = area.position.x + area.size.width as i32
+        - largura
+        - (MARGEM_LATERAL_DO_PAINEL * escala).round() as i32;
+    let y = area.position.y + area.size.height as i32
+        - alto
+        - (MARGEM_INFERIOR_DO_PAINEL * escala).round() as i32;
+
+    unsafe {
+        let _ = SetWindowPos(alvo, None, x, y, largura, alto, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+}
+
 pub fn posicionar_painel(app: &AppHandle) {
     let Some(janela) = app.get_webview_window(PAINEL) else { return };
 
