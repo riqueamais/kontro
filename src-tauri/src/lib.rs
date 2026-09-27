@@ -17,6 +17,7 @@ mod jogo;
 mod modelo;
 mod monitor;
 mod orquestra;
+mod primeiro_plano;
 mod registro;
 mod sistema;
 mod tela;
@@ -24,7 +25,7 @@ mod tempo;
 
 use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -49,9 +50,11 @@ pub struct Compartilhado {
     jogos: Mutex<Vec<historico::JogoSalvo>>,
     icones: Mutex<HashMap<String, Option<String>>>,
     pilula: OnceLock<isize>,
+    coberta_por: Mutex<Option<String>>,
 }
 
-enum Pedido {
+pub(crate) enum Pedido {
+    PrimeiroPlanoMudou,
     LerAgora,
     Renomear { chave: String, nome: String },
     Esquecer { chave: String },
@@ -59,6 +62,8 @@ enum Pedido {
 }
 
 const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
+
+const ESPERA_APOS_TROCAR_O_FOCO: Duration = Duration::from_millis(150);
 
 pub fn executar() {
     let argumentos: Vec<String> = std::env::args().collect();
@@ -122,10 +127,12 @@ pub fn executar() {
         jogos: Mutex::new(Vec::new()),
         icones: Mutex::new(HashMap::new()),
         pilula: OnceLock::new(),
+        coberta_por: Mutex::new(None),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
     let ao_encerrar = envio.clone();
+    let envio_do_ciclo = envio.clone();
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -166,6 +173,7 @@ pub fn executar() {
             soltar_a_pilula,
             pilula_solta,
             atalhos_recusados,
+            pilula_coberta,
             quantidade_de_telas,
             salvar_diagnostico,
             ajustar_altura_do_painel,
@@ -212,6 +220,7 @@ pub fn executar() {
                 }
             }
 
+            primeiro_plano::vigiar(envio_do_ciclo.clone());
             iniciar_ciclo(handle, compartilhado.clone(), recebimento);
             Ok(())
         })
@@ -312,20 +321,57 @@ fn iniciar_ciclo(
                 orquestrador.reavaliar(&app, &estado, &cfg, mao, solta);
             }
 
-            match pedidos.recv_timeout(INTERVALO_DO_CICLO) {
-                Ok(Pedido::Encerrar(feito)) => {
-                    monitor.salvar();
-                    let _ = feito.send(());
-                    break;
+            let prazo = Instant::now() + INTERVALO_DO_CICLO;
+            let mut conferir_topo_em: Option<Instant> = None;
+            loop {
+                let ate = conferir_topo_em.map_or(prazo, |c| c.min(prazo));
+                match pedidos.recv_timeout(ate.saturating_duration_since(Instant::now())) {
+                    Ok(Pedido::PrimeiroPlanoMudou) => {
+                        orquestrador.primeiro_plano_mudou(&app);
+                        conferir_topo_em
+                            .get_or_insert_with(|| Instant::now() + ESPERA_APOS_TROCAR_O_FOCO);
+                    }
+                    Ok(Pedido::Encerrar(feito)) => {
+                        monitor.salvar();
+                        let _ = feito.send(());
+                        return;
+                    }
+                    Ok(Pedido::Renomear { chave, nome }) => {
+                        monitor.renomear(&chave, &nome);
+                        break;
+                    }
+                    Ok(Pedido::Esquecer { chave }) => {
+                        monitor.esquecer(&chave);
+                        break;
+                    }
+                    Ok(Pedido::LerAgora) => {
+                        monitor.ler_agora();
+                        break;
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => match conferir_topo_em {
+                        Some(quando) if Instant::now() >= quando => {
+                            conferir_topo_em = None;
+                            orquestrador.reafirmar_topo(&app);
+                        }
+                        _ => break,
+                    },
+                    Err(mpsc::RecvTimeoutError::Disconnected) => return,
                 }
-                Ok(Pedido::Renomear { chave, nome }) => monitor.renomear(&chave, &nome),
-                Ok(Pedido::Esquecer { chave }) => monitor.esquecer(&chave),
-                Ok(Pedido::LerAgora) => monitor.ler_agora(),
-                Err(mpsc::RecvTimeoutError::Timeout) => {}
-                Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
         }
     });
+}
+
+pub(crate) fn marcar_coberta(app: &AppHandle, por: Option<String>) {
+    let Some(compartilhado) = app.try_state::<Arc<Compartilhado>>() else { return };
+    {
+        let mut atual = compartilhado.coberta_por.lock().unwrap();
+        if *atual == por {
+            return;
+        }
+        *atual = por.clone();
+    }
+    let _ = app.emit("kontro://coberta", por);
 }
 
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
@@ -562,6 +608,11 @@ fn soltar_a_pilula(app: AppHandle, solta: bool) {
 #[tauri::command]
 fn pilula_solta(compartilhado: tauri::State<Arc<Compartilhado>>) -> bool {
     *compartilhado.sobreposicao_solta.lock().unwrap()
+}
+
+#[tauri::command]
+fn pilula_coberta(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<String> {
+    compartilhado.coberta_por.lock().unwrap().clone()
 }
 
 #[tauri::command]

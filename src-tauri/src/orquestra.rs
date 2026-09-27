@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -21,12 +23,24 @@ const ESPERA_DO_AVISO_MS: i64 = 10_000;
 
 const CARENCIA_DA_ABERTURA_MS: i64 = 6_000;
 
+const INTERVALO_ENTRE_REAFIRMACOES: Duration = Duration::from_secs(1);
+
+const REAFIRMACOES_ANTES_DE_DESISTIR: u8 = 3;
+
+#[derive(Default)]
+struct Topo {
+    tentativas: u8,
+    ultima: Option<Instant>,
+    desistiu: bool,
+}
+
 pub struct Orquestrador {
     aberto_em: i64,
     anterior: Option<(String, Via)>,
     conexao_a_avisar: Option<i64>,
     avisados: HashMap<String, Vec<i32>>,
     ultimo_percentual: HashMap<String, i32>,
+    topo: Topo,
 }
 
 impl Orquestrador {
@@ -37,6 +51,57 @@ impl Orquestrador {
             conexao_a_avisar: None,
             avisados: HashMap::new(),
             ultimo_percentual: HashMap::new(),
+            topo: Topo::default(),
+        }
+    }
+
+    pub fn primeiro_plano_mudou(&mut self, app: &AppHandle) {
+        self.topo = Topo::default();
+        crate::marcar_coberta(app, None);
+    }
+
+    pub fn reafirmar_topo(&mut self, app: &AppHandle) {
+        use windows::Win32::UI::WindowsAndMessaging::IsWindowVisible;
+
+        let Some(compartilhado) = app.try_state::<Arc<crate::Compartilhado>>() else { return };
+        let Some(valor) = compartilhado.pilula.get().copied() else { return };
+        let pilula = janelas::hwnd_de_valor(valor);
+
+        if !unsafe { IsWindowVisible(pilula).as_bool() } {
+            if self.topo.tentativas > 0 || self.topo.desistiu {
+                self.topo = Topo::default();
+            }
+            crate::marcar_coberta(app, None);
+            return;
+        }
+
+        let Some(ocluidor) = tela::alguem_por_cima(pilula) else {
+            self.topo.tentativas = 0;
+            self.topo.desistiu = false;
+            crate::marcar_coberta(app, None);
+            return;
+        };
+
+        if self.topo.desistiu {
+            return;
+        }
+        if self.topo.ultima.is_some_and(|u| u.elapsed() < INTERVALO_ENTRE_REAFIRMACOES) {
+            return;
+        }
+
+        if self.topo.tentativas >= REAFIRMACOES_ANTES_DE_DESISTIR {
+            self.topo.desistiu = true;
+            let nome = crate::jogo::executavel_de(ocluidor)
+                .map(|c| crate::jogo::batizar(&c))
+                .unwrap_or_else(|| "Outro programa".into());
+            crate::marcar_coberta(app, Some(nome));
+            return;
+        }
+
+        self.topo.tentativas += 1;
+        self.topo.ultima = Some(Instant::now());
+        if let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) {
+            let _ = app.run_on_main_thread(move || janelas::vestir_estilos(&janela));
         }
     }
 
@@ -49,6 +114,7 @@ impl Orquestrador {
         solta: bool,
     ) {
         self.sobreposicao(app, estado, cfg, mao, solta);
+        self.reafirmar_topo(app);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
         self.limiares(app, estado, cfg);
