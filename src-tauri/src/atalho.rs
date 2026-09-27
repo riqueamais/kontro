@@ -96,7 +96,7 @@ fn alternar(app: &AppHandle) {
     *compartilhado.sobreposicao_a_mao.lock().unwrap() = Some(alvo);
 
     if alvo {
-        let _ = janela.show();
+        janelas::mostrar_por_cima(&janela);
     } else {
         let _ = janela.hide();
     }

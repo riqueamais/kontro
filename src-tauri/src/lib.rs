@@ -23,7 +23,7 @@ mod tela;
 mod tempo;
 
 use std::collections::HashMap;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tauri::menu::{Menu, MenuItem};
@@ -48,6 +48,7 @@ pub struct Compartilhado {
     novidade: Mutex<Option<atualizacao::Novidade>>,
     jogos: Mutex<Vec<historico::JogoSalvo>>,
     icones: Mutex<HashMap<String, Option<String>>>,
+    pilula: OnceLock<isize>,
 }
 
 enum Pedido {
@@ -120,6 +121,7 @@ pub fn executar() {
         novidade: Mutex::new(None),
         jogos: Mutex::new(Vec::new()),
         icones: Mutex::new(HashMap::new()),
+        pilula: OnceLock::new(),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
@@ -172,6 +174,11 @@ pub fn executar() {
         .setup(move |app| {
             let handle = app.handle().clone();
             janelas::criar_todas(&handle)?;
+            if let Some(pilula) =
+                handle.get_webview_window(janelas::SOBREPOSICAO).and_then(|j| janelas::hwnd_de(&j))
+            {
+                let _ = compartilhado.pilula.set(pilula.0 as isize);
+            }
             janelas::vestir_material(&handle, compartilhado.config.lock().unwrap().tema_claro());
             montar_bandeja(&handle)?;
 
@@ -523,12 +530,13 @@ pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
     }
 
     let _ = janela.set_ignore_cursor_events(!solta);
+    janelas::vestir_estilos(&janela);
 
     let mut cfg = compartilhado.config.lock().unwrap().clone();
 
     if solta {
         janelas::posicionar_sobreposicao(app, &cfg);
-        let _ = janela.show();
+        janelas::mostrar_por_cima(&janela);
     } else {
         if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
             cfg.overlay_x = pouso.x;
@@ -751,11 +759,17 @@ fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result
     let estados = compartilhado.todos.lock().unwrap().clone();
     let principal = compartilhado.estado.lock().unwrap().chave.clone();
     let sessoes = compartilhado.sessoes.lock().unwrap().clone();
+    let pilula = compartilhado.pilula.get().copied();
 
     caminhos::garantir_dir();
     diagnostico::escrever(
         &destino.to_string_lossy(),
-        Some(diagnostico::AoVivo { principal: &principal, estados: &estados, sessoes: &sessoes }),
+        Some(diagnostico::AoVivo {
+            principal: &principal,
+            estados: &estados,
+            sessoes: &sessoes,
+            pilula,
+        }),
     )
     .map_err(|e| e.to_string())?;
 

@@ -9,7 +9,11 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
-**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129, nenhuma entregue ainda.** A Parte 1 está toda na 2.13; o que ficou de pé dela:
+**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 e
+T24. Da T23 falta a parte que só um jogo responde — o `QUNS` num DX12 com otimizações, num
+DX11 com "Desativar otimizações de tela inteira" marcado e num sem borda, tirados do
+diagnóstico e anotados no `TAREFAS.md`; é esse dado que decide a T26. A Parte 1 está toda na
+2.13; o que ficou de pé dela:
 
 **As quinze tarefas foram entregues na 2.13.0.** O que fica de pé para conferir com uso
 real, porque depende de dado que ainda não existe:
