@@ -99,8 +99,9 @@ export interface Limiares {
 export const LIMIARES_PADRAO: Limiares = { critico: 10, aviso: 20 };
 
 export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO): string {
-  if (estado.girando) return "var(--accent-teal)";
-  if (estado.via === "Desligado" || estado.preenchimento === null) return "var(--gray)";
+  if (estado.girando || estado.via === "Desligado" || estado.preenchimento === null) {
+    return "var(--gray)";
+  }
   if (estado.preenchimento < limiares.critico) return "var(--red)";
   if (estado.preenchimento < limiares.aviso) return "var(--amber)";
   return "var(--accent-green)";
@@ -108,7 +109,8 @@ export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO):
 
 export function useTema(): string {
   const cfg = useConfig();
-  const [doSistema, setDoSistema] = useState("noite");
+  const deNascenca = document.body.dataset.tema ?? "noite";
+  const [doSistema, setDoSistema] = useState(deNascenca === "dia" ? "dia" : "noite");
 
   useEffect(() => {
     let vivo = true;
@@ -128,8 +130,8 @@ export function useTema(): string {
     };
   }, []);
 
-  const escolha = cfg?.Theme ?? "Sistema";
-  return escolha === "Sistema" ? doSistema : escolha.toLowerCase();
+  if (!cfg) return deNascenca;
+  return cfg.Theme === "Sistema" ? doSistema : cfg.Theme.toLowerCase();
 }
 
 export function useLimiares(): Limiares {
@@ -159,6 +161,16 @@ export function usePilulaSolta(): boolean {
   }, []);
 
   return solta;
+}
+
+export function useAoMudarOHistorico(buscar: () => void, dependencias: unknown[]) {
+  useEffect(() => {
+    buscar();
+    const parar = listen("kontro://historico", () => buscar());
+    return () => {
+      parar.then((f) => f());
+    };
+  }, dependencias);
 }
 
 export function usePilulaCoberta(): string | null {

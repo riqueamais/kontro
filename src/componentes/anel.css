@@ -12,13 +12,12 @@
   transition: filter var(--motion-base) var(--curva);
 }
 
-.anel .marcas {
-  opacity: 0.85;
+.anel .carga.apagada {
+  filter: none;
 }
 
-.anel .giro {
-  transform-origin: 50% 50%;
-  animation: kontro-girar 1.7s linear infinite;
+.anel .marcas {
+  opacity: 0.85;
 }
 
 .anel .miolo {
@@ -26,10 +25,4 @@
   inset: 0;
   display: grid;
   place-items: center;
-}
-
-@keyframes kontro-girar {
-  to {
-    transform: rotate(360deg);
-  }
 }

@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
@@ -63,6 +64,19 @@ export function Principal() {
   useEffect(() => {
     if (passos === null && cfg) setPassos(!cfg.FirstRunDone);
   }, [cfg, passos]);
+
+  const decidido = passos !== null;
+  useEffect(() => {
+    if (decidido) void invoke("janela_pronta", { rotulo: "principal" });
+  }, [decidido]);
+
+  if (passos === null) {
+    return (
+      <div className="app">
+        <BarraDeTitulo />
+      </div>
+    );
+  }
 
   if (passos) {
     return (

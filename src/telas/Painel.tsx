@@ -6,7 +6,7 @@ import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
-import { Amostra, corDoAnel, useEstado, useLimiares } from "../estado";
+import { Amostra, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
 import { detalhe, quandoLeu } from "../formato";
 import "./painel.css";
 
@@ -16,9 +16,14 @@ export function Painel() {
   const [serie, setSerie] = useState<Amostra[]>([]);
   const painel = useRef<HTMLDivElement>(null);
 
+  const chegou = estado !== null;
   useEffect(() => {
+    if (chegou) void invoke("janela_pronta", { rotulo: "painel" });
+  }, [chegou]);
+
+  useAoMudarOHistorico(() => {
     invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
-  }, [estado?.chave, estado?.percentual]);
+  }, [estado?.chave]);
 
   useEffect(() => {
     const janela = getCurrentWindow();

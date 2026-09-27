@@ -150,7 +150,7 @@ function folha(passo: number, cfg: Config, solta: boolean) {
         <>
           <div className="palco">
             <div className="previa">
-              <Anel valor={null} cor="var(--accent-teal)" espessura={60} tamanho={34} girando>
+              <Anel valor={null} cor="var(--gray)" espessura={60} tamanho={34} girando>
                 <Glifo tamanho={17} cor="var(--text-primary)" />
               </Anel>
               <div className="dizeres">

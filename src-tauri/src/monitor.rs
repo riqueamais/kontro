@@ -83,7 +83,7 @@ pub struct Monitor {
 
     ultima_gravacao: i64,
 
-    ultimo: Option<EstadoDoControle>,
+    ultimos: Vec<EstadoDoControle>,
 }
 
 impl Monitor {
@@ -128,7 +128,7 @@ impl Monitor {
             conectado_desde: None,
             tentativa_de_vinculo: 0,
             ultima_gravacao: agora,
-            ultimo: None,
+            ultimos: Vec::new(),
         }
     }
 
@@ -196,15 +196,10 @@ impl Monitor {
             escolher_principal(&estados).cloned().unwrap_or_else(|| self.montar_vazio());
         let panorama = Panorama { principal, todos: estados };
 
-        let mudou = self
-            .ultimo
-            .as_ref()
-            .map(|u| {
-                !u.igual_a(&panorama.principal) || u.quantos_conhecidos != panorama.todos.len()
-            })
-            .unwrap_or(true);
+        let mudou = self.ultimos.len() != panorama.todos.len()
+            || panorama.todos.iter().zip(&self.ultimos).any(|(a, b)| !a.igual_a(b));
 
-        self.ultimo = Some(panorama.principal.clone());
+        self.ultimos = panorama.todos.clone();
         mudou.then_some(panorama)
     }
 
@@ -505,12 +500,12 @@ impl Monitor {
             }
         }
 
-        self.ultimo = None;
+        self.ultimos.clear();
     }
 
     pub fn renomear(&mut self, chave: &str, nome: &str) {
         if self.conhecidos.renomear(chave, nome) {
-            self.ultimo = None;
+            self.ultimos.clear();
         }
     }
 
@@ -527,7 +522,7 @@ impl Monitor {
         {
             self.soltar_vinculo();
         }
-        self.ultimo = None;
+        self.ultimos.clear();
     }
 
     pub fn historico(&self) -> &History {

@@ -151,6 +151,18 @@ impl Settings {
         }
     }
 
+    pub fn tema_efetivo(&self) -> &'static str {
+        match self.theme {
+            Theme::Noite => "noite",
+            Theme::Preto => "preto",
+            Theme::Ardosia => "ardosia",
+            Theme::Brasa => "brasa",
+            Theme::Dia => "dia",
+            Theme::Sistema if crate::sistema::windows_no_claro() => "dia",
+            Theme::Sistema => "noite",
+        }
+    }
+
     pub fn limiares(&self) -> Limiares {
         Limiares { critico: self.critical_threshold, aviso: self.warn_threshold }
     }

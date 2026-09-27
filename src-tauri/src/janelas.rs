@@ -1,4 +1,4 @@
-use tauri::window::{Effect, EffectsBuilder, Monitor};
+use tauri::window::{Color, Effect, EffectsBuilder, Monitor};
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
@@ -28,31 +28,58 @@ const FOLGA_DO_ENCAIXE: f64 = 28.0;
 
 const MARGEM_DO_AVISO: f64 = 24.0;
 
-pub fn criar_todas(app: &AppHandle) -> tauri::Result<()> {
-    criar_principal(app)?;
-    criar_painel(app)?;
-    criar_sobreposicao(app)?;
-    criar_aviso(app)?;
+const TINTA_DA_NOITE: Color = Color(11, 14, 17, 255);
+const TINTA_DO_DIA: Color = Color(238, 241, 245, 255);
+
+pub struct Nascimento {
+    tema: &'static str,
+    material: bool,
+}
+
+impl Nascimento {
+    pub fn de(cfg: &Settings) -> Self {
+        Nascimento { tema: cfg.tema_efetivo(), material: sistema::material_disponivel() }
+    }
+
+    fn endereco(&self, janela: &str) -> WebviewUrl {
+        let material = if self.material { "sim" } else { "nao" };
+        WebviewUrl::App(
+            format!("index.html?janela={janela}&tema={}&material={material}", self.tema).into(),
+        )
+    }
+
+    fn tinta(&self) -> Color {
+        if self.tema == "dia" {
+            TINTA_DO_DIA
+        } else {
+            TINTA_DA_NOITE
+        }
+    }
+}
+
+pub fn criar_todas(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<()> {
+    criar_principal(app, nascimento)?;
+    criar_painel(app, nascimento)?;
+    criar_sobreposicao(app, nascimento)?;
+    criar_aviso(app, nascimento)?;
     Ok(())
 }
 
-fn criar_principal(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let mut construtor = WebviewWindowBuilder::new(
-        app,
-        PRINCIPAL,
-        WebviewUrl::App("index.html?janela=principal".into()),
-    )
-    .title("Kontro")
-    .inner_size(840.0, 600.0)
-    .min_inner_size(720.0, 520.0)
-    .decorations(false)
-    .visible(false)
-    .center();
+fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
+    let mut construtor = WebviewWindowBuilder::new(app, PRINCIPAL, nascimento.endereco(PRINCIPAL))
+        .title("Kontro")
+        .inner_size(840.0, 600.0)
+        .min_inner_size(720.0, 520.0)
+        .decorations(false)
+        .visible(false)
+        .center();
 
-    if sistema::material_disponivel() {
+    if nascimento.material {
         construtor = construtor
             .transparent(true)
             .effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+    } else {
+        construtor = construtor.background_color(nascimento.tinta());
     }
 
     let janela = construtor.build()?;
@@ -140,20 +167,19 @@ fn arredondar_cantos(janela: &WebviewWindow) {
     }
 }
 
-fn criar_painel(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let mut construtor =
-        WebviewWindowBuilder::new(app, PAINEL, WebviewUrl::App("index.html?janela=painel".into()))
-            .title("Kontro")
-            .inner_size(LARGURA_DO_PAINEL, 360.0)
-            .decorations(false)
-            .transparent(true)
-            .shadow(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(false)
-            .visible(false);
+fn criar_painel(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
+    let mut construtor = WebviewWindowBuilder::new(app, PAINEL, nascimento.endereco(PAINEL))
+        .title("Kontro")
+        .inner_size(LARGURA_DO_PAINEL, 360.0)
+        .decorations(false)
+        .transparent(true)
+        .shadow(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .visible(false);
 
-    if sistema::material_disponivel() {
+    if nascimento.material {
         construtor = construtor.effects(EffectsBuilder::new().effect(Effect::Acrylic).build());
     }
 
@@ -163,45 +189,40 @@ fn criar_painel(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     Ok(janela)
 }
 
-fn criar_sobreposicao(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let janela = WebviewWindowBuilder::new(
-        app,
-        SOBREPOSICAO,
-        WebviewUrl::App("index.html?janela=sobreposicao".into()),
-    )
-    .title("Kontro")
-    .inner_size(LARGURA_DA_SOBREPOSICAO, ALTURA_DA_SOBREPOSICAO)
-    .decorations(false)
-    .transparent(true)
-    .shadow(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .focused(false)
-    .focusable(false)
-    .visible(false)
-    .build()?;
+fn criar_sobreposicao(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
+    let janela = WebviewWindowBuilder::new(app, SOBREPOSICAO, nascimento.endereco(SOBREPOSICAO))
+        .title("Kontro")
+        .inner_size(LARGURA_DA_SOBREPOSICAO, ALTURA_DA_SOBREPOSICAO)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .focused(false)
+        .focusable(false)
+        .visible(false)
+        .build()?;
 
     let _ = janela.set_ignore_cursor_events(true);
     vestir_estilos(&janela);
     Ok(janela)
 }
 
-fn criar_aviso(app: &AppHandle) -> tauri::Result<WebviewWindow> {
-    let janela =
-        WebviewWindowBuilder::new(app, AVISO, WebviewUrl::App("index.html?janela=aviso".into()))
-            .title("Kontro")
-            .inner_size(384.0, 180.0)
-            .decorations(false)
-            .transparent(true)
-            .shadow(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(false)
-            .focused(false)
-            .focusable(false)
-            .visible(false)
-            .build()?;
+fn criar_aviso(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
+    let janela = WebviewWindowBuilder::new(app, AVISO, nascimento.endereco(AVISO))
+        .title("Kontro")
+        .inner_size(384.0, 180.0)
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .focused(false)
+        .focusable(false)
+        .visible(false)
+        .build()?;
 
     let _ = janela.set_ignore_cursor_events(true);
     vestir_estilos(&janela);
