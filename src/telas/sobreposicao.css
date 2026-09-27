@@ -31,7 +31,8 @@
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 0 transparent;
   transition:
     opacity var(--motion-slow) var(--curva),
     box-shadow var(--motion-base) var(--curva);
@@ -40,6 +41,7 @@
 .sobreposicao.critica .pilula {
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 transparent,
     inset 0 0 0 1px var(--red),
     0 0 12px rgba(242, 86, 78, 0.35);
 }
@@ -83,7 +85,9 @@
 .sobreposicao.solta .pilula {
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(53, 215, 168, 0.6);
+    inset 0 1px 0 transparent,
+    inset 0 0 0 1px rgba(53, 215, 168, 0.6),
+    0 0 0 transparent;
 }
 
 .sobreposicao .prender {

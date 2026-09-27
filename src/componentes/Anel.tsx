@@ -7,6 +7,8 @@ const CENTRO = CAIXA / 2;
 
 const COMPRIMENTO_DA_MARCA = 0.62;
 
+const RAIO_DO_HALO = CAIXA * 0.125;
+
 function ponto(raio: number, graus: number) {
   const rad = (graus * Math.PI) / 180;
   return { x: CENTRO + raio * Math.cos(rad), y: CENTRO + raio * Math.sin(rad) };
@@ -76,7 +78,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
           width: tamanho,
           height: tamanho,
           "--cor-do-anel": cor,
-          "--anel-tamanho": `${tamanho}px`,
+          "--raio-do-halo": `${RAIO_DO_HALO}px`,
         } as React.CSSProperties
       }
     >

@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { Amostra, useLimiares } from "../estado";
 import { hora, momento } from "../formato";
@@ -46,12 +47,13 @@ function useLarguraMedida(elemento: HTMLElement | null): number {
   const [largura, setLargura] = useState(LARGURA_ATE_MEDIR);
   useLayoutEffect(() => {
     if (!elemento) return;
-    const medir = () => {
-      const agora = Math.round(elemento.getBoundingClientRect().width);
-      if (agora > 0) setLargura(agora);
-    };
-    medir();
-    const observador = new ResizeObserver(medir);
+    const inicial = Math.round(elemento.getBoundingClientRect().width);
+    if (inicial > 0) setLargura(inicial);
+
+    const observador = new ResizeObserver(([entrada]) => {
+      const medida = Math.round(entrada.contentRect.width);
+      if (medida > 0) flushSync(() => setLargura(medida));
+    });
     observador.observe(elemento);
     return () => observador.disconnect();
   }, [elemento]);
@@ -75,13 +77,15 @@ export function Historico({
   const agora = useMinutoAtual();
 
   const M = compacto ? BAIXO : ALTO;
+  const dentroDeUmaSessao = !!janela;
+  const ultimaLida = serie.length > 0 ? serie[serie.length - 1].t : 0;
   const ALTURA = M.altura;
   const folga = janela ? Math.max((janela.fim - janela.inicio) * 0.06, 60_000) : 0;
   const zeraEm =
     !janela && autonomiaMinutos && autonomiaMinutos > 0
       ? agora + autonomiaMinutos * 60_000
       : null;
-  const fim = janela ? janela.fim + folga : Math.max(agora, zeraEm ?? 0);
+  const fim = janela ? janela.fim + folga : Math.max(agora, ultimaLida, zeraEm ?? 0);
   const inicio = janela ? janela.inicio - folga : agora - (compacto ? 7 : dias) * DIA;
 
   const trechos = useMemo(() => segmentar(serie, inicio, fim), [serie, inicio, fim]);
@@ -134,7 +138,7 @@ export function Historico({
         ))}
 
         {!compacto &&
-          marcas(inicio, fim, !!janela).map(({ t, texto }) => (
+          marcas(inicio, fim, dentroDeUmaSessao).map(({ t, texto }) => (
             <text key={t} x={x(t)} y={ALTURA - 6} className="rotulo-x">
               {texto}
             </text>
@@ -201,7 +205,7 @@ export function Historico({
       limiares.aviso,
       limiares.critico,
       trocadaEm,
-      janela,
+      dentroDeUmaSessao,
       projecao?.zeraEm,
       tinta,
     ],
