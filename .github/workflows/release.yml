@@ -305,16 +305,36 @@ jobs:
               --title "Kontro $tag" `
               --notes-file notas.md
           } else {
-            # A tag `beta` anda junto com a develop. Apagar a release e a tag antes
-            # de recriar garante que so o instalador desta build fica anexado. O push
-            # que apaga a tag cobre a release apagada a mao pela pagina, que deixa a
-            # tag para tras: com ela de pe o `--target` seria ignorado, e a beta nova
-            # sairia apontando para o commit velho.
-            gh release delete $tag --cleanup-tag --yes 2>$null
-            git push origin ":refs/tags/$tag" 2>$null
-            gh release create $tag $arquivos `
-              --target "${{ github.sha }}" `
-              --prerelease `
-              --title "Kontro $v" `
-              --notes-file notas.md
+            # A tag `beta` anda junto com a develop e a release e atualizada por cima,
+            # nunca apagada: um push novo na develop cancela este run a qualquer
+            # momento, e apagar antes de recriar deixava o canal sem beta.json se o
+            # corte caisse no meio. Instalador novo sobe primeiro, manifesto depois, e
+            # o velho so sai no fim: em qualquer ponto de corte o beta.json aponta
+            # para um instalador que existe.
+            $antigos = @(gh release view $tag --json assets --jq '.assets[].name' 2>$null)
+            if ($LASTEXITCODE -ne 0) {
+              git push origin ":refs/tags/$tag" 2>$null
+              gh release create $tag $arquivos `
+                --target "${{ github.sha }}" `
+                --prerelease `
+                --title "Kontro $v" `
+                --notes-file notas.md
+              exit $LASTEXITCODE
+            }
+
+            $manifesto = (Resolve-Path $manifestoNome).Path
+            $pacote = @($arquivos | Where-Object { $_ -ne $manifesto })
+            gh release upload $tag $pacote --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            gh release upload $tag $manifesto --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            git push --force origin "${{ github.sha }}:refs/tags/$tag"
+            gh release edit $tag --prerelease --title "Kontro $v" --notes-file notas.md
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            $novos = @($arquivos | ForEach-Object { Split-Path $_ -Leaf })
+            foreach ($nome in $antigos | Where-Object { $novos -notcontains $_ }) {
+              gh release delete-asset $tag $nome --yes
+            }
           }
