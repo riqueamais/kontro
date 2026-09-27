@@ -10,7 +10,7 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
 
-use crate::tela;
+use crate::tela::Tela;
 
 const FORA: &[&str] = &[
     "kontro.exe",
@@ -30,11 +30,12 @@ pub struct Jogo {
     pub nome: String,
 }
 
-pub fn em_foco() -> Option<Jogo> {
-    if !tela::em_tela_cheia() {
+pub fn em_foco() -> Option<(Jogo, Tela)> {
+    let agora = Tela::atual();
+    if !agora.conta_como_jogo() {
         return None;
     }
-    de(&executavel_em_foco()?)
+    Some((de(&executavel_em_foco()?)?, agora))
 }
 
 pub fn de(caminho: &Path) -> Option<Jogo> {

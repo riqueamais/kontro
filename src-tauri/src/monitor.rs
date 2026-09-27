@@ -180,8 +180,9 @@ impl Monitor {
         }
 
         if estados.iter().any(|e| e.via != Via::Desligado) {
-            if let Some(jogo) = jogo::em_foco() {
+            if let Some((jogo, tela)) = jogo::em_foco() {
                 self.historico.anotar_jogo(agora, &jogo);
+                self.historico.anotar_tela(tela.bruto());
             }
         }
 

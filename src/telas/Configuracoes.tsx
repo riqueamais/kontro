@@ -5,7 +5,14 @@ import { useEffect, useState } from "react";
 
 import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
-import { Config, OverlayMode, Theme, useAtalhosRecusados, usePilulaSolta } from "../estado";
+import {
+  Config,
+  OverlayMode,
+  Theme,
+  useAtalhosRecusados,
+  usePilulaCoberta,
+  usePilulaSolta,
+} from "../estado";
 
 const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
 
@@ -104,6 +111,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
     "parado",
   );
   const solta = usePilulaSolta();
+  const coberta = usePilulaCoberta();
   const recusados = useAtalhosRecusados();
 
   useEffect(() => {
@@ -303,6 +311,12 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
           {MODOS[cfg.OverlayMode]}
         </button>
       </Linha>
+      {coberta && (
+        <p className="coberta" role="status">
+          Agora: {coberta} está por cima da pílula e não deixa ela voltar. Ela tenta de novo
+          quando você trocar de janela.
+        </p>
+      )}
       <Linha
         titulo="Posição"
         descricao={

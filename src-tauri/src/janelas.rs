@@ -1,6 +1,6 @@
 use tauri::window::{Effect, EffectsBuilder, Monitor};
 use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindow,
+    AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
 use windows::Win32::Foundation::HWND;
@@ -217,9 +217,8 @@ pub fn redimensionar_sobreposicao(
 ) {
     let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
 
-    let escala = janela.current_monitor().ok().flatten().map(|m| m.scale_factor()).unwrap_or(1.0);
+    let escala = janela.scale_factor().unwrap_or(1.0);
     let Ok(antes) = janela.outer_size() else { return };
-    let antes: LogicalSize<f64> = antes.to_logical(escala);
 
     let _ = janela.set_size(LogicalSize::new(largura, altura));
 
@@ -228,15 +227,17 @@ pub fn redimensionar_sobreposicao(
         return;
     }
 
-    let dx = if cfg.overlay_x > 0.5 { antes.width - largura } else { 0.0 };
-    let dy = if cfg.overlay_y > 0.5 { antes.height - altura } else { 0.0 };
-    if dx == 0.0 && dy == 0.0 {
+    let dx = if cfg.overlay_x > 0.5 { antes.width as f64 - largura * escala } else { 0.0 };
+    let dy = if cfg.overlay_y > 0.5 { antes.height as f64 - altura * escala } else { 0.0 };
+    if dx.abs() < 1.0 && dy.abs() < 1.0 {
         return;
     }
 
     let Ok(posicao) = janela.outer_position() else { return };
-    let posicao: LogicalPosition<f64> = posicao.to_logical(escala);
-    let _ = janela.set_position(LogicalPosition::new(posicao.x + dx, posicao.y + dy));
+    let _ = janela.set_position(PhysicalPosition::new(
+        posicao.x + dx.round() as i32,
+        posicao.y + dy.round() as i32,
+    ));
 }
 
 pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
@@ -246,7 +247,7 @@ pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
 
     let x = palco.esquerda + palco.livre_x * cfg.overlay_x;
     let y = palco.topo + palco.livre_y * cfg.overlay_y;
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+    let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
 pub struct Pouso {
@@ -260,11 +261,11 @@ pub fn onde_a_sobreposicao_parou(app: &AppHandle) -> Option<Pouso> {
     let monitor = janela.current_monitor().ok().flatten()?;
     let palco = palco(&monitor, &janela)?;
 
-    let posicao = janela.outer_position().ok()?.to_logical::<f64>(monitor.scale_factor());
+    let posicao = janela.outer_position().ok()?;
 
     Some(Pouso {
-        x: encaixar(posicao.x - palco.esquerda, palco.livre_x),
-        y: encaixar(posicao.y - palco.topo, palco.livre_y),
+        x: encaixar(posicao.x as f64 - palco.esquerda, palco.livre_x, palco.folga),
+        y: encaixar(posicao.y as f64 - palco.topo, palco.livre_y, palco.folga),
         monitor: indice_do_monitor(app, &monitor).unwrap_or(-1),
     })
 }
@@ -274,23 +275,28 @@ struct Palco {
     topo: f64,
     livre_x: f64,
     livre_y: f64,
+    folga: f64,
 }
 
 fn palco(monitor: &Monitor, janela: &WebviewWindow) -> Option<Palco> {
-    let escala = monitor.scale_factor();
-    let posicao = monitor.position().to_logical::<f64>(escala);
-    let tamanho = monitor.size().to_logical::<f64>(escala);
-    let tam_janela: LogicalSize<f64> = janela.outer_size().ok()?.to_logical(escala);
+    let escala_do_monitor = monitor.scale_factor();
+    let escala_da_janela = janela.scale_factor().unwrap_or(escala_do_monitor);
+    let conversao = escala_do_monitor / escala_da_janela;
+
+    let posicao = monitor.position();
+    let tamanho = monitor.size();
+    let janela = janela.outer_size().ok()?;
 
     Some(Palco {
-        esquerda: posicao.x,
-        topo: posicao.y,
-        livre_x: (tamanho.width - tam_janela.width).max(0.0),
-        livre_y: (tamanho.height - tam_janela.height).max(0.0),
+        esquerda: posicao.x as f64,
+        topo: posicao.y as f64,
+        livre_x: (tamanho.width as f64 - janela.width as f64 * conversao).max(0.0),
+        livre_y: (tamanho.height as f64 - janela.height as f64 * conversao).max(0.0),
+        folga: FOLGA_DO_ENCAIXE * escala_do_monitor,
     })
 }
 
-fn encaixar(desvio: f64, livre: f64) -> f64 {
+fn encaixar(desvio: f64, livre: f64, folga: f64) -> f64 {
     if livre <= 0.0 {
         return 0.0;
     }
@@ -298,7 +304,7 @@ fn encaixar(desvio: f64, livre: f64) -> f64 {
     let fracao = (desvio / livre).clamp(0.0, 1.0);
     [0.0, 0.5, 1.0]
         .into_iter()
-        .find(|encaixe| (fracao - encaixe).abs() * livre <= FOLGA_DO_ENCAIXE)
+        .find(|encaixe| (fracao - encaixe).abs() * livre <= folga)
         .unwrap_or(fracao)
 }
 
@@ -375,28 +381,35 @@ mod testes {
 
     #[test]
     fn largar_quase_no_canto_vale_como_canto() {
-        assert_eq!(encaixar(9.0, 1000.0), 0.0);
-        assert_eq!(encaixar(985.0, 1000.0), 1.0);
+        assert_eq!(encaixar(9.0, 1000.0, FOLGA_DO_ENCAIXE), 0.0);
+        assert_eq!(encaixar(985.0, 1000.0, FOLGA_DO_ENCAIXE), 1.0);
+    }
+
+    #[test]
+    fn a_folga_do_encaixe_cresce_com_a_escala_do_monitor() {
+        let em_150 = FOLGA_DO_ENCAIXE * 1.5;
+        assert_eq!(encaixar(40.0, 1000.0, em_150), 0.0);
+        assert_eq!(encaixar(40.0, 1000.0, FOLGA_DO_ENCAIXE), 0.04);
     }
 
     #[test]
     fn largar_quase_no_meio_vale_como_meio() {
-        assert_eq!(encaixar(510.0, 1000.0), 0.5);
+        assert_eq!(encaixar(510.0, 1000.0, FOLGA_DO_ENCAIXE), 0.5);
     }
 
     #[test]
     fn no_meio_do_caminho_a_escolha_e_respeitada() {
-        assert_eq!(encaixar(250.0, 1000.0), 0.25);
+        assert_eq!(encaixar(250.0, 1000.0, FOLGA_DO_ENCAIXE), 0.25);
     }
 
     #[test]
     fn tela_sem_folga_nao_divide_por_zero() {
-        assert_eq!(encaixar(120.0, 0.0), 0.0);
+        assert_eq!(encaixar(120.0, 0.0, FOLGA_DO_ENCAIXE), 0.0);
     }
 
     #[test]
     fn largar_fora_da_tela_volta_para_dentro() {
-        assert_eq!(encaixar(-400.0, 1000.0), 0.0);
-        assert_eq!(encaixar(4000.0, 1000.0), 1.0);
+        assert_eq!(encaixar(-400.0, 1000.0, FOLGA_DO_ENCAIXE), 0.0);
+        assert_eq!(encaixar(4000.0, 1000.0, FOLGA_DO_ENCAIXE), 1.0);
     }
 }

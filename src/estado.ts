@@ -161,6 +161,29 @@ export function usePilulaSolta(): boolean {
   return solta;
 }
 
+export function usePilulaCoberta(): string | null {
+  const [coberta, setCoberta] = useState<string | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+
+    invoke<string | null>("pilula_coberta").then((c) => {
+      if (vivo) setCoberta(c);
+    });
+
+    const parar = listen<string | null>("kontro://coberta", (evento) => {
+      if (vivo) setCoberta(evento.payload);
+    });
+
+    return () => {
+      vivo = false;
+      parar.then((f) => f());
+    };
+  }, []);
+
+  return coberta;
+}
+
 export function useAtalhosRecusados(): string[] {
   const [recusados, setRecusados] = useState<string[]>([]);
 

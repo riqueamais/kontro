@@ -33,6 +33,8 @@ struct PartidaEmDisco {
     fim: String,
     #[serde(rename = "J")]
     jogo: u16,
+    #[serde(rename = "T", default, skip_serializing_if = "Option::is_none")]
+    tela: Option<i32>,
 }
 
 type Aberto = (Vec<JogoSalvo>, Vec<PartidaEmDisco>, HashMap<String, Vec<AmostraEmDisco>>);
@@ -63,7 +65,10 @@ struct Partida {
     inicio: i64,
     fim: i64,
     jogo: u16,
+    tela: Option<i32>,
 }
+
+const TELA_EXCLUSIVA: i32 = 3;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Amostra {
@@ -168,6 +173,7 @@ impl History {
                     inicio: tempo::de_texto(&p.inicio)?,
                     fim: tempo::de_texto(&p.fim)?,
                     jogo: p.jogo,
+                    tela: p.tela,
                 })
             })
             .filter(|p| p.fim >= corte)
@@ -225,8 +231,25 @@ impl History {
                 }
                 p.fim = quando;
             }
-            _ => self.partidas.push(Partida { inicio: quando, fim: quando, jogo: indice }),
+            _ => self.partidas.push(Partida {
+                inicio: quando,
+                fim: quando,
+                jogo: indice,
+                tela: None,
+            }),
         }
+        self.sujo = true;
+    }
+
+    pub fn anotar_tela(&mut self, bruto: i32) {
+        let Some(p) = self.partidas.last_mut() else { return };
+        let novo = match p.tela {
+            None => Some(bruto),
+            Some(TELA_EXCLUSIVA) => return,
+            Some(_) if bruto == TELA_EXCLUSIVA => Some(bruto),
+            Some(_) => return,
+        };
+        p.tela = novo;
         self.sujo = true;
     }
 
@@ -290,6 +313,7 @@ impl History {
                 inicio: tempo::para_texto(p.inicio),
                 fim: tempo::para_texto(p.fim),
                 jogo: p.jogo,
+                tela: p.tela,
             })
             .collect();
 
@@ -617,7 +641,12 @@ mod testes {
     fn a_sessao_leva_o_nome_da_partida_que_ocupou_ela() {
         let agora = tempo::agora();
         let mut h = com_jogos(sessao(4, 3, 100, 55), &["ELDEN RING"]);
-        h.partidas.push(Partida { inicio: agora - 230 * MINUTO, fim: agora - HORA, jogo: 0 });
+        h.partidas.push(Partida {
+            inicio: agora - 230 * MINUTO,
+            fim: agora - HORA,
+            jogo: 0,
+            tela: None,
+        });
         assert_eq!(h.sessoes("c")[0].jogo.as_deref(), Some("ELDEN RING"));
     }
 
@@ -625,8 +654,18 @@ mod testes {
     fn sessao_dividida_entre_duas_partidas_fica_sem_nome() {
         let agora = tempo::agora();
         let mut h = com_jogos(sessao(4, 3, 100, 55), &["ELDEN RING", "HADES"]);
-        h.partidas.push(Partida { inicio: agora - 4 * HORA, fim: agora - 150 * MINUTO, jogo: 0 });
-        h.partidas.push(Partida { inicio: agora - 150 * MINUTO, fim: agora - HORA, jogo: 1 });
+        h.partidas.push(Partida {
+            inicio: agora - 4 * HORA,
+            fim: agora - 150 * MINUTO,
+            jogo: 0,
+            tela: None,
+        });
+        h.partidas.push(Partida {
+            inicio: agora - 150 * MINUTO,
+            fim: agora - HORA,
+            jogo: 1,
+            tela: None,
+        });
         assert_eq!(h.sessoes("c")[0].jogo, None);
     }
 
@@ -634,7 +673,12 @@ mod testes {
     fn a_partida_de_outro_dia_nao_batiza_a_sessao() {
         let agora = tempo::agora();
         let mut h = com_jogos(sessao(4, 3, 100, 55), &["ELDEN RING"]);
-        h.partidas.push(Partida { inicio: agora - 30 * HORA, fim: agora - 26 * HORA, jogo: 0 });
+        h.partidas.push(Partida {
+            inicio: agora - 30 * HORA,
+            fim: agora - 26 * HORA,
+            jogo: 0,
+            tela: None,
+        });
         assert_eq!(h.sessoes("c")[0].jogo, None);
     }
 
@@ -665,6 +709,38 @@ mod testes {
         h.anotar_jogo(agora, &jogo("ELDEN RING"));
         h.anotar_jogo(agora + 20 * MINUTO, &jogo("ELDEN RING"));
         assert_eq!(h.partidas.len(), 2);
+    }
+
+    #[test]
+    fn a_partida_guarda_a_tela_da_primeira_leitura() {
+        let mut h = historico(Vec::new());
+        let agora = tempo::agora();
+        h.anotar_jogo(agora, &jogo("HADES"));
+        h.anotar_tela(2);
+        h.anotar_jogo(agora + 2_000, &jogo("HADES"));
+        h.anotar_tela(5);
+        assert_eq!(h.partidas[0].tela, Some(2));
+    }
+
+    #[test]
+    fn uma_leitura_exclusiva_marca_a_partida_e_nao_volta() {
+        let mut h = historico(Vec::new());
+        let agora = tempo::agora();
+        h.anotar_jogo(agora, &jogo("HADES"));
+        h.anotar_tela(2);
+        h.anotar_tela(TELA_EXCLUSIVA);
+        h.anotar_tela(2);
+        assert_eq!(h.partidas[0].tela, Some(TELA_EXCLUSIVA));
+    }
+
+    #[test]
+    fn a_tela_da_partida_vai_e_volta_do_disco() {
+        let bruto = r#"{"jogos":[],"partidas":[{"I":"2026-09-10T19:00:00-03:00","F":"2026-09-10T21:00:00-03:00","J":0,"T":3}],"controles":{}}"#;
+        let (_, partidas, _) = serde_json::from_str::<EmDisco>(bruto).map(EmDisco::abrir).unwrap();
+        assert_eq!(partidas[0].tela, Some(3));
+        let sem =
+            serde_json::to_string(&PartidaEmDisco { tela: None, ..partidas[0].clone() }).unwrap();
+        assert!(!sem.contains("\"T\""), "partida sem tela nao grava a chave");
     }
 
     #[test]

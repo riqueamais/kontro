@@ -36,6 +36,9 @@ jobs:
       - name: Testes do Rust
         run: cargo test --manifest-path src-tauri/Cargo.toml --lib
 
+      - name: Exemplos do Rust compilam
+        run: cargo build --manifest-path src-tauri/Cargo.toml --examples
+
       - name: Tipos e build do front
         run: npm run build
 

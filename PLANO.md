@@ -9,10 +9,12 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
-**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 e
-T24. Da T23 falta a parte que só um jogo responde — o `QUNS` num DX12 com otimizações, num
-DX11 com "Desativar otimizações de tela inteira" marcado e num sem borda, tirados do
-diagnóstico e anotados no `TAREFAS.md`; é esse dado que decide a T26. A Parte 1 está toda na
+**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
+T27, o movimento da tela cheia inteiro. Falta a parte que só um jogo responde — o `QUNS`
+num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
+num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
+frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
+ora a partida só grava o valor bruto em `T`. A Parte 1 está toda na
 2.13; o que ficou de pé dela:
 
 **As quinze tarefas foram entregues na 2.13.0.** O que fica de pé para conferir com uso
