@@ -5,8 +5,6 @@ import "./anel.css";
 const CAIXA = 512;
 const CENTRO = CAIXA / 2;
 
-const ARCO_DO_GIRO = 96;
-
 const COMPRIMENTO_DA_MARCA = 0.62;
 
 function ponto(raio: number, graus: number) {
@@ -66,7 +64,8 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
   }, [valor, girando]);
 
   const cheio = !girando && suave >= 99.9;
-  const tinta = `url(#${luz})`;
+  const apagada = cor === "var(--gray)";
+  const tinta = apagada ? cor : `url(#${luz})`;
   const mostrarMarcas = marcas && !girando && valor !== null;
 
   return (
@@ -88,18 +87,8 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
           strokeWidth={espessura}
         />
 
-        <g className="carga" style={{ color: cor }}>
-          {girando ? (
-            <g className="giro">
-              <path
-                d={arco(raio, -90, ARCO_DO_GIRO)}
-                fill="none"
-                stroke={tinta}
-                strokeWidth={espessura}
-                strokeLinecap="round"
-              />
-            </g>
-          ) : cheio ? (
+        <g className={apagada ? "carga apagada" : "carga"} style={{ color: cor }}>
+          {girando || cheio ? (
             <circle
               cx={CENTRO}
               cy={CENTRO}

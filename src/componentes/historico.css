@@ -5,10 +5,16 @@
 }
 
 .historico.vazio {
-  padding: var(--space-4) 0;
+  display: grid;
+  place-items: center;
+  min-height: 150px;
   text-align: center;
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.historico.compacto.vazio {
+  min-height: 64px;
 }
 
 .historico .historico-topo {

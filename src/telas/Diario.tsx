@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import { Sessao, useLimiares } from "../estado";
+import { Sessao, useAoMudarOHistorico, useLimiares } from "../estado";
 import { diaEMes, duracao } from "../formato";
 import "./diario.css";
 
@@ -28,7 +28,7 @@ export function Diario() {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const limiares = useLimiares();
 
-  useEffect(() => {
+  useAoMudarOHistorico(() => {
     invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
   }, []);
 

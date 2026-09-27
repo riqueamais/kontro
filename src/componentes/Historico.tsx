@@ -61,7 +61,11 @@ export function Historico({
   const amostras = useMemo(() => trechos.flat(), [trechos]);
 
   if (amostras.length < 2) {
-    return <div className="historico vazio">sem histórico nesta janela</div>;
+    return (
+      <div className={`historico vazio${compacto ? " compacto" : ""}`}>
+        sem histórico nesta janela
+      </div>
+    );
   }
 
   const largura = LARGURA - M.esquerda - M.direita;

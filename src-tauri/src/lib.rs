@@ -51,6 +51,7 @@ pub struct Compartilhado {
     icones: Mutex<HashMap<String, Option<String>>>,
     pilula: OnceLock<isize>,
     coberta_por: Mutex<Option<String>>,
+    abrir_ao_carregar: Mutex<Vec<String>>,
 }
 
 pub(crate) enum Pedido {
@@ -128,6 +129,7 @@ pub fn executar() {
         icones: Mutex::new(HashMap::new()),
         pilula: OnceLock::new(),
         coberta_por: Mutex::new(None),
+        abrir_ao_carregar: Mutex::new(Vec::new()),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
@@ -156,13 +158,14 @@ pub fn executar() {
             serie_do_historico,
             sessoes_do_controle,
             saude_da_bateria,
+            resumo_do_controle,
+            janela_pronta,
             configuracoes,
             salvar_configuracoes,
             ler_agora,
             versao_do_app,
             icone_do_jogo,
             salvar_cartao,
-            material_da_janela,
             windows_no_claro,
             marcar_atualizacao,
             versao_disponivel,
@@ -181,7 +184,8 @@ pub fn executar() {
         ])
         .setup(move |app| {
             let handle = app.handle().clone();
-            janelas::criar_todas(&handle)?;
+            let nascimento = janelas::Nascimento::de(&compartilhado.config.lock().unwrap());
+            janelas::criar_todas(&handle, &nascimento)?;
             if let Some(pilula) =
                 handle.get_webview_window(janelas::SOBREPOSICAO).and_then(|j| janelas::hwnd_de(&j))
             {
@@ -200,11 +204,7 @@ pub fn executar() {
             let voltou_de_atualizacao = consumir_marca_de_atualizacao();
 
             if std::env::args().any(|a| a == "--painel") {
-                if let Some(painel) = handle.get_webview_window(janelas::PAINEL) {
-                    janelas::posicionar_painel(&handle);
-                    let _ = painel.show();
-                    let _ = painel.set_focus();
-                }
+                compartilhado.abrir_ao_carregar.lock().unwrap().push(janelas::PAINEL.to_string());
             }
             let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
             let abrir_direto = pedido_explicito
@@ -214,11 +214,13 @@ pub fn executar() {
                     !cfg.start_minimized || !cfg.first_run_done
                 });
             if abrir_direto {
-                if let Some(j) = handle.get_webview_window(janelas::PRINCIPAL) {
-                    let _ = j.show();
-                    let _ = j.set_focus();
-                }
+                compartilhado
+                    .abrir_ao_carregar
+                    .lock()
+                    .unwrap()
+                    .push(janelas::PRINCIPAL.to_string());
             }
+            abrir_mesmo_sem_aviso(&handle, compartilhado.clone());
 
             primeiro_plano::vigiar(envio_do_ciclo.clone());
             iniciar_ciclo(handle, compartilhado.clone(), recebimento);
@@ -301,6 +303,7 @@ fn iniciar_ciclo(
 
                 let _ = app.emit("kontro://estado", &principal);
                 let _ = app.emit("kontro://controles", &panorama.todos);
+                let _ = app.emit("kontro://historico", ());
                 let limiares = compartilhado.config.lock().unwrap().limiares();
                 atualizar_bandeja(&app, &principal, limiares, &mut ultimo_icone);
             }
@@ -360,6 +363,49 @@ fn iniciar_ciclo(
             }
         }
     });
+}
+
+const ESPERA_MAXIMA_PELA_PAGINA: Duration = Duration::from_secs(5);
+
+fn abrir_pendente(app: &AppHandle, rotulo: &str) {
+    let Some(janela) = app.get_webview_window(rotulo) else { return };
+    if rotulo == janelas::PAINEL {
+        janelas::posicionar_painel(app);
+    }
+    let _ = janela.unminimize();
+    let _ = janela.show();
+    let _ = janela.set_focus();
+}
+
+fn abrir_mesmo_sem_aviso(app: &AppHandle, compartilhado: Arc<Compartilhado>) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(ESPERA_MAXIMA_PELA_PAGINA);
+        let pendentes: Vec<String> =
+            compartilhado.abrir_ao_carregar.lock().unwrap().drain(..).collect();
+        if pendentes.is_empty() {
+            return;
+        }
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            for rotulo in pendentes {
+                abrir_pendente(&handle, &rotulo);
+            }
+        });
+    });
+}
+
+#[tauri::command]
+fn janela_pronta(app: AppHandle, compartilhado: tauri::State<Arc<Compartilhado>>, rotulo: String) {
+    let estava = {
+        let mut pendentes = compartilhado.abrir_ao_carregar.lock().unwrap();
+        let antes = pendentes.len();
+        pendentes.retain(|r| *r != rotulo);
+        pendentes.len() != antes
+    };
+    if estava {
+        abrir_pendente(&app, &rotulo);
+    }
 }
 
 pub(crate) fn marcar_coberta(app: &AppHandle, por: Option<String>) {
@@ -507,6 +553,22 @@ fn sessoes_do_controle(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<S
 #[tauri::command]
 fn saude_da_bateria(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<historico::Saude> {
     compartilhado.saude.lock().unwrap().clone()
+}
+
+#[derive(serde::Serialize)]
+struct ResumoDoControle {
+    serie: Vec<Amostra>,
+    sessoes: Vec<Sessao>,
+    saude: Option<historico::Saude>,
+}
+
+#[tauri::command]
+fn resumo_do_controle(compartilhado: tauri::State<Arc<Compartilhado>>) -> ResumoDoControle {
+    ResumoDoControle {
+        serie: compartilhado.serie.lock().unwrap().clone(),
+        sessoes: compartilhado.sessoes.lock().unwrap().clone(),
+        saude: compartilhado.saude.lock().unwrap().clone(),
+    }
 }
 
 #[tauri::command]
@@ -709,11 +771,6 @@ fn de_base64(texto: &str) -> Option<Vec<u8>> {
     }
 
     Some(saida)
-}
-
-#[tauri::command]
-fn material_da_janela() -> bool {
-    sistema::material_disponivel()
 }
 
 #[tauri::command]

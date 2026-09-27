@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { Glifo } from "../componentes/Glifo";
@@ -8,22 +8,26 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
-import { Amostra, Sessao, corDoAnel, useEstado, useLimiares } from "../estado";
+import { Amostra, Sessao, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
 import { detalhe, quandoLeu } from "../formato";
+
+interface DoControle {
+  serie: Amostra[];
+  sessoes: Sessao[];
+  saude: DadosDeSaude | null;
+}
+
+const VAZIO: DoControle = { serie: [], sessoes: [], saude: null };
 
 export function Resumo() {
   const estado = useEstado();
   const limiares = useLimiares();
-  const [serie, setSerie] = useState<Amostra[]>([]);
-  const [sessoes, setSessoes] = useState<Sessao[]>([]);
-  const [saude, setSaude] = useState<DadosDeSaude | null>(null);
+  const [{ serie, sessoes, saude }, setDoControle] = useState<DoControle>(VAZIO);
   const [sessao, setSessao] = useState<Sessao | null>(null);
 
-  useEffect(() => {
-    invoke<Amostra[]>("serie_do_historico").then(setSerie).catch(() => {});
-    invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
-    invoke<DadosDeSaude | null>("saude_da_bateria").then(setSaude).catch(() => {});
-  }, [estado?.chave, estado?.percentual]);
+  useAoMudarOHistorico(() => {
+    invoke<DoControle>("resumo_do_controle").then(setDoControle).catch(() => {});
+  }, [estado?.chave]);
 
   if (!estado) return null;
 
