@@ -1,5 +1,6 @@
 .anel {
   position: relative;
+  transition: --cor-do-anel var(--motion-base) var(--curva);
 }
 
 .anel > svg {
@@ -7,17 +8,30 @@
   overflow: visible;
 }
 
+.anel stop:first-child {
+  stop-color: color-mix(in srgb, var(--cor-do-anel) 84%, #ffffff);
+}
+
+.anel stop:last-child {
+  stop-color: var(--cor-do-anel);
+}
+
+.anel.apagada stop:first-child {
+  stop-color: var(--cor-do-anel);
+}
+
 .anel .carga {
-  filter: drop-shadow(0 0 18px currentColor);
+  color: color-mix(in srgb, var(--cor-do-anel) 35%, transparent);
+  filter: drop-shadow(0 0 var(--raio-do-halo) currentColor);
   transition: filter var(--motion-base) var(--curva);
 }
 
-.anel .carga.apagada {
+.anel.apagada .carga {
   filter: none;
 }
 
 .anel .marcas {
-  opacity: 0.85;
+  opacity: 0.4;
 }
 
 .anel .miolo {
@@ -25,4 +39,10 @@
   inset: 0;
   display: grid;
   place-items: center;
+}
+
+@media (forced-colors: active) {
+  .anel > svg {
+    forced-color-adjust: none;
+  }
 }

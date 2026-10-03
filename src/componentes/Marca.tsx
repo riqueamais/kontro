@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import {
   APP,
   BANDEJA,
@@ -16,6 +18,7 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
   const perfil = miudo ? BANDEJA : APP;
   const volta = 2 * Math.PI * perfil.anelRaio;
   const cheio = (volta * APP.anelVarredura) / 360;
+  const gradiente = `marca-${useId().replace(/:/g, "")}`;
   const assento = `translate(${CENTRO} ${perfil.padCentroY}) scale(${perfil.padEscala}) translate(${-CENTRO} ${-PAD_CENTRO_Y})`;
 
   return (
@@ -28,7 +31,7 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
     >
       <defs>
         <linearGradient
-          id="marca-kontro"
+          id={gradiente}
           x1={GRADIENTE.x1}
           y1={GRADIENTE.y1}
           x2={GRADIENTE.x2}
@@ -40,13 +43,13 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
         </linearGradient>
       </defs>
 
-      <circle cx={CENTRO} cy={CENTRO} r={CENTRO} fill={CORES.fundo} />
+      {!miudo && <circle cx={CENTRO} cy={CENTRO} r={CENTRO} fill={CORES.fundo} />}
       <circle
         cx={CENTRO}
         cy={CENTRO}
         r={perfil.anelRaio}
         fill="none"
-        stroke={CORES.branco}
+        stroke={miudo ? "currentColor" : CORES.branco}
         strokeOpacity={perfil.trilhoOpacidade}
         strokeWidth={perfil.anelLargura}
       />
@@ -55,7 +58,7 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
         cy={CENTRO}
         r={perfil.anelRaio}
         fill="none"
-        stroke="url(#marca-kontro)"
+        stroke={miudo ? CORES.verde : `url(#${gradiente})`}
         strokeWidth={perfil.anelLargura}
         strokeLinecap="round"
         strokeDasharray={`${cheio} ${volta - cheio}`}
@@ -64,7 +67,7 @@ export function Marca({ tamanho = 16 }: { tamanho?: number }) {
 
       {miudo ? (
         <g transform={assento}>
-          <path d={PAD_COM_STICKS_VAZADOS} fill={CORES.branco} fillRule="evenodd" />
+          <path d={PAD_COM_STICKS_VAZADOS} fill="currentColor" fillRule="evenodd" />
         </g>
       ) : (
         <g transform={assento}>

@@ -16,6 +16,7 @@ pub fn gerar(raiz: &Path) -> io::Result<()> {
     icones_do_app(&raiz.join("src-tauri/icons"))?;
     icones_do_site(&raiz.join("docs"))?;
     icone_do_instalador(&raiz.join("assets/branding/setup.ico"))?;
+    quadros_do_instalador(&raiz.join("assets/branding/installer"))?;
     favicon_do_front(&raiz.join("public/favicon.svg"))?;
     vetores_de_referencia(&raiz.join("assets/svg"))?;
 
@@ -58,7 +59,98 @@ fn icones_do_site(pasta: &Path) -> io::Result<()> {
 
 fn icone_do_instalador(caminho: &Path) -> io::Result<()> {
     criar_pasta_do_arquivo(caminho)?;
-    gravar_ico(caminho, TAMANHOS_ICO)
+    gravar_ico_de(caminho, TAMANHOS_ICO, svg_do_instalador)
+}
+
+fn svg_do_instalador(tamanho: u32) -> String {
+    let marca = bandeja::svg_do_app(tamanho);
+    let selo = format!(
+        r##"<circle cx="{x}" cy="{y}" r="{r}" fill="{fundo}" stroke="{ink}" stroke-width="12"/><path d="{seta}" fill="none" stroke="{verde}" stroke-width="{largura}" stroke-linecap="round" stroke-linejoin="round"/>"##,
+        x = g::SELO_CENTRO.0,
+        y = g::SELO_CENTRO.1,
+        r = g::SELO_RAIO,
+        fundo = g::FUNDO,
+        ink = g::INK,
+        seta = g::SETA_DO_INSTALADOR,
+        verde = g::VERDE,
+        largura = g::SETA_LARGURA,
+    );
+    marca.replacen("</svg>", &format!("{selo}</svg>"), 1)
+}
+
+fn quadros_do_instalador(pasta: &Path) -> io::Result<()> {
+    std::fs::create_dir_all(pasta)?;
+    gravar_bmp(&pasta.join("nsis-sidebar.bmp"), 164, 314, &svg_da_coluna())?;
+    gravar_bmp(&pasta.join("nsis-header.bmp"), 150, 57, &svg_do_cabecalho())
+}
+
+fn svg_da_coluna() -> String {
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="164" height="314" viewBox="0 0 164 314"><rect width="164" height="314" fill="{ink}"/><svg x="42" y="72" width="80" height="80" viewBox="0 0 512 512">{marca}</svg><text x="82" y="186" text-anchor="middle" font-family="Segoe UI Variable Display, Segoe UI" font-size="22" font-weight="600" fill="#E8ECEF">Kontro</text><text x="82" y="210" text-anchor="middle" font-family="Segoe UI Variable Text, Segoe UI" font-size="12" fill="#9AA4AD">Bateria do seu controle</text><text x="82" y="227" text-anchor="middle" font-family="Segoe UI Variable Text, Segoe UI" font-size="12" fill="#9AA4AD">na bandeja</text></svg>"##,
+        ink = g::INK,
+        marca = miolo(&bandeja::svg_do_app(80)),
+    )
+}
+
+fn svg_do_cabecalho() -> String {
+    format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="150" height="57" viewBox="0 0 150 57"><rect width="150" height="57" fill="#FFFFFF"/><text x="100" y="35" text-anchor="end" font-family="Segoe UI Variable Display, Segoe UI" font-size="18" font-weight="600" fill="#0F151B">Kontro</text><svg x="106" y="10" width="36" height="36" viewBox="0 0 512 512">{marca}</svg></svg>"##,
+        marca = miolo(&bandeja::svg_do_app(36)),
+    )
+}
+
+fn miolo(svg: &str) -> String {
+    let inicio = svg.find('>').map_or(0, |i| i + 1);
+    let fim = svg.rfind("</svg>").unwrap_or(svg.len());
+    svg[inicio..fim].to_string()
+}
+
+fn gravar_bmp(caminho: &Path, largura: u32, altura: u32, svg: &str) -> io::Result<()> {
+    let mut opcoes = usvg::Options::default();
+    opcoes.fontdb_mut().load_system_fonts();
+    let arvore = usvg::Tree::from_str(svg, &opcoes)
+        .map_err(|e| io::Error::other(format!("svg do instalador invalido: {e}")))?;
+    let mut mapa = Pixmap::new(largura, altura)
+        .ok_or_else(|| io::Error::other("nao consegui alocar o quadro do instalador"))?;
+    resvg::render(&arvore, tiny_skia::Transform::identity(), &mut mapa.as_mut());
+    std::fs::write(caminho, montar_bmp(&mapa))
+}
+
+fn montar_bmp(mapa: &Pixmap) -> Vec<u8> {
+    let (largura, altura) = (mapa.width(), mapa.height());
+    let linha = (largura as usize * 3).div_ceil(4) * 4;
+    let dados = linha * altura as usize;
+    let total = 54 + dados;
+
+    let mut saida = Vec::with_capacity(total);
+    saida.extend_from_slice(b"BM");
+    saida.extend_from_slice(&(total as u32).to_le_bytes());
+    saida.extend_from_slice(&0u32.to_le_bytes());
+    saida.extend_from_slice(&54u32.to_le_bytes());
+    saida.extend_from_slice(&40u32.to_le_bytes());
+    saida.extend_from_slice(&(largura as i32).to_le_bytes());
+    saida.extend_from_slice(&(altura as i32).to_le_bytes());
+    saida.extend_from_slice(&1u16.to_le_bytes());
+    saida.extend_from_slice(&24u16.to_le_bytes());
+    saida.extend_from_slice(&0u32.to_le_bytes());
+    saida.extend_from_slice(&(dados as u32).to_le_bytes());
+    saida.extend_from_slice(&2835i32.to_le_bytes());
+    saida.extend_from_slice(&2835i32.to_le_bytes());
+    saida.extend_from_slice(&0u32.to_le_bytes());
+    saida.extend_from_slice(&0u32.to_le_bytes());
+
+    let pixels = mapa.pixels();
+    for y in (0..altura).rev() {
+        let comeco = saida.len();
+        for x in 0..largura {
+            let cor = pixels[(y * largura + x) as usize].demultiply();
+            saida.push(cor.blue());
+            saida.push(cor.green());
+            saida.push(cor.red());
+        }
+        saida.resize(comeco + linha, 0);
+    }
+    saida
 }
 
 fn favicon_do_front(caminho: &Path) -> io::Result<()> {
@@ -79,7 +171,9 @@ fn vetores_de_referencia(pasta: &Path) -> io::Result<()> {
 
     for (nome, preenchimento, modo) in estados {
         let estado = bandeja::estado_demo(*preenchimento, *modo);
-        std::fs::write(pasta.join(nome), bandeja::montar_svg(&estado, Limiares::PADRAO))?;
+        std::fs::write(pasta.join(nome), bandeja::montar_svg(&estado, Limiares::PADRAO, false))?;
+        let claro = nome.replace(".svg", "-claro.svg");
+        std::fs::write(pasta.join(claro), bandeja::montar_svg(&estado, Limiares::PADRAO, true))?;
     }
 
     Ok(())
@@ -99,10 +193,14 @@ fn gravar_png(caminho: &Path, tamanho: u32) -> io::Result<()> {
 }
 
 fn gravar_ico(caminho: &Path, tamanhos: &[u32]) -> io::Result<()> {
+    gravar_ico_de(caminho, tamanhos, bandeja::svg_do_app)
+}
+
+fn gravar_ico_de(caminho: &Path, tamanhos: &[u32], svg: fn(u32) -> String) -> io::Result<()> {
     let mut quadros = Vec::with_capacity(tamanhos.len());
 
     for &tamanho in tamanhos {
-        let mapa = desenhar(tamanho)?;
+        let mapa = desenhar_svg(&svg(tamanho), tamanho)?;
         let bytes = if tamanho > MAIOR_TAMANHO_EM_BITMAP {
             mapa.encode_png().map_err(io::Error::other)?
         } else {
@@ -115,8 +213,11 @@ fn gravar_ico(caminho: &Path, tamanhos: &[u32]) -> io::Result<()> {
 }
 
 fn desenhar(tamanho: u32) -> io::Result<Pixmap> {
-    let svg = bandeja::svg_do_app(tamanho);
-    let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default())
+    desenhar_svg(&bandeja::svg_do_app(tamanho), tamanho)
+}
+
+fn desenhar_svg(svg: &str, tamanho: u32) -> io::Result<Pixmap> {
+    let arvore = usvg::Tree::from_str(svg, &usvg::Options::default())
         .map_err(|e| io::Error::other(format!("svg invalido em {tamanho}px: {e}")))?;
 
     let mut mapa = Pixmap::new(tamanho, tamanho)

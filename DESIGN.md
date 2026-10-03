@@ -38,12 +38,28 @@ Path do controle (use direto em `Geometry.Parse`):
 | StrokeStrong | `#2A333B` | bordas de controle focado |
 | TextPrimary | `#E8ECEF` | título, valor |
 | TextSecondary | `#9AA4AD` | descrição |
-| TextTertiary | `#6B757D` | rótulo, timestamp |
-| AccentGreen | `#5FE083` | carga saudável, ação primária |
+| TextTertiary | `#7C868F` | rótulo, timestamp |
+| AccentGreen | `#5FE083` | carga saudável — só carga; ação é `--realce` |
 | AccentTeal | `#35D7A8` | fim do gradiente do anel |
 | Amber | `#F2C14E` | bateria baixa |
 | Red | `#F2564E` | bateria crítica |
 | Gray | `#8D979F` | no cabo / sem leitura |
+
+O terciário é o texto menor da tela, então é ele que decide o contraste. A conta, por tema,
+contra os três chãos em que ele aparece (Ink nos rótulos de seção, Surface nos cartões,
+SurfaceAlt na linha escolhida e no hover):
+
+| tema | TextTertiary | sobre Ink | sobre Surface | sobre SurfaceAlt |
+| ---- | ------------ | --------- | ------------- | ---------------- |
+| Noite | `#7C868F` | 5,22 | 5,03 | 4,72 |
+| Preto | `#7C868F` | 5,66 | 5,37 | 4,81 |
+| Ardósia | `#7D8D9E` | 5,53 | 5,10 | 4,55 |
+| Brasa | `#948578` | 5,45 | 5,20 | 4,80 |
+| Dia | `#5B6673` | 5,16 | 5,84 | 4,79 |
+
+Cada um continua mais apagado que o TextSecondary do próprio tema. No Dia o realce é
+`#0A6E5B`: o Ink sobre ele, no hover do botão de destaque, dá 5,46:1. **Token novo de texto
+não entra sem a linha dele nesta tabela.**
 
 Gradiente do anel no ícone do app: `#5FE083` -> `#35D7A8`, diagonal (120,80) -> (400,440).
 Na bandeja **não** use gradiente: cor plana, porque em 16px o gradiente vira lama.
@@ -68,7 +84,7 @@ Mesma marca, sem o fundo circular — a bandeja é o fundo.
 | ------ | ----- |
 | Anel | r=194, largura 56 (bem mais grosso que no app: precisa existir em 16px) |
 | Trilha | mesma cor do glifo a 22% |
-| Controle | `scale(0.5)` centrado em (256, 268), sticks vazados |
+| Controle | `scale(0.5)` centrado em (256, 268), cheio: em 16px os sticks vazados viram ruído |
 | Glifo em barra escura | `#FFFFFF` |
 | Glifo em barra clara | `#1B1F24` |
 
@@ -101,13 +117,30 @@ fallback `Segoe UI`. `Consolas` só para número medido e timestamp.
 | Body | 14 / Regular | texto de configuração |
 | Caption | 12 / Regular, TextTertiary | rótulo, "há 4 min" |
 | Mono | 12 / Regular, Consolas | mAh, horários, diagnóstico |
+| Rótulo | 12 / SemiBold, caixa alta, 0.12em, TextTertiary | título de seção |
+
+São seis tokens em `tokens.css` (`--fs-display` a `--fs-mono`, mais `--rastreio-rotulo`) e
+nenhum `font-size` em pixel fora dele. Meio pixel em Segoe UI Variable rende com métrica
+fracionária e fica borrado ao lado de texto inteiro, e nada fica abaixo de 12px. O rótulo de
+seção é uma receita só, em Segoe, nunca em Consolas.
 
 ## 5. Espaço, raio, elevação
 
 Escala de espaço: 4, 8, 12, 16, 24, 32. Nada fora dela.
-Raios: 8 (campo, botão), 12 (cartão), 16 (janela/flyout), pill (anel de status).
-Elevação: apenas duas. Cartão = sem sombra, borda `Stroke`. Flyout = sombra
-`0 18 40 rgba(0,0,0,0.55)`, blur 32, opacidade 0.55.
+Raios: 2 (trilho de 3px), 4 (controle: tecla, mini-tela, campo de renomear), 8 (campo,
+botão, e o flyout, que é o raio do DWM), 12 (cartão, inclusive o aviso de conexão), 16
+(janela que não passa pelo DWM), pill (anel de status, chave). Altura de controle: 32.
+Elevação: apenas duas. Cartão = sem sombra, borda `Stroke`. O flyout usa a sombra do
+sistema, não uma de CSS: sem material a janela tem o tamanho do `div` e cortaria a dela.
+O aviso de conexão usa `0 8 24 rgba(0,0,0,0.45)`, σ=12 com cauda de 30px, que cabe nos
+32px das laterais, nos 24 de cima mais o deslocamento e nos 56 de baixo, sem degrau sobre
+fundo claro. A pílula, `0 2 8 rgba(0,0,0,0.6)`. Toda sombra é token em `tokens.css`.
+
+Controle tem preenchimento sutil; cartão não. O botão (`.botao`, em `botao.css`) é o do
+WinUI: fundo TextPrimary a 5% (8% no hover), borda TextPrimary a 12%, 32px de altura (28px
+no `.miudo`), raio 8. Só borda, sem fundo, ele some contra o cartão — `StrokeStrong` sobre
+Surface dá 1,45:1. A chave desligada tem contorno em TextTertiary, acima de 3:1 contra a
+linha em todos os temas.
 
 ## 6. Movimento
 
@@ -116,13 +149,19 @@ flyout. Easing `CubicEase EaseOut` sempre. O anel **anima** entre percentuais em
 180ms — nunca salta. Nenhuma animação em loop: um app de bandeja que pisca é um
 app que o usuário desliga.
 
+Pressed é o do WinUI: preenchimento TextPrimary a 4% e texto em TextSecondary, mais fraco
+que o hover; botão de destaque e de perigo escurecem 10%. A chave engorda a bolinha no
+hover e a estica no pressed. Toda `transition` leva `var(--curva)` depois da duração, e o
+cursor é a seta em todo botão: a mão fica só no arrastar da pílula solta.
+
 ## 7. Telas
 
-**Flyout (clique no ícone)** — 320x220, raio 16, fundo Ink, borda Stroke.
+**Flyout (clique no ícone)** — 320x220, raio 8 com a sombra do sistema, fundo Ink, borda
+Stroke. Nunca passa da área útil: acima disso, rola por dentro.
 Ancorado ao canto da bandeja com 12px de folga. Conteúdo, de cima para baixo:
 anel 96px com a porcentagem em Display no centro · nome do controle em Subtitle ·
 estimativa de tempo restante em Body · última leitura em Caption/Mono ·
-linha divisória · dois botões ghost: "Configurações" e "Atualizar".
+linha divisória · dois botões ghost: "Configurações" e "Ler agora".
 
 Sem número quando estiver no cabo: mostre "No cabo" em Subtitle e a última leitura
 com horário em Caption. Nunca invente percentual.
@@ -138,11 +177,11 @@ com o número da versão, última leitura da versão atual em Caption/Mono, bot�
 direita e, abaixo de um divisor, as notas da release desenhadas como o que são — rótulo
 de seção no mesmo estilo dos `<h2>` da página e uma lista de verdade, nunca a primeira
 linha do texto truncada dentro de uma descrição. Baixando, o botão dá lugar a um trilho
-de 3px em AccentGreen com a porcentagem em Caption/Mono embaixo.
+de 3px em `--realce` com a porcentagem em Caption/Mono embaixo.
 
 **Passo a passo (primeira abertura)** — ocupa a janela inteira, sem o trilho lateral.
 Coluna centrada de 520: pontos de progresso no topo (o de agora vira um traço de 20px
-em AccentGreen), palco de 136px com a ilustração, título em Title, corpo em Body com no
+em `--realce`), palco de 136px com a ilustração, título em Title, corpo em Body com no
 máximo 46 caracteres por linha, e o rodapé com *Pular* à esquerda e *Voltar/Avançar* à
 direita. As ilustrações são os próprios componentes do app — o anel de verdade, animando
 — e nunca imagem de tela. Um dos seis passos é ao vivo: solta a pílula na tela e espera

@@ -1,83 +1,48 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
-import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
-import { Chave, Linha, MiniTela } from "../componentes/Controles";
+import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, MODOS, salvar } from "../ajustes";
+import {
+  Chave,
+  Deslizante,
+  Linha,
+  MiniTela,
+  Seletor,
+  useLinha,
+  useNomeDoControle,
+} from "../componentes/Controles";
+import { Teclas } from "../componentes/Teclas";
+import { decimal, quando } from "../formato";
 import {
   Config,
-  OverlayMode,
+  Recusa,
+  VersaoNova,
   Theme,
   useAtalhosRecusados,
+  useConfig,
+  useNovidade,
   usePilulaCoberta,
   usePilulaSolta,
 } from "../estado";
 
 const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
 
-const NOME_DA_TECLA: Record<string, string> = {
-  Ctrl: "Ctrl",
-  Alt: "Alt",
-  Shift: "Shift",
-  Super: "Win",
-  Space: "Espaço",
-  Escape: "Esc",
-  Delete: "Del",
-  ArrowUp: "↑",
-  ArrowDown: "↓",
-  ArrowLeft: "←",
-  ArrowRight: "→",
-  Backquote: "`",
-  Minus: "-",
-  Equal: "=",
-  BracketLeft: "[",
-  BracketRight: "]",
-  Semicolon: ";",
-  Quote: "'",
-  Comma: ",",
-  Period: ".",
-  Slash: "/",
-  Backslash: "\\",
-  PageUp: "Page Up",
-  PageDown: "Page Down",
-};
-
-const TAMANHOS: [number, string][] = [
-  [0.85, "Pequena"],
-  [1, "Padrão"],
-  [1.2, "Grande"],
-  [1.45, "Enorme"],
+const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: string }[] = [
+  {
+    id: "Sistema",
+    rotulo: "Do Windows",
+    chao: "linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%)",
+    realce: "#35d7a8",
+    texto: "#e8ecef",
+  },
+  { id: "Noite", rotulo: "Noite", chao: "#0b0e11", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Ardosia", rotulo: "Ardósia", chao: "#0d1219", realce: "#4ea8ff", texto: "#e7edf4" },
+  { id: "Brasa", rotulo: "Brasa", chao: "#100c0a", realce: "#e0925a", texto: "#f2ebe5" },
+  { id: "Dia", rotulo: "Dia", chao: "#eef1f5", realce: "#0a6e5b", texto: "#0f151b" },
 ];
-
-const OPACIDADES: [number, string][] = [
-  [1, "Sólida"],
-  [0.9, "90%"],
-  [0.75, "75%"],
-  [0.55, "55%"],
-];
-
-const TEMAS: { id: Theme; rotulo: string }[] = [
-  { id: "Sistema", rotulo: "Do Windows" },
-  { id: "Noite", rotulo: "Noite" },
-  { id: "Preto", rotulo: "Preto" },
-  { id: "Ardosia", rotulo: "Ardósia" },
-  { id: "Brasa", rotulo: "Brasa" },
-  { id: "Dia", rotulo: "Dia" },
-];
-
-const MODOS: Record<OverlayMode, string> = {
-  Desligada: "Desligada",
-  EmJogo: "Só em jogo",
-  Sempre: "Sempre visível",
-};
-
-interface VersaoNova {
-  versao: string;
-  notas: string | null;
-  beta: boolean;
-  atual: string;
-}
 
 interface Busca {
   estado: "nova" | "em-dia" | "falhou";
@@ -101,27 +66,50 @@ type Passo =
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
-export function Configuracoes({ aoRever }: { aoRever: () => void }) {
-  const [cfg, setCfg] = useState<Config | null>(null);
-  const [nova, setNova] = useState<VersaoNova | null>(null);
+export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
+  const doRust = useConfig();
+  const [recusadas, setRecusadas] = useState<string[]>([]);
+  const [cfg, setCfg] = useState<Config | null>(doRust);
+  const nova = useNovidade();
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
-  const [telas, setTelas] = useState(1);
+  const [telas, setTelas] = useState<Tela[]>([]);
+  const [ajusteDoCritico, setAjusteDoCritico] = useState<number | null>(null);
   const [atual, setAtual] = useState("");
-  const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
-    "parado",
-  );
+  const [veioDe, setVeioDe] = useState<string | null>(null);
+  const [ultima, setUltima] = useState(0);
+  const [diagnostico, setDiagnostico] = useState<Diagnostico>({ passo: "parado" });
   const solta = usePilulaSolta();
   const coberta = usePilulaCoberta();
   const recusados = useAtalhosRecusados();
 
   useEffect(() => {
-    invoke<Config>("configuracoes").then(setCfg).catch(() => {});
-    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
-    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
-    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
+    if (doRust) setCfg(doRust);
+  }, [doRust]);
+
+  useEffect(() => {
+    invoke<{ atual: string; veioDe: string | null }>("versao_do_app")
+      .then(({ atual, veioDe }) => {
+        setAtual(atual);
+        setVeioDe(veioDe);
+      })
+      .catch(() => {});
+    invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    void invoke("previa_da_pilula", { ligada: ativa });
+    return () => {
+      void invoke("previa_da_pilula", { ligada: false });
+    };
+  }, [ativa]);
+
+  useEffect(() => {
+    if (!ativa) return;
+    invoke<Tela[]>("telas").then(setTelas).catch(() => {});
+  }, [ativa]);
+
   const procurar = async () => {
+    setVeioDe(null);
     setPasso({ tipo: "procurando" });
     try {
       const busca = await invoke<Busca>("procurar_atualizacao");
@@ -130,24 +118,18 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         setPasso({
           tipo: "falhou",
           ao: "verificar",
-          motivo: busca.motivo ?? "não deu para consultar o repositório",
+          motivo: busca.motivo ?? "não deu para falar com o GitHub",
         });
         return;
       }
 
-      if (busca.estado === "nova" && busca.versao) {
-        setNova({ versao: busca.versao, notas: busca.notas, beta: busca.beta, atual: busca.atual });
-        setPasso({ tipo: "parado" });
-        return;
-      }
-
-      setNova(null);
-      setPasso({ tipo: "atualizado" });
+      invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
+      setPasso(busca.estado === "nova" ? { tipo: "parado" } : { tipo: "atualizado" });
     } catch {
       setPasso({
         tipo: "falhou",
         ao: "verificar",
-        motivo: "não deu para consultar o repositório",
+        motivo: "não deu para falar com o GitHub",
       });
     }
   };
@@ -169,20 +151,30 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
     try {
       const achou = await invoke<boolean>("instalar_atualizacao");
       if (!achou) {
-        setNova(null);
         setPasso({ tipo: "atualizado" });
         return;
       }
       await relaunch();
     } catch (e) {
-      setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
+      setPasso({
+        tipo: "falhou",
+        ao: "atualizar",
+        motivo: typeof e === "string" ? e : "não deu para baixar a versão nova",
+      });
     } finally {
       parar();
     }
   };
 
   if (!cfg) return null;
-  const gravar = (mudanca: Partial<Config>) => setCfg(salvar(cfg, mudanca));
+  const pilulaDesligada = cfg.OverlayMode === "Desligada";
+  const gravar = (mudanca: Partial<Config>) => {
+    setCfg({ ...cfg, ...mudanca });
+    void salvar(cfg, mudanca).then(({ config, recusadas }) => {
+      setCfg(config);
+      setRecusadas(recusadas);
+    });
+  };
   const ocupado =
     passo.tipo === "procurando" ||
     passo.tipo === "preparando" ||
@@ -199,95 +191,87 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   return (
     <>
       <h1 className="titulo-da-pagina">Configurações</h1>
+      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <h2>Inicialização</h2>
       <Linha
         titulo="Iniciar com o Windows"
-        descricao="Sobe junto com o sistema e já começa a monitorar."
+        descricao={
+          recusadas.includes("StartWithWindows")
+            ? "O Windows não deixou gravar o início automático. Veja Configurações > Aplicativos > Inicialização."
+            : "Sobe junto com o sistema e já começa a monitorar."
+        }
+        erro={recusadas.includes("StartWithWindows")}
       >
         <Chave
           ligado={cfg.StartWithWindows}
           aoTrocar={(v) => gravar({ StartWithWindows: v })}
         />
       </Linha>
-      <Linha
-        titulo="Iniciar minimizado"
-        descricao="Abre direto na bandeja, sem mostrar esta janela."
-      >
+      <Linha titulo="Abrir na bandeja" descricao="Sobe sem mostrar esta janela.">
         <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
       </Linha>
-      <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
-        <button
-          className="ciclo"
-          onClick={() =>
-            gravar({ CloseAction: ciclar(cfg.CloseAction, ["MinimizeToTray", "Exit"] as const) })
-          }
-        >
-          {cfg.CloseAction === "MinimizeToTray" ? "Minimizar" : "Encerrar"}
-        </button>
+      <Linha titulo="Botão de fechar" descricao="O que o X da janela faz.">
+        <Seletor
+          opcoes={[
+            { valor: "MinimizeToTray" as const, rotulo: "Esconder na bandeja" },
+            { valor: "Exit" as const, rotulo: "Encerrar o Kontro" },
+          ]}
+          valor={cfg.CloseAction}
+          aoEscolher={(CloseAction) => gravar({ CloseAction })}
+        />
       </Linha>
       <h2>Aparência</h2>
-      <Linha titulo="Tema" descricao="O chão da janela. As cores de carga não mudam.">
-        <div className="temas">
-          {TEMAS.map((t) => (
-            <button
-              key={t.id}
-              className={`amostra-de-tema${cfg.Theme === t.id ? " escolhida" : ""}`}
-              data-tema={t.id.toLowerCase()}
-              title={t.rotulo}
-              aria-label={t.rotulo}
-              aria-pressed={cfg.Theme === t.id}
-              onClick={() => gravar({ Theme: t.id })}
-            >
-              <span className="chao" />
-              <span className="pingo" />
-            </button>
-          ))}
-        </div>
+      <Linha
+        titulo="Tema"
+        descricao={`${TEMAS.find((t) => t.id === cfg.Theme)?.rotulo ?? "Noite"} · o chão da janela. As cores de carga não mudam.`}
+        classe="tema"
+      >
+        <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
+      </Linha>
+
+      <h2>Limiares de carga</h2>
+      <Linha
+        titulo="Carga baixa"
+        descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
+      >
+        <Deslizante
+          min={5}
+          max={90}
+          passo={5}
+          valor={cfg.WarnThreshold}
+          aoMudar={(aviso) => {
+            const critico = Math.min(cfg.CriticalThreshold, aviso - 1);
+            setAjusteDoCritico(critico !== cfg.CriticalThreshold ? critico : null);
+            gravar({ WarnThreshold: aviso, CriticalThreshold: critico });
+          }}
+        />
+      </Linha>
+      <Linha
+        titulo="Carga crítica"
+        descricao={
+          ajusteDoCritico !== null
+            ? `Ajustado para ${ajusteDoCritico}% para caber abaixo da carga baixa.`
+            : "Abaixo disto fica vermelho, e a pílula aparece mesmo fora de jogo."
+        }
+      >
+        <Deslizante
+          min={1}
+          max={cfg.WarnThreshold - 1}
+          passo={1}
+          valor={cfg.CriticalThreshold}
+          aoMudar={(CriticalThreshold) => {
+            setAjusteDoCritico(null);
+            gravar({ CriticalThreshold });
+          }}
+        />
       </Linha>
 
       <h2>Avisos</h2>
-      <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
+      <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
         <Chave
           ligado={cfg.NotificationsEnabled}
           aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
         />
-      </Linha>
-      <Linha
-        titulo="Avisar em"
-        descricao="Carga a partir da qual o Kontro avisa que ela está baixa."
-      >
-        <button
-          className="ciclo"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() => {
-            const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
-            gravar({
-              WarnThreshold: aviso,
-              CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 5),
-            });
-          }}
-        >
-          {cfg.WarnThreshold}%
-        </button>
-      </Linha>
-      <Linha
-        titulo="Avisar de novo em"
-        descricao="O segundo aviso, mais urgente. É ele que também traz a pílula para a tela fora de jogo."
-      >
-        <button
-          className="ciclo"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() =>
-            gravar({
-              CriticalThreshold: Math.min(
-                ciclar(cfg.CriticalThreshold, LIMIARES_CRITICOS),
-                cfg.WarnThreshold - 5,
-              ),
-            })
-          }
-        >
-          {cfg.CriticalThreshold}%
-        </button>
       </Linha>
       <Linha
         titulo="Avisar ao conectar"
@@ -299,17 +283,28 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         />
       </Linha>
       <h2>Sobreposição</h2>
-      <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
-        <button
-          className="ciclo"
-          onClick={() =>
-            gravar({
-              OverlayMode: ciclar(cfg.OverlayMode, ["Desligada", "EmJogo", "Sempre"] as const),
-            })
-          }
-        >
-          {MODOS[cfg.OverlayMode]}
-        </button>
+      <div className="previa" aria-hidden="true">
+        <MiniTela
+          x={cfg.OverlayX}
+          y={cfg.OverlayY}
+          solta={solta}
+          escala={2}
+          escalaDaPilula={cfg.OverlayScale}
+          opacidade={cfg.OverlayOpacity}
+        />
+      </div>
+      <Linha
+        titulo="Quando aparecer"
+        descricao="Desligada, só durante um jogo em tela cheia, ou sempre."
+      >
+        <Seletor
+          opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
+            valor,
+            rotulo: MODOS[valor],
+          }))}
+          valor={cfg.OverlayMode}
+          aoEscolher={(OverlayMode) => gravar({ OverlayMode })}
+        />
       </Linha>
       {coberta && (
         <p className="coberta" role="status">
@@ -319,99 +314,123 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       )}
       <Linha
         titulo="Posição"
+        desabilitada={pilulaDesligada}
         descricao={
           solta
             ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
             : "A pílula fica onde você largar: solte e arraste até o ponto que quiser."
         }
       >
-        <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
-        <button
-          className={solta ? "ciclo destaque" : "ciclo"}
+        {!solta && (
+          <MiniTela
+            x={cfg.OverlayX}
+            y={cfg.OverlayY}
+            solta={solta}
+            aoMover={(OverlayX, OverlayY) => gravar({ OverlayX, OverlayY })}
+          />
+        )}
+        <BotaoDaLinha
+          className={solta ? "botao destaque" : "botao"}
           onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
         >
           {solta ? "Prender" : "Soltar"}
-        </button>
+        </BotaoDaLinha>
       </Linha>
       <Linha
         titulo="Monitor"
-        descricao="Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        desabilitada={pilulaDesligada || telas.length <= 1}
+        descricao={
+          telas.length <= 1
+            ? "Só há uma tela ligada; a pílula fica nela."
+            : "Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        }
       >
-        <button
-          className="ciclo"
-          onClick={() =>
-            gravar({
-              OverlayMonitor: cfg.OverlayMonitor + 1 >= telas ? -1 : cfg.OverlayMonitor + 1,
-            })
-          }
-        >
-          {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
-        </button>
+        <Seletor
+          opcoes={[
+            { valor: -1, rotulo: "Segue o jogo" },
+            ...telas.map((t, i) => ({
+              valor: i,
+              rotulo: `Monitor ${i + 1} · ${t.largura}×${t.altura}${t.principal ? " · principal" : ""}`,
+            })),
+          ]}
+          valor={cfg.OverlayMonitor < telas.length ? cfg.OverlayMonitor : -1}
+          aoEscolher={(OverlayMonitor) => gravar({ OverlayMonitor })}
+        />
       </Linha>
-      <Linha titulo="Tamanho" descricao="Quanto espaço a pílula ocupa na tela.">
-        <button
-          className="ciclo"
-          onClick={() => gravar({ OverlayScale: ciclar(cfg.OverlayScale, tamanhos()) })}
-        >
-          {rotulo(TAMANHOS, cfg.OverlayScale)}
-        </button>
+      <Linha
+        titulo="Tamanho"
+        desabilitada={pilulaDesligada}
+        descricao="Quanto espaço a pílula ocupa na tela."
+      >
+        <Deslizante
+          min={75}
+          max={200}
+          passo={5}
+          valor={Math.round(cfg.OverlayScale * 100)}
+          aoMudar={(v) => gravar({ OverlayScale: v / 100 })}
+        />
       </Linha>
-      <Linha titulo="Transparência" descricao="Para a pílula não competir com o HUD do jogo.">
-        <button
-          className="ciclo"
-          onClick={() => gravar({ OverlayOpacity: ciclar(cfg.OverlayOpacity, opacidades()) })}
-        >
-          {rotulo(OPACIDADES, cfg.OverlayOpacity)}
-        </button>
+      <Linha
+        titulo="Opacidade"
+        desabilitada={pilulaDesligada}
+        descricao="Em 100% ela é sólida. Baixe para não competir com o HUD do jogo."
+      >
+        <Deslizante
+          min={30}
+          max={100}
+          passo={5}
+          valor={Math.round(cfg.OverlayOpacity * 100)}
+          aoMudar={(v) => gravar({ OverlayOpacity: v / 100 })}
+        />
       </Linha>
       <h2>Atalhos</h2>
       <Linha
-        titulo="Usar atalhos"
-        descricao="Valem por cima do jogo, sem precisar sair dele."
+        titulo="Atalhos de teclado"
+        descricao="Funcionam com o jogo em foco, sem sair dele."
       >
         <Chave
           ligado={cfg.OverlayShortcutEnabled}
           aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
         />
       </Linha>
-      <Linha
+      <LinhaDeAtalho
         titulo="Mostrar e esconder a pílula"
-        descricao={descricaoDoAtalho(
-          "Tira a pílula da frente e traz de volta.",
-          cfg.OverlayShortcut,
-          recusados,
-        )}
-      >
-        <Captura
-          combinacao={cfg.OverlayShortcut}
-          desabilitado={!cfg.OverlayShortcutEnabled}
-          aoTrocar={(c) => gravar({ OverlayShortcut: c })}
-        />
-      </Linha>
-      <Linha
+        base="Tira a pílula da frente e traz de volta."
+        recusa={recusados.find((r) => r.atalho === "Mostrar")}
+        combinacao={cfg.OverlayShortcut}
+        padrao={ATALHO_DA_PILULA}
+        outra={cfg.OverlayMoveShortcut}
+        nomeDaOutra="soltar a pílula"
+        desabilitada={!cfg.OverlayShortcutEnabled}
+        ativa={ativa}
+        aoTrocar={(c) => gravar({ OverlayShortcut: c })}
+      />
+      <LinhaDeAtalho
         titulo="Soltar a pílula para mover"
-        descricao={descricaoDoAtalho(
-          "Solta a pílula para arrastar, e prende de novo onde você largar.",
-          cfg.OverlayMoveShortcut,
-          recusados,
-        )}
-      >
-        <Captura
-          combinacao={cfg.OverlayMoveShortcut}
-          desabilitado={!cfg.OverlayShortcutEnabled}
-          aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
-        />
-      </Linha>
+        base="Solta a pílula para arrastar, e prende de novo onde você largar."
+        recusa={recusados.find((r) => r.atalho === "Mover")}
+        combinacao={cfg.OverlayMoveShortcut}
+        padrao={ATALHO_DE_MOVER}
+        outra={cfg.OverlayShortcut}
+        nomeDaOutra="mostrar a pílula"
+        desabilitada={!cfg.OverlayShortcutEnabled}
+        ativa={ativa}
+        aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
+      />
       <h2>Versão</h2>
-      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
-      <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
-        <button className="ciclo" disabled={ocupado} onClick={() => void procurar()}>
+      <Linha
+        titulo="Procurar atualizações"
+        descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
+        classe="versao"
+        viva
+      >
+        <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
         </button>
       </Linha>
       <Linha
         titulo="Avisar sobre versões novas"
-        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
+        descricao="Consulta o repositório uma vez por dia, sem baixar nada sozinho."
       >
         <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
       </Linha>
@@ -421,60 +440,48 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
       >
         <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
       </Linha>
-      <h2>Problemas</h2>
+      <h2>Ajuda</h2>
       <Linha
-        titulo="Passo a passo"
+        titulo="Rever o passo a passo"
         descricao="As seis telas que explicam o app, de novo do começo."
       >
-        <button className="ciclo" onClick={aoRever}>
+        <button className="botao" onClick={aoRever}>
           Rever
         </button>
       </Linha>
-      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
+      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)} viva>
         <button
-          className="ciclo"
-          disabled={diagnostico === "gravando"}
+          className="botao"
+          disabled={diagnostico.passo === "gravando"}
           onClick={async () => {
-            setDiagnostico("gravando");
+            setDiagnostico({ passo: "gravando" });
             try {
-              await invoke<string>("salvar_diagnostico");
-              setDiagnostico("pronto");
+              const caminho = await invoke<string>("salvar_diagnostico");
+              setDiagnostico({ passo: "pronto", caminho });
             } catch {
-              setDiagnostico("falhou");
+              setDiagnostico({ passo: "falhou" });
             }
           }}
         >
-          {diagnostico === "gravando" ? "Gravando..." : "Salvar"}
+          {diagnostico.passo === "gravando" ? "Gravando…" : "Salvar"}
         </button>
       </Linha>
     </>
   );
 }
-const tamanhos = () => TAMANHOS.map(([v]) => v);
-const opacidades = () => OPACIDADES.map(([v]) => v);
-function rotulo(degraus: [number, string][], valor: number): string {
-  return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
-}
+type Diagnostico =
+  | { passo: "parado" | "gravando" | "falhou" }
+  | { passo: "pronto"; caminho: string };
 
-function tituloDaVersao(passo: Passo): string {
-  switch (passo.tipo) {
-    case "atualizado":
-      return "Você está na versão mais recente";
-    case "falhou":
-      return passo.ao === "verificar"
-        ? "Não foi possível verificar"
-        : "Não foi possível atualizar";
-    default:
-      return "Procurar atualizações";
+function linhaDaVersao(atual: string, passo: Passo, ultima: number, veioDe: string | null): string {
+  if (passo.tipo === "procurando") return "Consultando o repositório…";
+  if (passo.tipo === "atualizado") return "Nada novo desde esta versão";
+  if (passo.tipo === "falhou" && passo.ao === "verificar") {
+    return `Não foi possível verificar: ${passo.motivo}`;
   }
-}
-function detalheDaVersao(atual: string, passo: Passo): string {
-  if (passo.tipo === "falhou") return passo.motivo;
-  if (passo.tipo === "procurando") return "Consultando o repositório...";
-  if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
-
-  const onde = atual ? `Você está na ${atual}. ` : "";
-  return `${onde}O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.`;
+  if (veioDe) return `Atualizado para a ${atual} · você estava na ${veioDe}`;
+  const verificado = ultima > 0 ? `verificado ${quando(ultima)}` : "ainda não verificado";
+  return `Você está na ${atual} · ${verificado}`;
 }
 
 function Novidade({
@@ -493,33 +500,51 @@ function Novidade({
   const porcento = passo.tipo === "baixando" ? passo.porcento : null;
   const bytes = passo.tipo === "baixando" ? passo.bytes : 0;
   const indefinido = preparando || (baixando && porcento === null);
+  const falhou = passo.tipo === "falhou" && passo.ao === "atualizar" ? passo.motivo : null;
 
   return (
     <section className="cartao novidade">
       <div className="cabeca">
-        <div>
+        <div className="leitura">
           <div className="dispositivo">
             {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
           </div>
-          <div className="rodape">você está na {nova.atual}</div>
+          <div className="rodape">
+            Você está na <span className="mono">{nova.atual}</span>
+          </div>
         </div>
         {!andando && (
-          <button className="ciclo destaque" onClick={aoAtualizar}>
-            Atualizar agora
+          <button className="botao primario" onClick={aoAtualizar}>
+            {falhou ? "Tentar de novo" : "Atualizar agora"}
           </button>
         )}
       </div>
 
+      {falhou && (
+        <p className="falha" role="status" aria-live="polite">
+          {falhou}
+        </p>
+      )}
+
       {andando && (
         <div className="andamento">
-          <div className={`trilho${indefinido ? " indefinido" : ""}`} aria-hidden="true">
+          <div
+            className={`trilho${indefinido ? " indefinido" : ""}`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={indefinido ? undefined : instalando ? 100 : (porcento ?? 0)}
+            aria-label="Download da atualização"
+          >
             <span
               style={
                 indefinido ? undefined : { width: `${instalando ? 100 : (porcento ?? 0)}%` }
               }
             />
           </div>
-          <div className="rodape">{andamento(passo, porcento, bytes)}</div>
+          <div className="rodape" role="status" aria-live="polite">
+            {andamento(passo, porcento, bytes)}
+          </div>
         </div>
       )}
 
@@ -528,17 +553,19 @@ function Novidade({
   );
 }
 
-function andamento(passo: Passo, porcento: number | null, bytes: number): string {
+function andamento(passo: Passo, porcento: number | null, bytes: number): React.ReactNode {
   if (passo.tipo === "preparando") return "consultando a release publicada";
   if (passo.tipo === "instalando") return "instalando — o app reinicia sozinho";
-  if (porcento === null) {
-    return `baixando ${megabytes(bytes)} — o pacote é verificado antes de rodar`;
-  }
-  return `baixando ${porcento}% — o pacote é verificado antes de rodar`;
+  const quanto = porcento === null ? megabytes(bytes) : `${porcento}%`;
+  return (
+    <>
+      baixando <span className="mono">{quanto}</span> — o pacote é verificado antes de rodar
+    </>
+  );
 }
 
 function megabytes(bytes: number): string {
-  return `${(bytes / 1_048_576).toFixed(1).replace(".", ",")} MB`;
+  return `${decimal(bytes / 1_048_576)} MB`;
 }
 
 function Notas({ texto }: { texto: string | null }) {
@@ -547,34 +574,79 @@ function Notas({ texto }: { texto: string | null }) {
 
   return (
     <div className="notas">
-      {blocos.map((bloco, i) =>
-        bloco.tipo === "titulo" ? (
-          <h3 key={i}>{bloco.texto}</h3>
-        ) : (
-          <ul key={i}>
-            {bloco.itens.map((item, j) => (
-              <li key={j}>{item}</li>
-            ))}
-          </ul>
-        ),
-      )}
+      {blocos.map((bloco, i) => {
+        switch (bloco.tipo) {
+          case "manchete":
+            return (
+              <p key={i} className="manchete">
+                {comNegrito(bloco.texto)}
+              </p>
+            );
+          case "paragrafo":
+            return <p key={i}>{comNegrito(bloco.texto)}</p>;
+          case "titulo":
+            return <h3 key={i}>{bloco.texto}</h3>;
+          default:
+            return (
+              <ul key={i}>
+                {bloco.itens.map((item, j) => (
+                  <li key={j}>{comNegrito(item)}</li>
+                ))}
+              </ul>
+            );
+        }
+      })}
     </div>
   );
 }
 
-type Bloco = { tipo: "titulo"; texto: string } | { tipo: "lista"; itens: string[] };
+function comNegrito(texto: string): React.ReactNode[] {
+  return texto
+    .split(/\*\*(.+?)\*\*/)
+    .map((parte, i) => (i % 2 === 1 ? <strong key={i}>{parte}</strong> : parte));
+}
+
+type Bloco =
+  | { tipo: "manchete" | "paragrafo" | "titulo"; texto: string }
+  | { tipo: "lista"; itens: string[] };
 
 function emBlocos(texto: string | null): Bloco[] {
   const blocos: Bloco[] = [];
+  let paragrafo: string[] = [];
   let lista: string[] | null = null;
 
+  const fecharParagrafo = () => {
+    if (paragrafo.length === 0) return;
+    blocos.push({ tipo: blocos.length === 0 ? "manchete" : "paragrafo", texto: paragrafo.join(" ") });
+    paragrafo = [];
+  };
+
   for (const bruta of (texto ?? "").split(/\r?\n/)) {
-    const linha = bruta.replace(/^﻿/, "").trim();
-    if (!linha || /^kontro[\s\d.]*$/i.test(linha)) continue;
+    const linha = bruta.replace(/^\uFEFF/, "").trim();
+    if (!linha) {
+      fecharParagrafo();
+      lista = null;
+      continue;
+    }
+    if (/^kontro[\s\d.]*$/i.test(linha)) continue;
+
+    const titulo = linha.match(/^#+\s*(.*)$/);
+    if (titulo) {
+      fecharParagrafo();
+      lista = null;
+      blocos.push({ tipo: "titulo", texto: titulo[1] });
+      continue;
+    }
 
     const marcador = linha.match(/^[-*·]\s+(.*)$/);
     if (marcador) {
       if (!lista) {
+        if (paragrafo.length === 1) {
+          blocos.push({ tipo: "titulo", texto: paragrafo[0] });
+          paragrafo = [];
+        } else {
+          fecharParagrafo();
+        }
         lista = [];
         blocos.push({ tipo: "lista", itens: lista });
       }
@@ -588,17 +660,23 @@ function emBlocos(texto: string | null): Bloco[] {
     }
 
     lista = null;
-    blocos.push({ tipo: "titulo", texto: linha });
+    paragrafo.push(linha);
   }
 
+  fecharParagrafo();
   return blocos;
 }
-function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"): string {
-  switch (passo) {
+function textoDoDiagnostico(diagnostico: Diagnostico): React.ReactNode {
+  switch (diagnostico.passo) {
     case "gravando":
-      return "Perguntando a cada fonte o que ela sabe da carga...";
+      return "Perguntando a cada fonte o que ela sabe da carga…";
     case "pronto":
-      return "Salvo como diagnostico.txt, e a pasta abriu. É o arquivo para anexar ao relatar um problema.";
+      return (
+        <>
+          Salvo em <code className="caminho">{diagnostico.caminho}</code>. Anexe ao relatar um
+          problema.
+        </>
+      );
     case "falhou":
       return "Não deu para gravar o arquivo.";
     default:
@@ -606,28 +684,163 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
   }
 }
 
-function descricaoDoAtalho(base: string, combinacao: string, recusados: string[]): string {
-  if (recusados.includes(combinacao)) {
-    return "Outro programa já usa essa combinação. Escolha outra.";
-  }
-  return base;
+function SeletorDeTema({
+  escolhido,
+  aoEscolher,
+}: {
+  escolhido: Theme;
+  aoEscolher: (tema: Theme) => void;
+}) {
+  const amostras = useRef<Partial<Record<Theme, HTMLButtonElement | null>>>({});
+
+  const aoTeclar = (evento: React.KeyboardEvent) => {
+    const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[evento.key];
+    if (!passo) return;
+    evento.preventDefault();
+    const i = TEMAS.findIndex((t) => t.id === escolhido);
+    const proximo = TEMAS[(i + passo + TEMAS.length) % TEMAS.length].id;
+    aoEscolher(proximo);
+    amostras.current[proximo]?.focus();
+  };
+
+  return (
+    <div className="temas" role="radiogroup" aria-label="Tema" onKeyDown={aoTeclar}>
+      {TEMAS.map((t) => {
+        const escolhida = escolhido === t.id;
+        return (
+          <button
+            key={t.id}
+            ref={(el) => {
+              amostras.current[t.id] = el;
+            }}
+            role="radio"
+            aria-checked={escolhida}
+            tabIndex={escolhida ? 0 : -1}
+            className={`amostra-de-tema${escolhida ? " escolhida" : ""}`}
+            style={
+              {
+                "--amostra-chao": t.chao,
+                "--amostra-cor": t.realce,
+                "--amostra-texto": t.texto,
+              } as React.CSSProperties
+            }
+            onClick={() => aoEscolher(t.id)}
+          >
+            <span className="caixa" aria-hidden="true">
+              <span className="pingo" />
+              <span className="traco" />
+            </span>
+            <span className="nome">{t.rotulo}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+const PRAZO_DA_DICA_MS = 2000;
+
+function descricaoDoAtalho(base: string, recusa: Recusa | undefined) {
+  if (!recusa) return { texto: base, erro: false };
+  if (recusa.motivo === "Invalida") return { texto: "O Windows não aceita essa combinação.", erro: true };
+  return { texto: "Outro programa já usa essa combinação. Escolha outra.", erro: true };
+}
+
+function LinhaDeAtalho({
+  titulo,
+  base,
+  recusa,
+  combinacao,
+  padrao,
+  outra,
+  nomeDaOutra,
+  desabilitada,
+  ativa,
+  aoTrocar,
+}: {
+  titulo: string;
+  base: string;
+  recusa: Recusa | undefined;
+  combinacao: string;
+  padrao: string;
+  outra: string;
+  nomeDaOutra: string;
+  desabilitada: boolean;
+  ativa: boolean;
+  aoTrocar: (combinacao: string) => void;
+}) {
+  const { texto, erro } = descricaoDoAtalho(base, recusa);
+  return (
+    <Linha titulo={titulo} descricao={texto} erro={erro} desabilitada={desabilitada}>
+      {combinacao !== padrao && (
+        <BotaoDaLinha className="botao miudo padrao-do-atalho" onClick={() => aoTrocar(padrao)}>
+          Padrão
+        </BotaoDaLinha>
+      )}
+      <Captura
+        combinacao={combinacao}
+        outra={outra}
+        nomeDaOutra={nomeDaOutra}
+        recusada={erro}
+        ativa={ativa}
+        aoTrocar={aoTrocar}
+      />
+    </Linha>
+  );
 }
 
 function Captura({
   combinacao,
+  outra,
+  nomeDaOutra,
+  recusada,
   aoTrocar,
-  desabilitado,
+  ativa,
 }: {
   combinacao: string;
+  outra: string;
+  nomeDaOutra: string;
+  recusada: boolean;
   aoTrocar: (combinacao: string) => void;
-  desabilitado: boolean;
+  ativa: boolean;
 }) {
+  const linha = useLinha();
+  const idDoValor = useId();
+  const nome = useNomeDoControle(idDoValor);
   const [ouvindo, setOuvindo] = useState(false);
+  const [dica, setDica] = useState<string | null>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const gravou = useRef(false);
+
+  useEffect(() => {
+    if (!ativa) setOuvindo(false);
+  }, [ativa]);
 
   useEffect(() => {
     if (!ouvindo) return;
+    gravou.current = false;
+    void invoke("pausar_atalhos", { pausar: true });
+    return () => {
+      setDica(null);
+      if (!gravou.current) void invoke("pausar_atalhos", { pausar: false });
+    };
+  }, [ouvindo]);
+
+  useEffect(() => {
+    if (!dica) return;
+    const apagar = window.setTimeout(() => setDica(null), PRAZO_DA_DICA_MS);
+    return () => window.clearTimeout(apagar);
+  }, [dica]);
+
+  useEffect(() => {
+    if (!ouvindo || !ativa) return;
 
     const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Tab") {
+        setOuvindo(false);
+        return;
+      }
+
       evento.preventDefault();
       evento.stopPropagation();
 
@@ -637,30 +850,54 @@ function Captura({
       }
 
       const nova = lerCombinacao(evento);
-      if (!nova) return;
+      if (!nova) {
+        if (!MODIFICADORES.includes(evento.key)) setDica("Junte Ctrl, Alt, Shift ou Win");
+        return;
+      }
+      if (nova === outra) {
+        setDica(`Já é o atalho de ${nomeDaOutra}`);
+        return;
+      }
 
+      gravou.current = true;
       setOuvindo(false);
       aoTrocar(nova);
     };
 
+    const largar = () => setOuvindo(false);
+    const aoApontar = (evento: PointerEvent) => {
+      if (!botao.current?.contains(evento.target as Node)) setOuvindo(false);
+    };
+
     window.addEventListener("keydown", aoTeclar, true);
-    return () => window.removeEventListener("keydown", aoTeclar, true);
-  }, [ouvindo, aoTrocar]);
+    window.addEventListener("blur", largar);
+    document.addEventListener("pointerdown", aoApontar, true);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar, true);
+      window.removeEventListener("blur", largar);
+      document.removeEventListener("pointerdown", aoApontar, true);
+    };
+  }, [ouvindo, ativa, aoTrocar, outra, nomeDaOutra]);
+
+  const classe = ["captura", ouvindo && "ouvindo", recusada && !ouvindo && "recusada"]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
-      className={ouvindo ? "captura ouvindo" : "captura"}
-      disabled={desabilitado}
+      ref={botao}
+      className={classe}
+      id={idDoValor}
+      disabled={linha?.desabilitada}
+      {...nome}
       onClick={() => setOuvindo(!ouvindo)}
     >
       {ouvindo ? (
-        <span className="pedindo">pressione a combinação</span>
+        <span className="pedindo" role="status">
+          {dica ?? "Pressione a combinação · Esc cancela"}
+        </span>
       ) : (
-        combinacao.split("+").map((parte, i) => (
-          <kbd className="tecla" key={i}>
-            {nomeDaTecla(parte)}
-          </kbd>
-        ))
+        <Teclas combinacao={combinacao} />
       )}
     </button>
   );
@@ -680,10 +917,30 @@ function lerCombinacao(evento: KeyboardEvent): string | null {
   return partes.join("+");
 }
 
-function nomeDaTecla(parte: string): string {
-  if (NOME_DA_TECLA[parte]) return NOME_DA_TECLA[parte];
-  if (parte.startsWith("Key")) return parte.slice(3);
-  if (parte.startsWith("Digit")) return parte.slice(5);
-  if (parte.startsWith("Numpad")) return `Num ${parte.slice(6)}`;
-  return parte;
+interface Tela {
+  largura: number;
+  altura: number;
+  principal: boolean;
+}
+
+function BotaoDaLinha({
+  className,
+  onClick,
+  children,
+}: {
+  className: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const linha = useLinha();
+  return (
+    <button
+      className={className}
+      disabled={linha?.desabilitada}
+      aria-describedby={linha?.descricao}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
 }

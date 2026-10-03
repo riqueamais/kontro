@@ -1,13 +1,13 @@
-import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Sessao } from "../estado";
-import { duracao, momentoRelativo } from "../formato";
-import { Glifo } from "./Glifo";
+import { duracao, quando, taxa as porHoraEmTexto } from "../formato";
+import { IconeDoJogo } from "./IconeDoJogo";
 import "./sessoes.css";
 
-const QUANTAS_MOSTRAR = 5;
+const QUANTAS_DE_CADA_VEZ = 5;
 const MINUTOS_PARA_TAXA = 20;
+const MINUTOS_PARA_VIRAR_SESSAO = 10;
 
 export function Sessoes({
   sessoes,
@@ -18,67 +18,60 @@ export function Sessoes({
   escolhida?: number | null;
   aoEscolher?: (s: Sessao) => void;
 }) {
-  if (sessoes.length === 0) return null;
+  const [quantas, setQuantas] = useState(QUANTAS_DE_CADA_VEZ);
 
   return (
     <div className="sessoes">
-      <div className="sessoes-titulo">Últimas sessões</div>
-      {sessoes.slice(0, QUANTAS_MOSTRAR).map((s) => (
-        <button
-          className={`sessao${escolhida === s.inicio ? " escolhida" : ""}`}
-          key={s.inicio}
-          title="Ver esta sessão no gráfico"
-          onClick={() => aoEscolher?.(s)}
-        >
-          <Icone jogo={s.jogo} />
-
-          <span className="sessao-texto">
-            <span className="sessao-titulo">{s.jogo ?? momentoRelativo(s.inicio)}</span>
-            <span className="sessao-quando">
-              {s.jogo && `${momentoRelativo(s.inicio)} · `}
-              {duracao(minutos(s))}
-            </span>
+      <div className="sessoes-titulo">
+        <span>Últimas sessões</span>
+        {sessoes.length > 0 && (
+          <span className="sessoes-contagem">
+            {Math.min(quantas, sessoes.length)} de {sessoes.length}
           </span>
+        )}
+      </div>
 
-          <span className="sessao-numeros">
-            <span className={`sessao-carga${s.ate < s.de ? " gastou" : ""}`}>
-              {gasto(s)}
-            </span>
-            <span className="sessao-taxa">{taxa(s)}</span>
-          </span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Icone({ jogo }: { jogo: string | null }) {
-  const [uri, setUri] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!jogo) {
-      setUri(null);
-      return;
-    }
-    let vivo = true;
-    invoke<string | null>("icone_do_jogo", { nome: jogo })
-      .then((achado) => {
-        if (vivo) setUri(achado);
-      })
-      .catch(() => {});
-    return () => {
-      vivo = false;
-    };
-  }, [jogo]);
-
-  return (
-    <span className="sessao-icone">
-      {uri ? (
-        <img src={uri} alt="" width={24} height={24} />
-      ) : (
-        <Glifo tamanho={20} cor="var(--text-tertiary)" />
+      {sessoes.length === 0 && (
+        <div className="sessoes-vazio">
+          A primeira sessão aparece depois de {MINUTOS_PARA_VIRAR_SESSAO} min com o controle
+          ligado.
+        </div>
       )}
-    </span>
+
+      {sessoes.slice(0, quantas).map((s) => {
+        const porHora = taxa(s);
+        const aberta = escolhida === s.inicio;
+        return (
+          <button
+            className={`sessao${aberta ? " escolhida" : ""}`}
+            key={s.inicio}
+            aria-pressed={aberta}
+            onClick={() => aoEscolher?.(s)}
+          >
+            <IconeDoJogo jogo={s.jogo} />
+
+            <span className="sessao-texto">
+              <span className="sessao-titulo">{s.jogo ?? quando(s.inicio)}</span>
+              <span className="sessao-quando">
+                {s.jogo && `${quando(s.inicio)} · `}
+                {duracao(minutos(s))}
+              </span>
+            </span>
+
+            <span className="sessao-numeros">
+              <span className={`sessao-carga${s.ate < s.de ? " gastou" : ""}`}>{gasto(s)}</span>
+              {porHora && <span className="sessao-taxa">{porHora}</span>}
+            </span>
+          </button>
+        );
+      })}
+
+      {sessoes.length > quantas && (
+        <button className="mais" onClick={() => setQuantas((n) => n + QUANTAS_DE_CADA_VEZ)}>
+          mais {Math.min(QUANTAS_DE_CADA_VEZ, sessoes.length - quantas)}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -97,11 +90,9 @@ function taxa(s: Sessao): string {
   const min = minutos(s);
   if (gastou <= 0 || min < MINUTOS_PARA_TAXA) return "";
   const porHora = (gastou * 60) / min;
-  return `${porHora.toFixed(1).replace(".", ",")} %/h`;
+  return porHoraEmTexto(porHora);
 }
 
 export function rotuloDaSessao(s: Sessao): string {
-  const quando = momentoRelativo(s.inicio);
-  const carga = `${s.de}% a ${s.ate}%`;
-  return s.jogo ? `${s.jogo} · ${quando} · ${carga}` : `${quando} · ${carga}`;
+  return s.jogo ?? quando(s.inicio);
 }

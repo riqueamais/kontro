@@ -1,15 +1,34 @@
 .sobreposicao {
+  --sombra-flutuante: 0 2px 8px rgb(0 0 0 / calc(0.6 * var(--alfa, 1)));
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 12px;
+  transform: scale(var(--escala, 1));
+  transform-origin: top left;
   animation: kontro-pilula-entra var(--motion-slow) var(--curva);
+}
+
+.sobreposicao.guardada {
+  opacity: 0;
+  animation: none;
+}
+
+.sobreposicao.saindo {
+  animation: kontro-pilula-sai var(--motion-base) var(--curva) forwards;
 }
 
 @keyframes kontro-pilula-entra {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(8px) scale(var(--escala, 1));
+  }
+}
+
+@keyframes kontro-pilula-sai {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(var(--escala, 1));
   }
 }
 
@@ -25,28 +44,33 @@
   border-radius: 21px;
   background: linear-gradient(
     160deg,
-    rgba(28, 34, 41, 0.94),
-    rgba(10, 13, 16, 0.94) 60%
+    rgb(28 34 41 / calc(0.94 * var(--alfa, 1))),
+    rgb(10 13 16 / calc(0.94 * var(--alfa, 1))) 60%
   );
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
+    var(--sombra-flutuante),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-  transition: opacity var(--motion-slow) var(--curva);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 0 0 transparent;
+  transition:
+    opacity var(--motion-slow) var(--curva),
+    box-shadow var(--motion-base) var(--curva);
 }
 
 .sobreposicao.critica .pilula {
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
+    var(--sombra-flutuante),
+    inset 0 1px 0 transparent,
     inset 0 0 0 1px var(--red),
-    0 0 12px rgba(242, 86, 78, 0.35);
+    0 0 12px color-mix(in srgb, var(--red) 35%, transparent);
 }
 
 .sobreposicao .pilula .valor {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
   min-width: 46px;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: var(--fs-subtitle);
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -66,7 +90,7 @@
 }
 .sobreposicao .pilula .valor.menor {
   min-width: 34px;
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 
@@ -80,29 +104,54 @@
 
 .sobreposicao.solta .pilula {
   box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.6),
-    inset 0 0 0 1px rgba(53, 215, 168, 0.6);
+    var(--sombra-flutuante),
+    inset 0 1px 0 transparent,
+    inset 0 0 0 1px color-mix(in srgb, var(--realce) 60%, transparent),
+    0 0 0 transparent;
 }
 
 .sobreposicao .prender {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid rgba(232, 236, 239, 0.18);
   border-radius: 50%;
   background: rgba(10, 13, 16, 0.94);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--sombra-flutuante);
   color: var(--text-secondary);
-  cursor: pointer;
   transition:
-    color var(--motion-fast),
-    border-color var(--motion-fast);
+    color var(--motion-fast) var(--curva),
+    border-color var(--motion-fast) var(--curva);
 }
 
 .sobreposicao .prender:hover {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
+  border-color: var(--realce);
+  color: var(--realce);
+}
+
+.sobreposicao.antiga .pilula > .valor {
+  color: var(--text-secondary);
+}
+
+.sobreposicao.antiga .pilula > .anel .carga {
+  opacity: 0.6;
+}
+
+.sobreposicao .pilula .acompanhante .ordem {
+  font-family: var(--font-mono);
+  font-size: calc(var(--fs-caption) * 0.75);
+  color: var(--text-secondary);
+}
+
+@media (forced-colors: active) {
+  .sobreposicao .pilula {
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+  .sobreposicao .prender {
+    border-color: ButtonText;
+  }
 }

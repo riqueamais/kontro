@@ -65,6 +65,7 @@ pub const CAMPOS_DA_CONFIG: &[(&str, &str)] = &[
     ("OverlayShortcut", "string"),
     ("OverlayMoveShortcut", "string"),
     ("FirstRunDone", "boolean"),
+    ("TrayHintShown", "boolean"),
     ("Theme", "Theme"),
 ];
 
@@ -90,6 +91,7 @@ pub struct Settings {
     pub overlay_shortcut: String,
     pub overlay_move_shortcut: String,
     pub first_run_done: bool,
+    pub tray_hint_shown: bool,
     pub theme: Theme,
 }
 
@@ -115,6 +117,7 @@ impl Default for Settings {
             overlay_shortcut: ATALHO_DA_PILULA.to_string(),
             overlay_move_shortcut: ATALHO_DE_MOVER.to_string(),
             first_run_done: false,
+            tray_hint_shown: false,
             theme: Theme::Sistema,
         }
     }

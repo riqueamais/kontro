@@ -1,15 +1,25 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
+import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
+import { Leitura } from "../componentes/Leitura";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
-import { Amostra, Sessao, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
-import { detalhe, quandoLeu } from "../formato";
+import {
+  Amostra,
+  Estado,
+  Sessao,
+  corDoAnel,
+  useAoMudarOHistorico,
+  useEstado,
+  useLimiares,
+} from "../estado";
+import { duracao, rotuloDoAnel, taxa } from "../formato";
 
 interface DoControle {
   serie: Amostra[];
@@ -24,10 +34,11 @@ export function Resumo() {
   const limiares = useLimiares();
   const [{ serie, sessoes, saude }, setDoControle] = useState<DoControle>(VAZIO);
   const [sessao, setSessao] = useState<Sessao | null>(null);
+  const cartaoDoGrafico = useRef<HTMLElement>(null);
 
   useAoMudarOHistorico(() => {
     invoke<DoControle>("resumo_do_controle").then(setDoControle).catch(() => {});
-  }, [estado?.chave]);
+  }, [estado?.chave, estado?.via, estado?.lidoEm]);
 
   if (!estado) return null;
 
@@ -36,16 +47,18 @@ export function Resumo() {
       <h1 className="titulo-da-pagina">Resumo</h1>
 
       <section
-        className="cartao estado"
+        className={estado.leituraAntiga ? "cartao estado antiga" : "cartao estado"}
+        aria-live="polite"
         style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
       >
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
-          espessura={38}
+          espessura={30}
           tamanho={96}
           girando={estado.girando}
           marcas={estado.temNumero ? limiares : null}
+          rotulo={rotuloDoAnel(estado, limiares)}
         >
           {estado.temNumero ? (
             <span className="numero grande">{estado.percentual}%</span>
@@ -54,20 +67,24 @@ export function Resumo() {
           )}
         </Anel>
 
-        <div className="leitura">
-          <div className="dispositivo">
-            {estado.via === "Desligado" ? "Desconectado" : estado.nome}
-          </div>
-          <div className="detalhe">{detalhe(estado)}</div>
-          <div className="rodape">{quandoLeu(estado)}</div>
+        <div className="coluna">
+          <Leitura
+            estado={estado}
+            comAutonomia={false}
+            renomeavel={estado.quantosConhecidos < 2}
+          />
+          <Indicadores estado={estado} cargaCheiaMinutos={saude?.cargaCheiaMinutos ?? null} />
         </div>
 
-        <button className="ciclo" onClick={() => invoke("ler_agora")}>
-          Atualizar
-        </button>
+        <div className="acoes-do-estado">
+          <BotaoLerAgora estado={estado} className="botao" />
+          {estado.quantosConhecidos === 1 && estado.via === "Desligado" && (
+            <Esquecer chave={estado.chave} />
+          )}
+        </div>
       </section>
 
-      <section className="cartao">
+      <section className="cartao" ref={cartaoDoGrafico}>
         <Historico
           serie={serie}
           trocadaEm={saude?.trocadaEm}
@@ -80,14 +97,76 @@ export function Resumo() {
           aoSairDaJanela={() => setSessao(null)}
         />
         <Saude saude={saude} />
+      </section>
+
+      <section className="cartao">
         <Sessoes
           sessoes={sessoes}
           escolhida={sessao?.inicio}
-          aoEscolher={(s) => setSessao((atual) => (atual?.inicio === s.inicio ? null : s))}
+          aoEscolher={(s) => {
+            const abrindo = sessao?.inicio !== s.inicio;
+            setSessao(abrindo ? s : null);
+            if (abrindo) {
+              cartaoDoGrafico.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+          }}
         />
       </section>
 
-      <ListaDeControles principal={estado.chave} sempre />
+      {estado.quantosConhecidos >= 2 && <ListaDeControles principal={estado.chave} sempre />}
     </>
+  );
+}
+
+function Indicadores({
+  estado,
+  cargaCheiaMinutos,
+}: {
+  estado: Estado;
+  cargaCheiaMinutos: number | null;
+}) {
+  const blocos = [
+    estado.autonomiaMinutos !== null && {
+      numero: `~${duracao(estado.autonomiaMinutos)}`,
+      rotulo: "restam de jogo",
+    },
+    cargaCheiaMinutos !== null && { numero: duracao(cargaCheiaMinutos), rotulo: "por carga cheia" },
+    estado.consumoPorHora !== null && { numero: taxa(estado.consumoPorHora), rotulo: "de consumo" },
+  ].filter((b): b is { numero: string; rotulo: string } => !!b);
+
+  if (blocos.length === 0) return null;
+  return (
+    <div className="indicadores">
+      {blocos.map((b) => (
+        <div className="indicador" key={b.rotulo}>
+          <span className="indicador-numero">{b.numero}</span>
+          <span className="indicador-rotulo">{b.rotulo}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Esquecer({ chave }: { chave: string }) {
+  const [confirmando, setConfirmando] = useState(false);
+  if (!confirmando) {
+    return (
+      <button className="botao fantasma" onClick={() => setConfirmando(true)}>
+        Esquecer
+      </button>
+    );
+  }
+  return (
+    <div className="confirmar">
+      <button
+        className="botao perigo miudo"
+        onClick={() => void invoke("esquecer_controle", { chave })}
+      >
+        Esquecer
+      </button>
+      <button className="botao miudo" onClick={() => setConfirmando(false)}>
+        Cancelar
+      </button>
+    </div>
   );
 }

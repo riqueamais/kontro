@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
-import { useConfig } from "../estado";
+import { useConfig, useNovidade } from "../estado";
 import { Configuracoes } from "./Configuracoes";
 import { Diario } from "./Diario";
 import { Passos } from "./Passos";
@@ -56,10 +57,73 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   },
 ];
 
+const ALTURA_DO_INDICADOR = 16;
+
 export function Principal() {
   const cfg = useConfig();
+  const novidade = useNovidade();
   const [pagina, setPagina] = useState<Pagina>("resumo");
   const [passos, setPassos] = useState<boolean | null>(null);
+  const [indicador, setIndicador] = useState<number | null>(null);
+  const folhas = useRef<Partial<Record<Pagina, HTMLElement | null>>>({});
+  const abas = useRef<Partial<Record<Pagina, HTMLButtonElement | null>>>({});
+  const rolagens = useRef<Partial<Record<Pagina, number>>>({});
+
+  const irPara = (proxima: Pagina, focar = false) => {
+    const atual = folhas.current[pagina];
+    if (atual) rolagens.current[pagina] = atual.scrollTop;
+    setPagina(proxima);
+    if (focar) abas.current[proxima]?.focus();
+  };
+
+  useEffect(() => {
+    invoke<{ veioDe: string | null }>("versao_do_app")
+      .then(({ veioDe }) => {
+        if (veioDe) setPagina("config");
+      })
+      .catch(() => {});
+  }, []);
+
+  const irParaAgora = useRef(irPara);
+  irParaAgora.current = irPara;
+
+  useEffect(() => {
+    let vivo = true;
+    const parar = listen<Pagina>("kontro://abrir-aba", ({ payload }) => {
+      if (vivo) irParaAgora.current(payload);
+    });
+    return () => {
+      vivo = false;
+      void parar.then((f) => f());
+    };
+  }, []);
+
+  const vizinha = (passo: number) => {
+    const i = PAGINAS.findIndex((p) => p.id === pagina);
+    return PAGINAS[(i + passo + PAGINAS.length) % PAGINAS.length].id;
+  };
+
+  useLayoutEffect(() => {
+    const folha = folhas.current[pagina];
+    if (folha) folha.scrollTop = rolagens.current[pagina] ?? 0;
+    const aba = abas.current[pagina];
+    if (aba) setIndicador(aba.offsetTop + (aba.offsetHeight - ALTURA_DO_INDICADOR) / 2);
+  }, [pagina, passos]);
+
+  useEffect(() => {
+    if (passos !== false) return;
+    const aoTeclar = (e: KeyboardEvent) => {
+      if (!e.ctrlKey || e.key !== "Tab") return;
+      e.preventDefault();
+      const foco = document.activeElement;
+      const focoNaTroca =
+        foco instanceof HTMLElement &&
+        (foco.getAttribute("role") === "tab" || !!folhas.current[pagina]?.contains(foco));
+      irPara(vizinha(e.shiftKey ? -1 : 1), focoNaTroca);
+    };
+    window.addEventListener("keydown", aoTeclar);
+    return () => window.removeEventListener("keydown", aoTeclar);
+  });
 
   useEffect(() => {
     if (passos === null && cfg) setPassos(!cfg.FirstRunDone);
@@ -91,23 +155,79 @@ export function Principal() {
     <div className="app">
       <BarraDeTitulo />
       <div className="corpo">
-        <nav className="trilho">
-          {PAGINAS.map((p) => (
-            <button
-              key={p.id}
-              className={`aba${pagina === p.id ? " ativa" : ""}`}
-              aria-current={pagina === p.id}
-              onClick={() => setPagina(p.id)}
-            >
-              {p.icone}
-              <span>{p.rotulo}</span>
-            </button>
-          ))}
-        </nav>
+        <div
+          className="trilho"
+          role="tablist"
+          aria-orientation="vertical"
+          aria-label="Páginas"
+          onKeyDown={(e) => {
+            const destino =
+              e.key === "ArrowDown"
+                ? vizinha(1)
+                : e.key === "ArrowUp"
+                  ? vizinha(-1)
+                  : e.key === "Home"
+                    ? PAGINAS[0].id
+                    : e.key === "End"
+                      ? PAGINAS[PAGINAS.length - 1].id
+                      : null;
+            if (!destino) return;
+            e.preventDefault();
+            irPara(destino, true);
+          }}
+        >
+          {indicador !== null && (
+            <span
+              className="indicador"
+              aria-hidden="true"
+              style={{ transform: `translateY(${indicador}px)` }}
+            />
+          )}
+          {PAGINAS.map((p) => {
+            const ativa = pagina === p.id;
+            return (
+              <button
+                key={p.id}
+                ref={(el) => {
+                  abas.current[p.id] = el;
+                }}
+                id={`aba-${p.id}`}
+                role="tab"
+                aria-selected={ativa}
+                aria-controls={`painel-${p.id}`}
+                tabIndex={ativa ? 0 : -1}
+                className={`aba${ativa ? " ativa" : ""}`}
+                onClick={() => irPara(p.id)}
+              >
+                {p.icone}
+                <span>{p.rotulo}</span>
+                {p.id === "config" && novidade && (
+                  <span className="aviso" aria-label="versão nova disponível" />
+                )}
+              </button>
+            );
+          })}
+        </div>
         <main className="pagina">
-          {pagina === "resumo" && <Resumo />}
-          {pagina === "diario" && <Diario />}
-          {pagina === "config" && <Configuracoes aoRever={() => setPassos(true)} />}
+          {PAGINAS.map((p) => (
+            <section
+              key={p.id}
+              ref={(el) => {
+                folhas.current[p.id] = el;
+              }}
+              className="folha"
+              role="tabpanel"
+              id={`painel-${p.id}`}
+              aria-labelledby={`aba-${p.id}`}
+              hidden={pagina !== p.id}
+            >
+              {p.id === "resumo" && <Resumo />}
+              {p.id === "diario" && <Diario ativa={pagina === "diario"} />}
+              {p.id === "config" && (
+                <Configuracoes ativa={pagina === "config"} aoRever={() => setPassos(true)} />
+              )}
+            </section>
+          ))}
         </main>
       </div>
     </div>

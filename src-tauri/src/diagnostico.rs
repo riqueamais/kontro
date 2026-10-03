@@ -257,7 +257,9 @@ fn secao_do_app(t: &mut String, v: &AoVivo) {
         let _ = writeln!(
             t,
             "      via={:?}   carga={}   precisao={:?}",
-            estado.via, estado.texto_da_carga, estado.precisao
+            estado.via,
+            if estado.texto_da_carga.is_empty() { "nenhuma" } else { &estado.texto_da_carga },
+            estado.precisao
         );
         let quando = match estado.lido_em {
             Some(ms) => crate::tempo::para_texto(ms),

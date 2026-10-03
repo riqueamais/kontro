@@ -1,11 +1,14 @@
 import { useEffect, useId, useState } from "react";
 
+import { movimentoReduzidoAgora, useMovimentoReduzido } from "../movimento";
 import "./anel.css";
 
 const CAIXA = 512;
 const CENTRO = CAIXA / 2;
 
-const COMPRIMENTO_DA_MARCA = 0.62;
+const COMPRIMENTO_DA_MARCA = 0.5;
+
+const RAIO_DO_HALO = CAIXA * 0.125;
 
 function ponto(raio: number, graus: number) {
   const rad = (graus * Math.PI) / 180;
@@ -39,17 +42,36 @@ interface Props {
   tamanho: number;
   girando?: boolean;
   marcas?: Marcas | null;
+  rotulo?: string;
+  desde?: number;
   children?: React.ReactNode;
 }
 
-export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children }: Props) {
+export function Anel({
+  valor,
+  cor,
+  espessura,
+  tamanho,
+  girando,
+  marcas,
+  rotulo,
+  desde,
+  children,
+}: Props) {
   const raio = (CAIXA - espessura) / 2;
   const luz = useId().replace(/:/g, "");
 
-  const [suave, setSuave] = useState(valor ?? 0);
+  const reduzido = useMovimentoReduzido();
+  const [suave, setSuave] = useState(() =>
+    desde !== undefined && !movimentoReduzidoAgora() ? desde : (valor ?? 0),
+  );
   useEffect(() => {
     if (girando) return;
     const alvo = valor ?? 0;
+    if (reduzido) {
+      setSuave(alvo);
+      return;
+    }
     let quadro = 0;
     const inicio = performance.now();
     const partida = suave;
@@ -61,20 +83,37 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
     };
     quadro = requestAnimationFrame(passo);
     return () => cancelAnimationFrame(quadro);
-  }, [valor, girando]);
+  }, [valor, girando, reduzido]);
 
   const cheio = !girando && suave >= 99.9;
   const apagada = cor === "var(--gray)";
-  const tinta = apagada ? cor : `url(#${luz})`;
+  const tinta = `url(#${luz})`;
   const mostrarMarcas = marcas && !girando && valor !== null;
 
   return (
-    <div className="anel" style={{ width: tamanho, height: tamanho }}>
-      <svg width={tamanho} height={tamanho} viewBox={`0 0 ${CAIXA} ${CAIXA}`}>
+    <div
+      className={apagada ? "anel apagada" : "anel"}
+      style={
+        {
+          width: tamanho,
+          height: tamanho,
+          "--cor-do-anel": cor,
+          "--raio-do-halo": `${RAIO_DO_HALO}px`,
+        } as React.CSSProperties
+      }
+    >
+      <svg
+        width={tamanho}
+        height={tamanho}
+        viewBox={`0 0 ${CAIXA} ${CAIXA}`}
+        role={rotulo ? "img" : undefined}
+        aria-label={rotulo}
+        aria-hidden={rotulo ? undefined : true}
+      >
         <defs>
           <linearGradient id={luz} x1="0.12" y1="0.08" x2="0.86" y2="0.94">
-            <stop offset="0%" stopColor={`color-mix(in srgb, ${cor} 84%, #ffffff)`} />
-            <stop offset="100%" stopColor={cor} />
+            <stop offset="0%" />
+            <stop offset="100%" />
           </linearGradient>
         </defs>
 
@@ -87,7 +126,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
           strokeWidth={espessura}
         />
 
-        <g className={apagada ? "carga apagada" : "carga"} style={{ color: cor }}>
+        <g className="carga">
           {girando || cheio ? (
             <circle
               cx={CENTRO}
@@ -113,13 +152,13 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
             <path
               d={marca(raio, espessura, marcas.aviso)}
               stroke="var(--amber)"
-              strokeWidth={espessura * 0.14}
+              strokeWidth={espessura * 0.1}
               strokeLinecap="round"
             />
             <path
               d={marca(raio, espessura, marcas.critico)}
               stroke="var(--red)"
-              strokeWidth={espessura * 0.14}
+              strokeWidth={espessura * 0.1}
               strokeLinecap="round"
             />
           </g>

@@ -8,27 +8,22 @@ pub fn desenhar(
     estado: &EstadoDoControle,
     tamanho: u32,
     limiares: Limiares,
+    barra_clara: bool,
 ) -> Option<Image<'static>> {
-    rasterizar(&montar_svg(estado, limiares), tamanho)
+    rasterizar(&montar_svg(estado, limiares, barra_clara), tamanho)
 }
 
-pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> String {
+pub(crate) fn montar_svg(
+    estado: &EstadoDoControle,
+    limiares: Limiares,
+    barra_clara: bool,
+) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
     let grossura = g::ANEL_LARGURA;
 
-    let cor_glifo = g::BRANCO;
-
-    let fundo = format!(
-        r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="{}"/><circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{}"/>"##,
-        g::FUNDO_RAIO,
-        g::FUNDO,
-        g::FUNDO_RAIO - g::BORDA_LARGURA / 2.0,
-        g::BRANCO,
-        g::BORDA_OPACIDADE,
-        g::BORDA_LARGURA
-    );
+    let cor_glifo = if barra_clara { g::GLIFO_ESCURO } else { g::BRANCO };
 
     let trilho = format!(
         r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="{}" stroke-width="{grossura}"/>"##,
@@ -42,7 +37,7 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
             g::PAD_ESCALA_BANDEJA,
             -centro,
             -g::PAD_CENTRO_Y,
-            g::pad_com_sticks_vazados()
+            g::PAD
         )
     };
 
@@ -55,8 +50,9 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
         ),
 
         (Via::Cabo, None) => format!(
-            r##"{trilho}<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-width="{grossura}"/>{}"##,
+            r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{grossura}"/>{}"##,
             g::CINZA,
+            g::CABO_OPACIDADE,
             desenhar_glifo(1.0)
         ),
 
@@ -81,8 +77,12 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
     };
 
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{fundo}{miolo}</svg>"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{miolo}</svg>"##
     )
+}
+
+pub fn dica(estado: &EstadoDoControle, limiares: Limiares) -> String {
+    format!("Kontro · {}\n{}", estado.nome, crate::modelo::resumo_do_estado(estado, limiares))
 }
 
 pub(crate) fn estado_demo(preenchimento: Option<i32>, modo: Via) -> EstadoDoControle {
@@ -124,7 +124,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
         tiny_skia::PixmapPaint { quality: tiny_skia::FilterQuality::Nearest, ..Default::default() };
 
     for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
-        let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO);
+        let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO, fundo_claro);
         let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
 
         let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;
@@ -210,22 +210,71 @@ pub fn tamanho_do_icone_grande() -> u32 {
 }
 
 fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
+    let mapa = pixmap(svg, tamanho)?;
+    Some(Image::new_owned(mapa.take(), tamanho, tamanho))
+}
+
+pub(crate) fn pixmap(svg: &str, tamanho: u32) -> Option<tiny_skia::Pixmap> {
     let opcoes = usvg::Options::default();
     let arvore = usvg::Tree::from_str(svg, &opcoes).ok()?;
 
     let mut mapa = tiny_skia::Pixmap::new(tamanho, tamanho)?;
     let escala = tamanho as f32 / g::CAIXA;
     resvg::render(&arvore, tiny_skia::Transform::from_scale(escala, escala), &mut mapa.as_mut());
-
-    Some(Image::new_owned(mapa.take(), tamanho, tamanho))
+    Some(mapa)
 }
 
 pub fn tamanho_do_icone() -> u32 {
-    use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSMICON};
-    let medido = unsafe { GetSystemMetrics(SM_CXSMICON) };
+    use windows::core::w;
+    use windows::Win32::UI::HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi};
+    use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, GetSystemMetrics, SM_CXSMICON};
+
+    let medido = unsafe {
+        let dpi = FindWindowW(w!("Shell_TrayWnd"), None).map(|barra| GetDpiForWindow(barra));
+        match dpi {
+            Ok(dpi) if dpi > 0 => GetSystemMetricsForDpi(SM_CXSMICON, dpi),
+            _ => GetSystemMetrics(SM_CXSMICON),
+        }
+    };
     if medido <= 0 {
         16
     } else {
         medido as u32
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    #[test]
+    fn a_dica_cabe_no_limite_da_bandeja() {
+        let longo = "Controle sem fio com um nome comprido que alguém escolheu";
+        let estados = [
+            (Some(100), Via::Bluetooth),
+            (Some(18), Via::Bluetooth),
+            (Some(7), Via::SemFio),
+            (None, Via::Cabo),
+            (None, Via::Bluetooth),
+            (Some(77), Via::Desligado),
+            (None, Via::Desligado),
+        ];
+        for (preenchimento, via) in estados {
+            let mut estado = estado_demo(preenchimento, via);
+            estado.nome = longo.into();
+            estado.leitura_antiga = true;
+            estado.lido_em = Some(0);
+            estado.autonomia_minutos = Some(735);
+            let texto = dica(&estado, Limiares::PADRAO);
+            assert!(texto.starts_with("Kontro · "));
+            assert!(!texto.contains("--"), "{texto}");
+            assert!(texto.encode_utf16().count() <= 127, "{texto}");
+        }
+    }
+
+    #[test]
+    fn a_dica_diz_carga_baixa_com_os_limiares_de_quem_usa() {
+        let estado = estado_demo(Some(18), Via::Bluetooth);
+        assert!(dica(&estado, Limiares::PADRAO).contains("18%, carga baixa"));
     }
 }

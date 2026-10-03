@@ -1,7 +1,7 @@
 use windows::core::PCWSTR;
 use windows::Win32::System::Registry::{
     RegCloseKey, RegDeleteValueW, RegOpenKeyExW, RegQueryValueExW, RegSetValueExW, HKEY, KEY_READ,
-    KEY_WRITE, REG_DWORD, REG_SAM_FLAGS, REG_SZ, REG_VALUE_TYPE,
+    KEY_WRITE, REG_BINARY, REG_DWORD, REG_SAM_FLAGS, REG_SZ, REG_VALUE_TYPE,
 };
 
 pub fn texto(raiz: HKEY, chave: &str, nome: &str) -> Option<String> {
@@ -15,6 +15,23 @@ pub fn numero(raiz: HKEY, chave: &str, nome: &str) -> Option<u32> {
         return None;
     }
     Some(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
+}
+
+pub fn bytes(raiz: HKEY, chave: &str, nome: &str) -> Option<Vec<u8>> {
+    let (tipo, bytes) = ler(raiz, chave, nome)?;
+    (tipo == REG_BINARY).then_some(bytes)
+}
+
+pub fn gravar_bytes(raiz: HKEY, chave: &str, nome: &str, valor: &[u8]) -> bool {
+    let Some(aberta) = abrir(raiz, chave, KEY_WRITE.0) else { return false };
+
+    let nome = larga(nome);
+    let ok = unsafe {
+        RegSetValueExW(aberta, PCWSTR(nome.as_ptr()), None, REG_BINARY, Some(valor)).is_ok()
+    };
+
+    fechar(aberta);
+    ok
 }
 
 pub fn gravar_texto(raiz: HKEY, chave: &str, nome: &str, valor: &str) -> bool {

@@ -64,7 +64,7 @@ export function Aviso() {
           )}
         </Anel>
         <div className="texto">
-          <div className="nome">{estado.nome}</div>
+          <div className="nome">{estado.nome.trim() || "O controle"}</div>
           <div className="linha">{legenda(assunto, estado)}</div>
         </div>
       </div>
@@ -83,9 +83,12 @@ function legenda(assunto: Assunto, estado: Estado): string {
   if (estado.girando) {
     return estado.carregando ? `${abertura} no cabo · carregando` : `${abertura} no cabo`;
   }
-  if (estado.temNumero) return `${abertura} · ${estado.textoDaLigacao}`;
-  if (estado.preenchimento !== null) {
-    return `${estado.textoDaCarga} · ${estado.textoDaLigacao}`;
+  const por = estado.via === "Bluetooth" ? "por Bluetooth" : "sem fio";
+  if (estado.temNumero) {
+    return estado.autonomia?.startsWith("~")
+      ? `${abertura} · ${estado.autonomia}`
+      : `${abertura} ${por}`;
   }
-  return `${abertura} · ${estado.textoDaLigacao} · sem leitura de bateria`;
+  if (estado.preenchimento !== null) return `${abertura} ${por} · ${estado.textoDaCarga}`;
+  return `${abertura} ${por} · sem leitura de bateria`;
 }

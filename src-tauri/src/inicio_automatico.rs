@@ -5,10 +5,21 @@ use windows::Win32::System::Registry::HKEY_CURRENT_USER;
 use crate::registro;
 
 const CHAVE: &str = r"Software\Microsoft\Windows\CurrentVersion\Run";
+const APROVACAO: &str = r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
 const NOME: &str = "Kontro";
 
+const APROVADO_PELO_WINDOWS: [u8; 12] = [0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
 pub fn ligado() -> bool {
-    linha_registrada().is_some()
+    linha_registrada().is_some() && aprovado_pelo_windows()
+}
+
+fn aprovado_pelo_windows() -> bool {
+    aprovado(registro::bytes(HKEY_CURRENT_USER, APROVACAO, NOME).and_then(|b| b.first().copied()))
+}
+
+fn aprovado(byte0: Option<u8>) -> bool {
+    byte0.is_none_or(|b| b % 2 == 0)
 }
 
 pub fn conferir() {
@@ -20,7 +31,7 @@ pub fn conferir() {
     }
 
     if !registrado.exists() || mesma_pasta(&registrado, &atual) {
-        definir(true);
+        gravar_linha();
     }
 }
 
@@ -29,6 +40,14 @@ pub fn definir(ligar: bool) -> bool {
         return registro::apagar(HKEY_CURRENT_USER, CHAVE, NOME) || !ligado();
     }
 
+    if !gravar_linha() {
+        return false;
+    }
+    aprovado_pelo_windows()
+        || registro::gravar_bytes(HKEY_CURRENT_USER, APROVACAO, NOME, &APROVADO_PELO_WINDOWS)
+}
+
+fn gravar_linha() -> bool {
     match linha_de_comando() {
         Some(comando) => registro::gravar_texto(HKEY_CURRENT_USER, CHAVE, NOME, &comando),
         None => false,
@@ -78,6 +97,15 @@ fn linha_de_comando() -> Option<String> {
 #[cfg(test)]
 mod testes {
     use super::*;
+
+    #[test]
+    fn o_veredito_do_windows_e_o_primeiro_byte() {
+        assert!(aprovado(None));
+        assert!(aprovado(Some(0x02)));
+        assert!(aprovado(Some(0x06)));
+        assert!(!aprovado(Some(0x03)));
+        assert!(!aprovado(Some(0x07)));
+    }
 
     #[test]
     fn a_linha_com_aspas_devolve_so_o_executavel() {

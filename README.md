@@ -2,11 +2,12 @@
 
 Bateria do seu controle, em tempo real, na bandeja do sistema.
 
-**[kontro.riqueamais.github.io](https://riqueamais.github.io/kontro/)** · [baixar a última versão](https://github.com/riqueamais/kontro/releases/latest)
+**[riqueamais.github.io/kontro](https://riqueamais.github.io/kontro/)** · [baixar a última versão](https://github.com/riqueamais/kontro/releases/latest)
 
-O ícone mostra a porcentagem exata e muda de cor conforme a carga cai. Quando não há
-controle ligado, ele vira um controle riscado. O app avisa quando a bateria fica baixa
-e estima quanto tempo ainda dá para jogar, a partir do consumo medido.
+O ícone é um anel que esvazia com a carga e muda de cor conforme ela cai; a porcentagem
+exata fica na dica e no painel. Quando não há controle ligado, ele vira um controle
+riscado. O app avisa quando a bateria fica baixa e estima quanto tempo ainda dá para
+jogar, a partir do consumo medido.
 
 ## Como ele lê a bateria
 
@@ -49,8 +50,8 @@ outro dia diz na tela que é de outro dia.
 ## Instalação
 
 Baixe o `Setup.exe` da [última release](../../releases/latest). A instalação é por
-usuário, não pede administrador, e o app se atualiza sozinho a partir das releases
-publicadas aqui.
+usuário, não pede administrador, e o app avisa quando há versão nova nas releases
+publicadas aqui; instalar é um clique em Configurações.
 
 ## Configuração
 
@@ -106,7 +107,8 @@ cargo run --release -- --gerar .
 
 | sai de | vira |
 |---|---|
-| `geometria.rs` | `src-tauri/icons/`, ícones de `docs/`, `setup.ico`, `public/favicon.svg`, `assets/svg/` |
+| `geometria.rs` | `src-tauri/icons/`, ícones de `docs/`, `setup.ico` (a marca com o selo da seta), `public/favicon.svg`, `assets/svg/` |
+| `geometria.rs` + fontes do sistema | `assets/branding/installer/nsis-header.bmp` e `nsis-sidebar.bmp` — marca, "Kontro" e a tagline; o CI não confere, porque o texto depende da fonte instalada |
 | `geometria.rs` | `src/estilo/geometria.gerada.ts` — o path da marca e os raios que `Glifo` e `Marca` desenham |
 | `configuracoes.rs` | `src/config.gerada.ts` — a interface `Config` que o front usa |
 
@@ -140,6 +142,18 @@ Há dois canais, um por branch, e a build é automática nos dois:
   `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
   pipeline não faz nada.
 
+Nos dois canais a publicação passa pelo `verificar` antes de empacotar: formatação,
+testes, exemplos, build do front e artefatos gerados em dia. Se ele falha, nada sai. Quem
+decide se há o que publicar é um job curto no Linux, então um push sem versão nova nem
+chega a subir a máquina Windows. Push que só mexe em `docs/`, em `.md`, no
+`assets/banner.html` ou na `LICENSE` não gera versão; a landing sai pelo GitHub Pages, que
+publica o `docs/` da `main` sozinho. Na `develop`, um push novo cancela a beta que ainda
+estava sendo empacotada, porque ela já nasceria velha; na `main` cada versão espera a
+anterior terminar.
+
+Branch de trabalho não roda nada no push: ela é verificada quando vira PR, uma vez por
+push, e o push novo cancela a verificação anterior do mesmo PR.
+
 Para lançar, o commit `Versao X.Y.Z` sobe o número nos lugares de sempre — `tauri.conf.json`,
 `Cargo.toml`, `Cargo.lock`, `package.json` e o `softwareVersion` do `docs/index.html` — e
 vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo número no
@@ -147,7 +161,10 @@ vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo núm
 
 A nota da release é a lista dos assuntos dos commits desde a última estável publicada,
 sem os commits `Versao`: o assunto do commit é o que a pessoa lê em Configurações. Quem
-quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge.
+quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge. O
+formato que o cartão de versão nova entende é: uma manchete na primeira linha, uma linha em
+branco, e depois parágrafos separados por linha em branco ou uma lista com `-`; `**trecho**`
+sai em negrito, e uma linha começando por `#` vira rótulo de seção.
 
 A beta parte do número da `develop`, mas nunca fica abaixo da última estável: com a
 `v2.13.4` publicada e a `develop` ainda em `2.13.4`, a beta sai `2.13.5-beta.N`. Assim
