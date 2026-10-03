@@ -26,14 +26,25 @@
 .lista .item.principal {
   background: var(--surface);
   border-color: var(--stroke);
+  box-shadow: inset 2px 0 0 var(--realce);
 }
 .lista .item-texto {
   min-width: 0;
   flex: 1;
 }
+.lista .item-cabeca {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
 .lista .item-nome {
-  display: block;
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  min-width: 0;
+  height: 22px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -41,20 +52,37 @@
   font-size: var(--fs-body);
   font-weight: 500;
   color: var(--text-primary);
+}
+.lista .item-nome-texto {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  border-bottom: 1px dashed transparent;
-  transition: border-color var(--motion-fast) var(--curva);
 }
-.lista .item-nome:hover {
-  border-bottom-color: var(--stroke-strong);
+.lista .item-nome .lapis {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  opacity: 0.55;
+  transition: opacity var(--motion-fast) var(--curva);
+}
+.lista .item:hover .lapis,
+.lista .item-nome:focus-visible .lapis {
+  opacity: 1;
+}
+.lista .item-selo {
+  flex: 0 0 auto;
+  padding: 0 var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--realce) 40%, transparent);
+  border-radius: 999px;
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--realce);
 }
 .lista .renomear {
   width: 100%;
-  min-height: var(--altura-controle);
+  height: 22px;
   padding: 0 var(--space-2);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-field);
   border: 1px solid var(--realce);
   background: var(--surface-alt);
   color: var(--text-primary);
@@ -93,7 +121,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--text-tertiary);
-  opacity: 0;
+  opacity: 0.55;
   transition:
     opacity var(--motion-fast) var(--curva),
     background var(--motion-fast) var(--curva),
@@ -119,22 +147,4 @@
 
 .lista .confirmar .botao {
   min-height: var(--altura-controle);
-}
-
-.lista.solta .esquecer {
-  opacity: 0.5;
-}
-
-.lista.solta .item:hover .esquecer,
-.lista.solta .esquecer:focus-visible {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .lista .esquecer {
-    opacity: 1;
-  }
-  .lista .item-nome {
-    border-bottom-color: var(--stroke-strong);
-  }
 }

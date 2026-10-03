@@ -66,6 +66,11 @@ function Linha({
     if (voltarOFoco) requestAnimationFrame(() => nome.current?.focus());
   };
   const [confirmando, setConfirmando] = useState(false);
+  const confirmar = useRef<HTMLButtonElement>(null);
+  const cancelar = (voltarOFoco = true) => {
+    setConfirmando(false);
+    if (voltarOFoco) requestAnimationFrame(() => esquecer.current?.focus());
+  };
   useEffect(() => {
     if (editando) {
       campo.current?.focus();
@@ -107,22 +112,52 @@ function Linha({
             }}
           />
         ) : (
-          <button ref={nome} className="item-nome" title="Renomear" onClick={aoEditar}>
-            {controle.nome}
-          </button>
+          <span className="item-cabeca">
+            <button
+              ref={nome}
+              className="item-nome"
+              aria-label={`Renomear ${controle.nome}`}
+              onClick={aoEditar}
+            >
+              <span className="item-nome-texto">{controle.nome}</span>
+              <svg className="lapis" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                <path
+                  d="M8.2 1.8 10.2 3.8 4 10H2V8Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {principal && <span className="item-selo">na bandeja</span>}
+          </span>
         )}
         <div className="item-estado">
-          {controle.via === "Desligado"
-            ? controle.preenchimento !== null
-              ? `desconectado · ${controle.textoDaCarga} na última leitura`
-              : "desconectado"
-            : `${controle.textoDaCarga || "sem leitura"} · ${controle.textoDaLigacao}`}
+          {confirmando
+            ? "Some da lista e leva o histórico e as sessões junto."
+            : controle.via === "Desligado"
+              ? controle.preenchimento !== null
+                ? `desconectado · ${controle.textoDaCarga} na última leitura`
+                : "desconectado"
+              : controle.conectadoSemCarga
+                ? controle.textoDaLigacao
+                : `${controle.textoDaCarga} · ${controle.textoDaLigacao}`}
         </div>
       </div>
       {removivel &&
         (confirmando ? (
-          <div className="confirmar">
+          <div
+            className="confirmar"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") cancelar();
+            }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) cancelar(false);
+            }}
+          >
             <button
+              ref={confirmar}
               className="botao perigo miudo"
               onClick={() => {
                 aoEsquecer();
@@ -131,13 +166,7 @@ function Linha({
             >
               Esquecer
             </button>
-            <button
-              className="botao miudo"
-              onClick={() => {
-                setConfirmando(false);
-                requestAnimationFrame(() => esquecer.current?.focus());
-              }}
-            >
+            <button className="botao miudo" onClick={() => cancelar()}>
               Cancelar
             </button>
           </div>
@@ -145,16 +174,20 @@ function Linha({
           <button
             ref={esquecer}
             className="esquecer"
-            title="Esquecer este controle"
             aria-label="Esquecer este controle"
-            onClick={() => setConfirmando(true)}
+            onClick={() => {
+              setConfirmando(true);
+              requestAnimationFrame(() => confirmar.current?.focus());
+            }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path
-                d="M1.5 1.5 L10.5 10.5 M10.5 1.5 L1.5 10.5"
+                d="M2 3.2h8M4.6 3.2V2h2.8v1.2M3.2 3.2l.5 6.8h4.6l.5-6.8"
+                fill="none"
                 stroke="currentColor"
-                strokeWidth="1.4"
+                strokeWidth="1.2"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
           </button>
