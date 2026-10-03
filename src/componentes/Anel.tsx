@@ -6,7 +6,7 @@ import "./anel.css";
 const CAIXA = 512;
 const CENTRO = CAIXA / 2;
 
-const COMPRIMENTO_DA_MARCA = 0.62;
+const COMPRIMENTO_DA_MARCA = 0.5;
 
 const RAIO_DO_HALO = CAIXA * 0.125;
 
@@ -131,13 +131,13 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
             <path
               d={marca(raio, espessura, marcas.aviso)}
               stroke="var(--amber)"
-              strokeWidth={espessura * 0.14}
+              strokeWidth={espessura * 0.1}
               strokeLinecap="round"
             />
             <path
               d={marca(raio, espessura, marcas.critico)}
               stroke="var(--red)"
-              strokeWidth={espessura * 0.14}
+              strokeWidth={espessura * 0.1}
               strokeLinecap="round"
             />
           </g>
