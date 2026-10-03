@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
-import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
+import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, salvar } from "../ajustes";
 import { Anel } from "../componentes/Anel";
+import { BotaoDeCiclo } from "../componentes/BotaoDeCiclo";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import { Glifo } from "../componentes/Glifo";
 import { Teclas } from "../componentes/Teclas";
@@ -221,34 +222,26 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
             Os mesmos números mandam na cor do anel: âmbar quando o app diz carga baixa, vermelho
             quando diz crítica.
           </p>
-          <Linha titulo="Avisar em" descricao="A primeira vez que ele te chama.">
-            <button
-              className="botao"
-              onClick={() => {
-                const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
-                salvar(cfg, {
+          <Linha titulo="Carga baixa" descricao="A primeira vez que ele te chama.">
+            <BotaoDeCiclo
+              opcoes={LIMIARES_DE_AVISO}
+              valor={cfg.WarnThreshold}
+              rotulo={(v) => `${v}%`}
+              aoMudar={(aviso) =>
+                void salvar(cfg, {
                   WarnThreshold: aviso,
-                  CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 5),
-                });
-              }}
-            >
-              {cfg.WarnThreshold}%
-            </button>
-          </Linha>
-          <Linha titulo="Avisar de novo em" descricao="O segundo aviso, mais urgente.">
-            <button
-              className="botao"
-              onClick={() =>
-                salvar(cfg, {
-                  CriticalThreshold: Math.min(
-                    ciclar(cfg.CriticalThreshold, LIMIARES_CRITICOS),
-                    cfg.WarnThreshold - 5,
-                  ),
+                  CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 1),
                 })
               }
-            >
-              {cfg.CriticalThreshold}%
-            </button>
+            />
+          </Linha>
+          <Linha titulo="Carga crítica" descricao="O segundo aviso, mais urgente.">
+            <BotaoDeCiclo
+              opcoes={LIMIARES_CRITICOS.filter((c) => c < cfg.WarnThreshold)}
+              valor={cfg.CriticalThreshold}
+              rotulo={(v) => `${v}%`}
+              aoMudar={(CriticalThreshold) => void salvar(cfg, { CriticalThreshold })}
+            />
           </Linha>
         </>
       );

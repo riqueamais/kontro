@@ -8,9 +8,13 @@ export const LIMIARES_CRITICOS = [20, 15, 10, 5] as const;
 export const ATALHO_DA_PILULA = "Ctrl+Shift+KeyK";
 export const ATALHO_DE_MOVER = "Ctrl+Shift+KeyM";
 
-export function ciclar<T extends string | number>(atual: T, opcoes: readonly T[]): T {
+export function ciclar<T extends string | number>(
+  atual: T,
+  opcoes: readonly T[],
+  sentido: 1 | -1 = 1,
+): T {
   const i = opcoes.indexOf(atual);
-  return i < 0 ? opcoes[0] : opcoes[(i + 1) % opcoes.length];
+  return i < 0 ? opcoes[0] : opcoes[(i + sentido + opcoes.length) % opcoes.length];
 }
 
 export interface Salvo {

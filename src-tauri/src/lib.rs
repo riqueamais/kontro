@@ -193,7 +193,7 @@ pub fn executar() {
             pausar_atalhos,
             previa_da_pilula,
             pilula_coberta,
-            quantidade_de_telas,
+            telas,
             salvar_diagnostico,
             ajustar_altura_do_painel,
             ajustar_tamanho_da_sobreposicao
@@ -1131,8 +1131,27 @@ fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result
 }
 
 #[tauri::command]
-fn quantidade_de_telas(app: AppHandle) -> usize {
-    app.available_monitors().map(|m| m.len()).unwrap_or(1)
+fn telas(app: AppHandle) -> Vec<Tela> {
+    let principal = app.primary_monitor().ok().flatten().map(|m| *m.position());
+    app.available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| {
+            let tamanho = m.size().to_logical::<f64>(m.scale_factor());
+            Tela {
+                largura: tamanho.width.round() as u32,
+                altura: tamanho.height.round() as u32,
+                principal: Some(*m.position()) == principal,
+            }
+        })
+        .collect()
+}
+
+#[derive(serde::Serialize)]
+struct Tela {
+    largura: u32,
+    altura: u32,
+    principal: bool,
 }
 
 #[tauri::command]

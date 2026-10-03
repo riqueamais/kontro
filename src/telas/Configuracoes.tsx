@@ -1,17 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
+import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, salvar } from "../ajustes";
+import { BotaoDeCiclo } from "../componentes/BotaoDeCiclo";
 import {
-  ATALHO_DA_PILULA,
-  ATALHO_DE_MOVER,
-  LIMIARES_CRITICOS,
-  LIMIARES_DE_AVISO,
-  ciclar,
-  salvar,
-} from "../ajustes";
-import { Chave, Linha, MiniTela } from "../componentes/Controles";
+  Chave,
+  Deslizante,
+  Linha,
+  MiniTela,
+  Seletor,
+  useLinha,
+  useNomeDoControle,
+} from "../componentes/Controles";
 import { Teclas } from "../componentes/Teclas";
 import { decimal, quando } from "../formato";
 import {
@@ -92,7 +94,8 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   const [cfg, setCfg] = useState<Config | null>(doRust);
   const nova = useNovidade();
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
-  const [telas, setTelas] = useState(1);
+  const [telas, setTelas] = useState<Tela[]>([]);
+  const [ajusteDoCritico, setAjusteDoCritico] = useState<number | null>(null);
   const [atual, setAtual] = useState("");
   const [veioDe, setVeioDe] = useState<string | null>(null);
   const [ultima, setUltima] = useState(0);
@@ -126,7 +129,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
 
   useEffect(() => {
     if (!ativa) return;
-    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
+    invoke<Tela[]>("telas").then(setTelas).catch(() => {});
   }, [ativa]);
 
   const procurar = async () => {
@@ -188,6 +191,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   };
 
   if (!cfg) return null;
+  const pilulaDesligada = cfg.OverlayMode === "Desligada";
   const gravar = (mudanca: Partial<Config>) => {
     setCfg({ ...cfg, ...mudanca });
     void salvar(cfg, mudanca).then(({ config, recusadas }) => {
@@ -234,14 +238,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
       </Linha>
       <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({ CloseAction: ciclar(cfg.CloseAction, ["MinimizeToTray", "Exit"] as const) })
-          }
-        >
-          {cfg.CloseAction === "MinimizeToTray" ? "Minimizar" : "Encerrar"}
-        </button>
+        <Seletor
+          opcoes={[
+            { valor: "MinimizeToTray" as const, rotulo: "Minimizar para a bandeja" },
+            { valor: "Exit" as const, rotulo: "Encerrar o app" },
+          ]}
+          valor={cfg.CloseAction}
+          aoEscolher={(CloseAction) => gravar({ CloseAction })}
+        />
       </Linha>
       <h2>Aparência</h2>
       <Linha
@@ -252,49 +256,49 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
       </Linha>
 
+      <h2>Limiares de carga</h2>
+      <Linha
+        titulo="Carga baixa"
+        descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
+      >
+        <Deslizante
+          min={5}
+          max={90}
+          passo={5}
+          valor={cfg.WarnThreshold}
+          aoMudar={(aviso) => {
+            const critico = Math.min(cfg.CriticalThreshold, aviso - 1);
+            setAjusteDoCritico(critico !== cfg.CriticalThreshold ? critico : null);
+            gravar({ WarnThreshold: aviso, CriticalThreshold: critico });
+          }}
+        />
+      </Linha>
+      <Linha
+        titulo="Carga crítica"
+        descricao={
+          ajusteDoCritico !== null
+            ? `Ajustado para ${ajusteDoCritico}% para caber abaixo da carga baixa.`
+            : "Abaixo disto fica vermelho, e a pílula aparece mesmo fora de jogo."
+        }
+      >
+        <Deslizante
+          min={1}
+          max={cfg.WarnThreshold - 1}
+          passo={1}
+          valor={cfg.CriticalThreshold}
+          aoMudar={(CriticalThreshold) => {
+            setAjusteDoCritico(null);
+            gravar({ CriticalThreshold });
+          }}
+        />
+      </Linha>
+
       <h2>Avisos</h2>
-      <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
+      <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
         <Chave
           ligado={cfg.NotificationsEnabled}
           aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
         />
-      </Linha>
-      <Linha
-        titulo="Avisar em"
-        descricao="Carga a partir da qual o Kontro avisa que ela está baixa."
-      >
-        <button
-          className="botao"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() => {
-            const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
-            gravar({
-              WarnThreshold: aviso,
-              CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 5),
-            });
-          }}
-        >
-          {cfg.WarnThreshold}%
-        </button>
-      </Linha>
-      <Linha
-        titulo="Avisar de novo em"
-        descricao="O segundo aviso, mais urgente. É ele que também traz a pílula para a tela fora de jogo."
-      >
-        <button
-          className="botao"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() =>
-            gravar({
-              CriticalThreshold: Math.min(
-                ciclar(cfg.CriticalThreshold, LIMIARES_CRITICOS),
-                cfg.WarnThreshold - 5,
-              ),
-            })
-          }
-        >
-          {cfg.CriticalThreshold}%
-        </button>
       </Linha>
       <Linha
         titulo="Avisar ao conectar"
@@ -307,16 +311,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       </Linha>
       <h2>Sobreposição</h2>
       <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({
-              OverlayMode: ciclar(cfg.OverlayMode, ["Desligada", "EmJogo", "Sempre"] as const),
-            })
-          }
-        >
-          {MODOS[cfg.OverlayMode]}
-        </button>
+        <Seletor
+          opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
+            valor,
+            rotulo: MODOS[valor],
+          }))}
+          valor={cfg.OverlayMode}
+          aoEscolher={(OverlayMode) => gravar({ OverlayMode })}
+        />
       </Linha>
       {coberta && (
         <p className="coberta" role="status">
@@ -326,6 +328,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       )}
       <Linha
         titulo="Posição"
+        desabilitada={pilulaDesligada}
         descricao={
           solta
             ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
@@ -333,43 +336,57 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         }
       >
         <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
-        <button
+        <BotaoDaLinha
           className={solta ? "botao destaque" : "botao"}
           onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
         >
           {solta ? "Prender" : "Soltar"}
-        </button>
+        </BotaoDaLinha>
       </Linha>
       <Linha
         titulo="Monitor"
-        descricao="Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        desabilitada={pilulaDesligada || telas.length <= 1}
+        descricao={
+          telas.length <= 1
+            ? "Só há uma tela ligada; a pílula fica nela."
+            : "Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        }
       >
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({
-              OverlayMonitor: cfg.OverlayMonitor + 1 >= telas ? -1 : cfg.OverlayMonitor + 1,
-            })
-          }
-        >
-          {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
-        </button>
+        <Seletor
+          opcoes={[
+            { valor: -1, rotulo: "Segue o jogo" },
+            ...telas.map((t, i) => ({
+              valor: i,
+              rotulo: `Monitor ${i + 1} · ${t.largura}×${t.altura}${t.principal ? " · principal" : ""}`,
+            })),
+          ]}
+          valor={cfg.OverlayMonitor < telas.length ? cfg.OverlayMonitor : -1}
+          aoEscolher={(OverlayMonitor) => gravar({ OverlayMonitor })}
+        />
       </Linha>
-      <Linha titulo="Tamanho" descricao="Quanto espaço a pílula ocupa na tela.">
-        <button
-          className="botao"
-          onClick={() => gravar({ OverlayScale: ciclar(cfg.OverlayScale, tamanhos()) })}
-        >
-          {rotulo(TAMANHOS, cfg.OverlayScale)}
-        </button>
+      <Linha
+        titulo="Tamanho"
+        desabilitada={pilulaDesligada}
+        descricao="Quanto espaço a pílula ocupa na tela."
+      >
+        <BotaoDeCiclo
+          opcoes={tamanhos()}
+          valor={cfg.OverlayScale}
+          rotulo={(v) => rotulo(TAMANHOS, v)}
+          aoMudar={(OverlayScale) => gravar({ OverlayScale })}
+        />
       </Linha>
-      <Linha titulo="Transparência" descricao="Para a pílula não competir com o HUD do jogo.">
-        <button
-          className="botao"
-          onClick={() => gravar({ OverlayOpacity: ciclar(cfg.OverlayOpacity, opacidades()) })}
-        >
-          {rotulo(OPACIDADES, cfg.OverlayOpacity)}
-        </button>
+      <Linha
+        titulo="Transparência"
+        desabilitada={pilulaDesligada}
+        descricao="Para a pílula não competir com o HUD do jogo."
+      >
+        <BotaoDeCiclo
+          opcoes={opacidades()}
+          valor={cfg.OverlayOpacity}
+          rotulo={(v) => rotulo(OPACIDADES, v)}
+          aoMudar={(OverlayOpacity) => gravar({ OverlayOpacity })}
+        />
       </Linha>
       <h2>Atalhos</h2>
       <Linha
@@ -389,7 +406,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         padrao={ATALHO_DA_PILULA}
         outra={cfg.OverlayMoveShortcut}
         nomeDaOutra="soltar a pílula"
-        desabilitado={!cfg.OverlayShortcutEnabled}
+        desabilitada={!cfg.OverlayShortcutEnabled}
         ativa={ativa}
         aoTrocar={(c) => gravar({ OverlayShortcut: c })}
       />
@@ -401,7 +418,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         padrao={ATALHO_DE_MOVER}
         outra={cfg.OverlayShortcut}
         nomeDaOutra="mostrar a pílula"
-        desabilitado={!cfg.OverlayShortcutEnabled}
+        desabilitada={!cfg.OverlayShortcutEnabled}
         ativa={ativa}
         aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
       />
@@ -729,7 +746,7 @@ function LinhaDeAtalho({
   padrao,
   outra,
   nomeDaOutra,
-  desabilitado,
+  desabilitada,
   ativa,
   aoTrocar,
 }: {
@@ -740,28 +757,23 @@ function LinhaDeAtalho({
   padrao: string;
   outra: string;
   nomeDaOutra: string;
-  desabilitado: boolean;
+  desabilitada: boolean;
   ativa: boolean;
   aoTrocar: (combinacao: string) => void;
 }) {
   const { texto, erro } = descricaoDoAtalho(base, recusa);
   return (
-    <Linha titulo={titulo} descricao={texto} erro={erro}>
+    <Linha titulo={titulo} descricao={texto} erro={erro} desabilitada={desabilitada}>
       {combinacao !== padrao && (
-        <button
-          className="botao miudo padrao-do-atalho"
-          disabled={desabilitado}
-          onClick={() => aoTrocar(padrao)}
-        >
+        <BotaoDaLinha className="botao miudo padrao-do-atalho" onClick={() => aoTrocar(padrao)}>
           Padrão
-        </button>
+        </BotaoDaLinha>
       )}
       <Captura
         combinacao={combinacao}
         outra={outra}
         nomeDaOutra={nomeDaOutra}
         recusada={erro}
-        desabilitado={desabilitado}
         ativa={ativa}
         aoTrocar={aoTrocar}
       />
@@ -775,7 +787,6 @@ function Captura({
   nomeDaOutra,
   recusada,
   aoTrocar,
-  desabilitado,
   ativa,
 }: {
   combinacao: string;
@@ -783,9 +794,11 @@ function Captura({
   nomeDaOutra: string;
   recusada: boolean;
   aoTrocar: (combinacao: string) => void;
-  desabilitado: boolean;
   ativa: boolean;
 }) {
+  const linha = useLinha();
+  const idDoValor = useId();
+  const nome = useNomeDoControle(idDoValor);
   const [ouvindo, setOuvindo] = useState(false);
   const [dica, setDica] = useState<string | null>(null);
   const botao = useRef<HTMLButtonElement>(null);
@@ -866,7 +879,9 @@ function Captura({
     <button
       ref={botao}
       className={classe}
-      disabled={desabilitado}
+      id={idDoValor}
+      disabled={linha?.desabilitada}
+      {...nome}
       onClick={() => setOuvindo(!ouvindo)}
     >
       {ouvindo ? (
@@ -894,3 +909,30 @@ function lerCombinacao(evento: KeyboardEvent): string | null {
   return partes.join("+");
 }
 
+interface Tela {
+  largura: number;
+  altura: number;
+  principal: boolean;
+}
+
+function BotaoDaLinha({
+  className,
+  onClick,
+  children,
+}: {
+  className: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const linha = useLinha();
+  return (
+    <button
+      className={className}
+      disabled={linha?.desabilitada}
+      aria-describedby={linha?.descricao}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
