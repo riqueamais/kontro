@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, salvar } from "../ajustes";
 import { Anel } from "../componentes/Anel";
@@ -24,6 +24,12 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
   const solta = usePilulaSolta();
   const recusados = useAtalhosRecusados();
   const [passo, setPasso] = useState(0);
+  const avancar = useRef<HTMLButtonElement>(null);
+  const pular = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    avancar.current?.focus();
+  }, [passo, cfg !== null]);
 
   useEffect(() => {
     if (passo !== PASSO_DA_PILULA) return;
@@ -38,6 +44,11 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
     const aoTeclar = (evento: KeyboardEvent) => {
       if (evento.key === "ArrowRight") setPasso((p) => Math.min(p + 1, TOTAL - 1));
       if (evento.key === "ArrowLeft") setPasso((p) => Math.max(p - 1, 0));
+      if (evento.key === "Enter" && evento.target === document.body) avancar.current?.click();
+      if (evento.key === "Escape") {
+        evento.preventDefault();
+        (pular.current ?? avancar.current)?.click();
+      }
     };
 
     window.addEventListener("keydown", aoTeclar);
@@ -55,29 +66,35 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
 
   return (
     <div className="passos">
-      <div className="pontos" aria-hidden="true">
-        {Array.from({ length: TOTAL }, (_, i) => (
-          <span key={i} className={`ponto${i === passo ? " agora" : i < passo ? " feito" : ""}`} />
-        ))}
+      <div className="cabeca-dos-passos">
+        <div className="pontos" aria-hidden="true">
+          {Array.from({ length: TOTAL }, (_, i) => (
+            <span key={i} className={`ponto${i === passo ? " agora" : i < passo ? " feito" : ""}`} />
+          ))}
+        </div>
+        <span className="contador" aria-live="polite">
+          Passo {passo + 1} de {TOTAL}
+        </span>
       </div>
 
       <div className="folha">{folha(passo, cfg, solta, recusados)}</div>
 
       <div className="rodape">
-        {ultimo ? (
-          <span />
-        ) : (
-          <button className="botao fantasma" onClick={terminar}>
-            Pular
-          </button>
-        )}
+        <button
+          ref={ultimo ? undefined : pular}
+          className={`botao fantasma${ultimo ? " oculto" : ""}`}
+          tabIndex={ultimo ? -1 : undefined}
+          aria-hidden={ultimo || undefined}
+          onClick={terminar}
+        >
+          Pular
+        </button>
         <div className="adiante">
-          {passo > 0 && (
-            <button className="botao" onClick={() => setPasso(passo - 1)}>
-              Voltar
-            </button>
-          )}
+          <button className="botao" disabled={passo === 0} onClick={() => setPasso(passo - 1)}>
+            Voltar
+          </button>
           <button
+            ref={avancar}
             className="botao destaque"
             onClick={() => (ultimo ? terminar() : setPasso(passo + 1))}
           >

@@ -6,6 +6,8 @@ interface DaLinha {
   desabilitada: boolean;
 }
 
+export type Texto = React.ReactNode;
+
 const ContextoDaLinha = createContext<DaLinha | null>(null);
 
 export function useLinha(): DaLinha | null {
@@ -18,13 +20,15 @@ export function Linha({
   erro,
   classe,
   desabilitada = false,
+  viva = false,
   children,
 }: {
   titulo: string;
-  descricao: string;
+  descricao: Texto;
   erro?: boolean;
   classe?: string;
   desabilitada?: boolean;
+  viva?: boolean;
   children: React.ReactNode;
 }) {
   const id = useId();
@@ -40,7 +44,12 @@ export function Linha({
           <div className="titulo" id={ids.titulo}>
             {titulo}
           </div>
-          <div className="descricao" id={ids.descricao}>
+          <div
+            className="descricao"
+            id={ids.descricao}
+            role={viva ? "status" : undefined}
+            aria-live={viva ? "polite" : undefined}
+          >
             {descricao}
           </div>
         </div>
@@ -258,36 +267,83 @@ const ALTURA_DA_MINI_TELA = 28;
 const LARGURA_DA_MINI_PILULA = 10;
 const ALTURA_DA_MINI_PILULA = 4;
 
+const PASSO_DA_POSICAO = 0.05;
+const PASSO_FINO_DA_POSICAO = 0.01;
+
 export function MiniTela({
   x,
   y,
   solta,
   escala = 1,
+  escalaDaPilula = 1,
+  opacidade = 1,
+  aoMover,
 }: {
   x: number;
   y: number;
   solta: boolean;
   escala?: number;
+  escalaDaPilula?: number;
+  opacidade?: number;
+  aoMover?: (x: number, y: number) => void;
 }) {
   const largura = LARGURA_DA_MINI_TELA * escala;
   const altura = ALTURA_DA_MINI_TELA * escala;
-  const pilula = { largura: LARGURA_DA_MINI_PILULA * escala, altura: ALTURA_DA_MINI_PILULA * escala };
+  const pilula = {
+    largura: LARGURA_DA_MINI_PILULA * escala * escalaDaPilula,
+    altura: ALTURA_DA_MINI_PILULA * escala * escalaDaPilula,
+  };
+  const classe = solta ? "mini-tela solta" : "mini-tela";
+  const estilo = { width: largura, height: altura, borderRadius: "var(--radius-control)" };
+  const miolo = (
+    <span
+      className="mini-pilula"
+      style={{
+        width: pilula.largura,
+        height: pilula.altura,
+        opacity: opacidade,
+        left: 1 + x * Math.max(0, largura - 2 - pilula.largura),
+        top: 1 + y * Math.max(0, altura - 2 - pilula.altura),
+      }}
+    />
+  );
+
+  if (!aoMover) {
+    return (
+      <span className={classe} style={estilo} aria-hidden="true">
+        {miolo}
+      </span>
+    );
+  }
+
+  const limitar = (v: number) => Math.round(Math.min(1, Math.max(0, v)) * 100) / 100;
+  const aoTeclar = (e: React.KeyboardEvent) => {
+    const passo = e.shiftKey ? PASSO_FINO_DA_POSICAO : PASSO_DA_POSICAO;
+    const destino: Record<string, [number, number]> = {
+      ArrowLeft: [x - passo, y],
+      ArrowRight: [x + passo, y],
+      ArrowUp: [x, y - passo],
+      ArrowDown: [x, y + passo],
+      Home: [0, 0],
+      End: [1, 1],
+      PageUp: [1, 0],
+      PageDown: [0, 1],
+    };
+    const alvo = destino[e.key];
+    if (!alvo) return;
+    e.preventDefault();
+    aoMover(limitar(alvo[0]), limitar(alvo[1]));
+  };
 
   return (
-    <span
-      className={solta ? "mini-tela solta" : "mini-tela"}
-      style={{ width: largura, height: altura, borderRadius: "var(--radius-control)" }}
-      aria-hidden="true"
+    <button
+      type="button"
+      className={classe}
+      style={estilo}
+      aria-label={`Posição da pílula: ${Math.round(x * 100)}% da largura, ${Math.round(y * 100)}% da altura`}
+      onKeyDown={aoTeclar}
     >
-      <span
-        className="mini-pilula"
-        style={{
-          width: pilula.largura,
-          height: pilula.altura,
-          left: 1 + x * (largura - 2 - pilula.largura),
-          top: 1 + y * (altura - 2 - pilula.altura),
-        }}
-      />
-    </span>
+      {miolo}
+    </button>
   );
 }

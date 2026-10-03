@@ -69,3 +69,7 @@
   padding-top: var(--space-3);
   border-top: 1px solid var(--stroke);
 }
+
+.painel:focus {
+  outline: none;
+}

@@ -804,3 +804,89 @@ body[data-janela="principal"] .seletor-lista li[aria-selected="true"] {
   box-shadow: inset 2px 0 0 var(--realce);
   color: var(--text-primary);
 }
+
+body[data-janela="principal"] .previa {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-field);
+  background: var(--surface);
+}
+
+body[data-janela="principal"] button.mini-tela {
+  padding: 0;
+}
+
+body[data-janela="principal"] button.mini-tela::before {
+  content: "";
+  position: absolute;
+  inset: -2px 0;
+}
+
+body[data-janela="principal"] .mini-tela:focus-visible {
+  border-color: var(--realce);
+}
+
+body[data-janela="principal"] .linha .descricao .caminho {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+@media (forced-colors: active) {
+  body[data-janela="principal"] .chave {
+    forced-color-adjust: none;
+    background: Canvas;
+    border-color: ButtonText;
+  }
+  body[data-janela="principal"] .chave.ligada {
+    background: Highlight;
+    border-color: Highlight;
+  }
+  body[data-janela="principal"] .chave .bolinha {
+    background: ButtonText;
+  }
+  body[data-janela="principal"] .chave.ligada .bolinha {
+    background: HighlightText;
+  }
+  body[data-janela="principal"] .aba.ativa {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
+  }
+  body[data-janela="principal"] .amostra-de-tema .caixa {
+    forced-color-adjust: none;
+    border-color: ButtonText;
+  }
+  body[data-janela="principal"] .amostra-de-tema.escolhida .caixa {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+  body[data-janela="principal"] .deslizante input {
+    forced-color-adjust: none;
+  }
+  body[data-janela="principal"] .deslizante input::-webkit-slider-runnable-track {
+    background: linear-gradient(
+      to right,
+      Highlight 0 var(--preenchido),
+      GrayText var(--preenchido) 100%
+    );
+  }
+  body[data-janela="principal"] .deslizante input::-webkit-slider-thumb {
+    border-color: Canvas;
+    background: Highlight;
+  }
+}
+
+body[data-janela="principal"] .chave::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px;
+}
+
+body[data-janela="principal"] .cartao.estado .confirmar .botao {
+  min-height: var(--altura-controle);
+}

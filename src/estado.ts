@@ -157,6 +157,15 @@ export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO):
   return "var(--accent-green)";
 }
 
+export function faixaDaCarga(estado: Estado, limiares: Limiares = LIMIARES_PADRAO): string {
+  if (estado.girando) return "no cabo";
+  if (estado.via === "Desligado") return "desligado";
+  if (estado.preenchimento === null) return "sem leitura";
+  if (estado.preenchimento < limiares.critico) return "carga crítica";
+  if (estado.preenchimento < limiares.aviso) return "carga baixa";
+  return "com folga";
+}
+
 export function useTema(): string {
   const cfg = useConfig();
   const claro = useFonte(fonteDoTemaDoSistema);

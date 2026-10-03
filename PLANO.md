@@ -10,10 +10,10 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T92 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
-de sistema de design e temas, de textos e estados, do Resumo, da pílula e aviso e de
-instalação, atualização e avisos do sistema inteiros, e as quatro primeiras de Configurações
-(a T89 tinha saído junto da T32).
+T102 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
+de sistema de design e temas, de textos e estados, do Resumo, da pílula e aviso, de
+instalação, atualização e avisos do sistema, de Configurações e de acessibilidade e teclado
+inteiros (a T89 tinha saído junto da T32).
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -69,7 +69,14 @@ a linha do meio vazia; e o anel do toast segue o tema da barra, para o glifo nã
 toast claro. Na T88 a tagline mora só na coluna do instalador: no cabeçalho de 150px ela não
 cabe em 12px, e ali ficam a marca e "Kontro" sobre o branco do diálogo. Na T91 os ciclos que
 sobraram (Tamanho e Transparência, até a T93, e os do passo 4) viraram `BotaoDeCiclo`, que
-anda para os dois lados; os botões de ação levam só a descrição da linha. Falta a parte que só um jogo responde — o `QUNS`
+anda para os dois lados; os botões de ação levam só a descrição da linha. Na T98 o X do
+painel e o `.ciclo` já não existiam (T59 e T55): ficaram o X de esquecer, os botões da
+confirmação, as faixas do gráfico, o cadeado e a chave, que ganha alvo de 48×34 por
+`::before` sem mudar o desenho; a mini-tela que vira botão na T102 ganha o mesmo recurso.
+Na T97 o bloco de alto contraste cobre também os deslizantes da T90, que perdiam a trilha
+quando o Windows apaga o gradiente. Na T100 o foco só volta ao nome depois de Enter ou Esc:
+salvar no `blur`, quando a pessoa sai com Tab, não puxa o foco de volta. Na T101 o painel não
+tem mais o X (T59), e o Esc dele já fechava. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
