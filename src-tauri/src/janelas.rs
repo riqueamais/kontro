@@ -400,11 +400,14 @@ pub fn assentar_painel(janela: &WebviewWindow, altura: f64) {
 
     let Some(monitor) = janela.current_monitor().ok().flatten() else { return };
     let Some(alvo) = hwnd_de(janela) else { return };
+    let (Ok(fora), Ok(dentro)) = (janela.outer_size(), janela.inner_size()) else { return };
 
     let escala = monitor.scale_factor();
     let area = monitor.work_area();
-    let largura = (LARGURA_DO_PAINEL * escala).round() as i32;
-    let alto = (altura * escala).round() as i32;
+    let moldura_x = fora.width as i32 - dentro.width as i32;
+    let moldura_y = fora.height as i32 - dentro.height as i32;
+    let largura = (LARGURA_DO_PAINEL * escala).round() as i32 + moldura_x;
+    let alto = (altura * escala).round() as i32 + moldura_y;
     let x = area.position.x + area.size.width as i32
         - largura
         - (MARGEM_LATERAL_DO_PAINEL * escala).round() as i32;

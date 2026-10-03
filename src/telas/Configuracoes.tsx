@@ -10,6 +10,7 @@ import {
   OverlayMode,
   Theme,
   useAtalhosRecusados,
+  useConfig,
   usePilulaCoberta,
   usePilulaSolta,
 } from "../estado";
@@ -101,8 +102,9 @@ type Passo =
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
-export function Configuracoes({ aoRever }: { aoRever: () => void }) {
-  const [cfg, setCfg] = useState<Config | null>(null);
+export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
+  const doRust = useConfig();
+  const [cfg, setCfg] = useState<Config | null>(doRust);
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
   const [telas, setTelas] = useState(1);
@@ -115,11 +117,18 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
   const recusados = useAtalhosRecusados();
 
   useEffect(() => {
-    invoke<Config>("configuracoes").then(setCfg).catch(() => {});
-    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
-    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
+    if (doRust) setCfg(doRust);
+  }, [doRust]);
+
+  useEffect(() => {
     invoke<string>("versao_do_app").then(setAtual).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!ativa) return;
+    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
+    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
+  }, [ativa]);
 
   const procurar = async () => {
     setPasso({ tipo: "procurando" });
@@ -385,6 +394,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         <Captura
           combinacao={cfg.OverlayShortcut}
           desabilitado={!cfg.OverlayShortcutEnabled}
+          ativa={ativa}
           aoTrocar={(c) => gravar({ OverlayShortcut: c })}
         />
       </Linha>
@@ -399,6 +409,7 @@ export function Configuracoes({ aoRever }: { aoRever: () => void }) {
         <Captura
           combinacao={cfg.OverlayMoveShortcut}
           desabilitado={!cfg.OverlayShortcutEnabled}
+          ativa={ativa}
           aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
         />
       </Linha>
@@ -617,15 +628,21 @@ function Captura({
   combinacao,
   aoTrocar,
   desabilitado,
+  ativa,
 }: {
   combinacao: string;
   aoTrocar: (combinacao: string) => void;
   desabilitado: boolean;
+  ativa: boolean;
 }) {
   const [ouvindo, setOuvindo] = useState(false);
 
   useEffect(() => {
-    if (!ouvindo) return;
+    if (!ativa) setOuvindo(false);
+  }, [ativa]);
+
+  useEffect(() => {
+    if (!ouvindo || !ativa) return;
 
     const aoTeclar = (evento: KeyboardEvent) => {
       evento.preventDefault();
@@ -645,7 +662,7 @@ function Captura({
 
     window.addEventListener("keydown", aoTeclar, true);
     return () => window.removeEventListener("keydown", aoTeclar, true);
-  }, [ouvindo, aoTrocar]);
+  }, [ouvindo, ativa, aoTrocar]);
 
   return (
     <button

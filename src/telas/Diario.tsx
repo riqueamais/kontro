@@ -24,7 +24,7 @@ interface Faminto {
   minutos: number;
 }
 
-export function Diario() {
+export function Diario({ ativa }: { ativa: boolean }) {
   const [sessoes, setSessoes] = useState<Sessao[]>([]);
   const limiares = useLimiares();
 
@@ -32,7 +32,7 @@ export function Diario() {
     invoke<Sessao[]>("sessoes_do_controle").then(setSessoes).catch(() => {});
   }, []);
 
-  const dias = useMemo(() => porDia(sessoes), [sessoes]);
+  const dias = useMemo(() => porDia(sessoes), [sessoes, ativa]);
   const famintos = useMemo(() => porJogo(sessoes), [sessoes]);
 
   const totalMinutos = dias.reduce((soma, d) => soma + d.minutos, 0);

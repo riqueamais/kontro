@@ -91,7 +91,11 @@ export function Principal() {
     const aoTeclar = (e: KeyboardEvent) => {
       if (!e.ctrlKey || e.key !== "Tab") return;
       e.preventDefault();
-      irPara(vizinha(e.shiftKey ? -1 : 1));
+      const foco = document.activeElement;
+      const focoNaTroca =
+        foco instanceof HTMLElement &&
+        (foco.getAttribute("role") === "tab" || !!folhas.current[pagina]?.contains(foco));
+      irPara(vizinha(e.shiftKey ? -1 : 1), focoNaTroca);
     };
     window.addEventListener("keydown", aoTeclar);
     return () => window.removeEventListener("keydown", aoTeclar);
@@ -127,7 +131,7 @@ export function Principal() {
     <div className="app">
       <BarraDeTitulo />
       <div className="corpo">
-        <nav
+        <div
           className="trilho"
           role="tablist"
           aria-orientation="vertical"
@@ -176,7 +180,7 @@ export function Principal() {
               </button>
             );
           })}
-        </nav>
+        </div>
         <main className="pagina">
           {PAGINAS.map((p) => (
             <section
@@ -191,8 +195,10 @@ export function Principal() {
               hidden={pagina !== p.id}
             >
               {p.id === "resumo" && <Resumo />}
-              {p.id === "diario" && <Diario />}
-              {p.id === "config" && <Configuracoes aoRever={() => setPassos(true)} />}
+              {p.id === "diario" && <Diario ativa={pagina === "diario"} />}
+              {p.id === "config" && (
+                <Configuracoes ativa={pagina === "config"} aoRever={() => setPassos(true)} />
+              )}
             </section>
           ))}
         </main>

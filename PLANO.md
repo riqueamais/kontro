@@ -10,7 +10,10 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T39 — o movimento da tela cheia inteiro e as doze primeiras de desempenho e fluidez. Falta a parte que só um jogo responde — o `QUNS`
+T39 — o movimento da tela cheia inteiro e as doze primeiras de desempenho e fluidez —, mais a
+T89, que a T32 tornou obrigatória. Desvio na T38: o `botao.css` não foi criado, porque o
+botão não tem folha própria até a T55; o estado `aria-busy` mora no `principal.css` e no
+`painel.css`, junto das regras que ele sobrepõe. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
@@ -650,6 +653,8 @@ As três páginas ficam montadas, cada uma num `<section className="folha" role=
 
 **Pronto quando:** ir ao Diário e voltar mantém "30 dias", a sessão escolhida e a posição de rolagem; a troca não mostra frame vazio; o conteúdo entra em fade de 180 ms e o traço da aba desliza entre os itens; Tab entra no trilho uma vez e as setas trocam de página; o Narrador diz "aba, 2 de 3, selecionada"; hover, ativa e pressionada são três tons distintos.
 
+**Entregue com a T89 junto.** Com as páginas montadas o tempo todo, a cópia da config que Configurações guarda envelheceria pela vida inteira da janela, e não só enquanto a aba está aberta: soltar a pílula no Resumo e ligar qualquer chave dias depois a devolveria ao lugar antigo. O que o remontar renovava de graça — a versão nova achada em segundo plano e o número de telas — passa a ser perguntado ao entrar na aba, e o Diário refaz a grade de dias ao entrar. O trilho é `div role="tablist"`, não `nav`: o ARIA em HTML não aceita outro papel em `nav`. E o gravador de atalho passa a parar ao sair da aba: sem desmontar, ele seguia engolindo teclas no Resumo e gravava Ctrl+Tab como atalho global.
+
 ## T33. O gráfico desenha em pixel e para de recalcular
 
 **Onde:** `src/componentes/Historico.tsx`, `src/componentes/historico.css`.
@@ -670,6 +675,8 @@ Quando a carga cruza um limiar, ou o limiar muda nas Configurações, o arco mud
 
 **Pronto quando:** com o controle em ~35%, subir o limiar de carga baixa de 20% para 40% faz arco, halo, fundo do cartão e, na pílula, contorno passarem de verde a âmbar num fade contínuo de 180 ms, sem salto; no Resumo o halo tem ~12px a 35%; na captura da pílula o brilho não ultrapassa o contorno arredondado, no aviso não ultrapassa a borda do cartão, e na lista não passa da borda da linha.
 
+**Entregue com dois ajustes.** O diagnóstico do halo supunha o `drop-shadow` em px de tela, e num filho de `<svg>` ele não é: o Chromium mede o filtro no espaço do `viewBox`. Medido: os 18 do código antigo davam ~3,4 px de desfoque no anel de 96, e o `calc(var(--anel-tamanho) * 0.125)` daria ~2 px. O que entrega a conta da tarefa é 12,5% da caixa de 512, `--raio-do-halo` de 64 unidades, que sai idêntico, pixel a pixel, a um `drop-shadow` de `tamanho × 0,125` px em HTML — 12 px em 96, 3,75 em 30 — sem o anel precisar saber o próprio tamanho. E `box-shadow` só interpola entre listas com o mesmo `inset` em cada posição: a normal, a crítica e a solta da pílula passaram a ter quatro sombras alinhadas, senão o contorno vermelho continuaria aparecendo seco.
+
 ## T35. O flyout desliza a cada abertura, cresce sem pular e descansa quando está escondido
 
 **Onde:** `src/telas/Painel.tsx`, `src/telas/painel.css`, `src-tauri/src/lib.rs` (setup do `--painel`, clique na bandeja, `ajustar_altura_do_painel`).
@@ -679,6 +686,8 @@ O DESIGN §6 pede 240 ms para abrir o flyout, e a entrada `kontro-subir` só aco
 Os dois pontos que mostram o painel no `lib.rs`, o clique na bandeja e o `janela_pronta` do `--painel`, viram `abrir_painel(app)`: `posicionar_painel`, `show()`, `set_focus()` e `app.emit("kontro://painel-abriu", ())`. `Painel.tsx` guarda `aberto` (verdadeiro no evento, falso ao fechar) e `aberturas` (incrementado no evento) e usa `key={aberturas}` no `.painel`, o mesmo padrão de `kontro://pilula-apareceu` na `Sobreposicao`; o `Anel` nasce em `valor`, então remontar não refaz o preenchimento do zero. `kontro-subir` passa a `from { opacity: 0; transform: translateY(8px) }` em `var(--motion-slow) var(--curva)`, o deslize de baixo para cima dos flyouts do Windows 11. Saída: `fechar()` põe `.saindo`, `@keyframes kontro-descer` em `var(--motion-fast)` até `opacity: 0; transform: translateY(8px)`, e esconde a janela no `animationend`. Buscar a série e medir só acontecem com `aberto`; ao abrir ele busca e mede uma vez; a chamada direta a `medir()` sai e o `ResizeObserver`, que dispara ao observar, faz o resto. No Rust, `ajustar_altura_do_painel` retorna cedo se `!janela.is_visible()` e, em vez de `set_size` + `set_position`, calcula x e y para a altura nova e aplica posição e tamanho numa chamada só de `SetWindowPos` (via `janela.hwnd()`, como `arredondar_cantos` já faz, com `SWP_NOZORDER | SWP_NOACTIVATE`).
 
 **Pronto quando:** a terceira abertura do flyout tem o mesmo deslize de 240 ms da primeira, e fechar pelo Esc tem os 120 ms de saída; quando a lista aparece, a borda de baixo do painel não se mexe e a de cima cresce num frame só; com o painel fechado, o processo do WebView2 dele não mostra picos de CPU a cada leitura no Gerenciador de Tarefas.
+
+**Entregue sem o `key={aberturas}`.** Remontar o painel a cada abertura remontava junto a lista de controles, que nasce vazia até o `invoke` voltar: medido, toda abertura mandava duas alturas, 275 e 422, e a borda de cima pulava duas vezes — o contrário do critério. A troca de classe já recomeça a animação, porque `animation-name` sai de `none` (guardado) ou de `kontro-descer` para `kontro-subir`; o painel só remonta no caso raro de o Rust ter escondido a janela sem a página saber. E o `SetWindowPos` recebe o tamanho da janela, não o do conteúdo: o painel nasce com `shadow(true)`, que põe borda invisível em volta, e sem somar essa moldura o WebView encolheria uns 16 × 9 px a cada medida. O X, que o `.topo` cobria desde a T2, ganhou `z-index`.
 
 ## T36. Uma fonte por dado, não uma por hook
 

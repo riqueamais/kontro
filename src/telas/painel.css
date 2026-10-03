@@ -6,14 +6,18 @@
   box-shadow: var(--sombra-painel);
   animation: kontro-subir var(--motion-slow) var(--curva);
 }
+.painel.guardado {
+  opacity: 0;
+  animation: none;
+}
+.painel.saindo {
+  animation: kontro-descer var(--motion-fast) var(--curva) forwards;
+}
 @keyframes kontro-subir {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
-}
-.painel.saindo {
-  animation: kontro-descer var(--motion-fast) var(--curva) forwards;
 }
 @keyframes kontro-descer {
   to {
@@ -23,6 +27,7 @@
 }
 .painel .fechar {
   position: absolute;
+  z-index: 1;
   top: 10px;
   right: 10px;
   width: 24px;
