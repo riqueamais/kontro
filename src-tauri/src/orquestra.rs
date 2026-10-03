@@ -113,8 +113,9 @@ impl Orquestrador {
         mao: Option<bool>,
         solta: bool,
         tela_cheia: bool,
+        previa: bool,
     ) {
-        self.sobreposicao(app, estado, cfg, mao, solta, tela_cheia);
+        self.sobreposicao(app, estado, cfg, mao, solta, tela_cheia, previa);
         self.reafirmar_topo(app);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado, cfg);
@@ -129,12 +130,14 @@ impl Orquestrador {
         mao: Option<bool>,
         solta: bool,
         tela_cheia: bool,
+        previa: bool,
     ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
         if solta {
             if !janela.is_visible().unwrap_or(false) {
                 janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
+                let _ = app.emit("kontro://pilula-apareceu", ());
             }
             return;
         }
@@ -143,10 +146,11 @@ impl Orquestrador {
         let tem_leitura = estado.via != Via::Desligado;
         let momento_de_jogo = cfg.overlay_mode == OverlayMode::Sempre || tela_cheia;
 
-        let ajustando = app
-            .get_webview_window(janelas::PRINCIPAL)
-            .and_then(|j| j.is_focused().ok())
-            .unwrap_or(false);
+        let ajustando = previa
+            && app
+                .get_webview_window(janelas::PRINCIPAL)
+                .and_then(|j| j.is_focused().ok())
+                .unwrap_or(false);
 
         let critico = !estado.carregando
             && !estado.leitura_antiga
@@ -164,7 +168,7 @@ impl Orquestrador {
                 let _ = app.emit("kontro://pilula-apareceu", ());
             }
         } else if janela.is_visible().unwrap_or(false) {
-            let _ = janela.hide();
+            let _ = app.emit("kontro://pilula-vai-sumir", ());
         }
     }
 

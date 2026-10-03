@@ -54,6 +54,7 @@ pub struct Compartilhado {
     abrir_ao_carregar: Mutex<Vec<String>>,
     geometria_da_principal: Mutex<Option<janelas::Geometria>>,
     painel_escondido_em: Mutex<Option<Instant>>,
+    previa_da_pilula: Mutex<bool>,
     icone_do_painel: Mutex<Option<(f64, f64)>>,
     altura_do_painel: Mutex<f64>,
 }
@@ -141,6 +142,7 @@ pub fn executar() {
         abrir_ao_carregar: Mutex::new(Vec::new()),
         geometria_da_principal: Mutex::new(janelas::Geometria::carregar()),
         painel_escondido_em: Mutex::new(None),
+        previa_da_pilula: Mutex::new(false),
         icone_do_painel: Mutex::new(None),
         altura_do_painel: Mutex::new(ALTURA_INICIAL_DO_PAINEL),
     });
@@ -187,6 +189,7 @@ pub fn executar() {
             pilula_solta,
             atalhos_recusados,
             pausar_atalhos,
+            previa_da_pilula,
             pilula_coberta,
             quantidade_de_telas,
             salvar_diagnostico,
@@ -378,7 +381,16 @@ fn iniciar_ciclo(
                 let cfg = compartilhado.config.lock().unwrap().clone();
                 let mao = *compartilhado.sobreposicao_a_mao.lock().unwrap();
                 let solta = *compartilhado.sobreposicao_solta.lock().unwrap();
-                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta, monitor.tela_cheia());
+                let previa = *compartilhado.previa_da_pilula.lock().unwrap();
+                orquestrador.reavaliar(
+                    &app,
+                    &estado,
+                    &cfg,
+                    mao,
+                    solta,
+                    monitor.tela_cheia(),
+                    previa,
+                );
             }
 
             let prazo = Instant::now() + INTERVALO_DO_CICLO;
@@ -800,6 +812,7 @@ pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
     if solta {
         janelas::posicionar_sobreposicao(app, &cfg, tela::Tela::atual().conta_como_jogo());
         janelas::mostrar_por_cima(&janela);
+        let _ = app.emit("kontro://pilula-apareceu", ());
     } else {
         if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
             cfg.overlay_x = pouso.x;
@@ -835,6 +848,11 @@ fn pilula_coberta(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<Str
 #[tauri::command]
 fn atalhos_recusados(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<atalho::Recusa> {
     compartilhado.atalhos_recusados.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn previa_da_pilula(compartilhado: tauri::State<Arc<Compartilhado>>, ligada: bool) {
+    *compartilhado.previa_da_pilula.lock().unwrap() = ligada;
 }
 
 #[tauri::command]

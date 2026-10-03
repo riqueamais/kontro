@@ -114,6 +114,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   }, []);
 
   useEffect(() => {
+    void invoke("previa_da_pilula", { ligada: ativa });
+    return () => {
+      void invoke("previa_da_pilula", { ligada: false });
+    };
+  }, [ativa]);
+
+  useEffect(() => {
     if (!ativa) return;
     invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
     invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});

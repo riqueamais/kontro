@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
 use crate::configuracoes::Settings;
@@ -157,8 +157,9 @@ pub(crate) fn alternar(app: &AppHandle) {
 
     if alvo {
         janelas::mostrar_por_cima(&janela);
+        let _ = app.emit("kontro://pilula-apareceu", ());
     } else {
-        let _ = janela.hide();
+        let _ = app.emit("kontro://pilula-vai-sumir", ());
     }
 }
 
