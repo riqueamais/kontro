@@ -85,19 +85,15 @@ export function Painel() {
   }, [mudar, guardar]);
 
   useEffect(() => {
-    const parar = getCurrentWindow().onFocusChanged(({ payload: temFoco }) => {
-      if (!temFoco) fechar();
-    });
+    const parar = listen("kontro://painel-fechar", fechar);
 
     const aoTeclar = (e: KeyboardEvent) => {
       if (e.key === "Escape") fechar();
     };
-    window.addEventListener("blur", fechar);
     window.addEventListener("keydown", aoTeclar);
 
     return () => {
       void parar.then((f) => f());
-      window.removeEventListener("blur", fechar);
       window.removeEventListener("keydown", aoTeclar);
     };
   }, [fechar]);

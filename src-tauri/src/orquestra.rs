@@ -112,8 +112,9 @@ impl Orquestrador {
         cfg: &Settings,
         mao: Option<bool>,
         solta: bool,
+        tela_cheia: bool,
     ) {
-        self.sobreposicao(app, estado, cfg, mao, solta);
+        self.sobreposicao(app, estado, cfg, mao, solta, tela_cheia);
         self.reafirmar_topo(app);
         self.transicao(app, estado, cfg);
         self.talvez_avisar(app, estado);
@@ -127,6 +128,7 @@ impl Orquestrador {
         cfg: &Settings,
         mao: Option<bool>,
         solta: bool,
+        tela_cheia: bool,
     ) {
         let Some(janela) = app.get_webview_window(janelas::SOBREPOSICAO) else { return };
 
@@ -139,7 +141,7 @@ impl Orquestrador {
 
         let ligada = cfg.overlay_mode != OverlayMode::Desligada;
         let tem_leitura = estado.via != Via::Desligado;
-        let momento_de_jogo = cfg.overlay_mode == OverlayMode::Sempre || tela::em_tela_cheia();
+        let momento_de_jogo = cfg.overlay_mode == OverlayMode::Sempre || tela_cheia;
 
         let ajustando = app
             .get_webview_window(janelas::PRINCIPAL)
