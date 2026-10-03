@@ -2,11 +2,12 @@
 
 Bateria do seu controle, em tempo real, na bandeja do sistema.
 
-**[kontro.riqueamais.github.io](https://riqueamais.github.io/kontro/)** · [baixar a última versão](https://github.com/riqueamais/kontro/releases/latest)
+**[riqueamais.github.io/kontro](https://riqueamais.github.io/kontro/)** · [baixar a última versão](https://github.com/riqueamais/kontro/releases/latest)
 
-O ícone mostra a porcentagem exata e muda de cor conforme a carga cai. Quando não há
-controle ligado, ele vira um controle riscado. O app avisa quando a bateria fica baixa
-e estima quanto tempo ainda dá para jogar, a partir do consumo medido.
+O ícone é um anel que esvazia com a carga e muda de cor conforme ela cai; a porcentagem
+exata fica na dica e no painel. Quando não há controle ligado, ele vira um controle
+riscado. O app avisa quando a bateria fica baixa e estima quanto tempo ainda dá para
+jogar, a partir do consumo medido.
 
 ## Como ele lê a bateria
 
@@ -49,8 +50,8 @@ outro dia diz na tela que é de outro dia.
 ## Instalação
 
 Baixe o `Setup.exe` da [última release](../../releases/latest). A instalação é por
-usuário, não pede administrador, e o app se atualiza sozinho a partir das releases
-publicadas aqui.
+usuário, não pede administrador, e o app avisa quando há versão nova nas releases
+publicadas aqui; instalar é um clique em Configurações.
 
 ## Configuração
 
@@ -106,7 +107,8 @@ cargo run --release -- --gerar .
 
 | sai de | vira |
 |---|---|
-| `geometria.rs` | `src-tauri/icons/`, ícones de `docs/`, `setup.ico`, `public/favicon.svg`, `assets/svg/` |
+| `geometria.rs` | `src-tauri/icons/`, ícones de `docs/`, `setup.ico` (a marca com o selo da seta), `public/favicon.svg`, `assets/svg/` |
+| `geometria.rs` + fontes do sistema | `assets/branding/installer/nsis-header.bmp` e `nsis-sidebar.bmp` — marca, "Kontro" e a tagline; o CI não confere, porque o texto depende da fonte instalada |
 | `geometria.rs` | `src/estilo/geometria.gerada.ts` — o path da marca e os raios que `Glifo` e `Marca` desenham |
 | `configuracoes.rs` | `src/config.gerada.ts` — a interface `Config` que o front usa |
 

@@ -13,8 +13,11 @@ export function ciclar<T extends string | number>(atual: T, opcoes: readonly T[]
   return i < 0 ? opcoes[0] : opcoes[(i + 1) % opcoes.length];
 }
 
-export function salvar(cfg: Config, mudanca: Partial<Config>): Config {
-  const novas = { ...cfg, ...mudanca };
-  void invoke("salvar_configuracoes", { novas });
-  return novas;
+export interface Salvo {
+  config: Config;
+  recusadas: string[];
+}
+
+export function salvar(cfg: Config, mudanca: Partial<Config>): Promise<Salvo> {
+  return invoke<Salvo>("salvar_configuracoes", { novas: { ...cfg, ...mudanca } });
 }

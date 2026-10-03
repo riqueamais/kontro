@@ -49,6 +49,12 @@ pub const CABO_OPACIDADE: f32 = 0.9;
 pub const GLIFO_CAIXA: &str = "50 158 412 260";
 
 pub const RISCO: &str = "M120 392 L392 120";
+
+pub const SELO_CENTRO: (f32, f32) = (402.0, 402.0);
+pub const SELO_RAIO: f32 = 96.0;
+pub const SETA_DO_INSTALADOR: &str = "M402 350 L402 446 M361 406 L402 448 L443 406";
+pub const SETA_LARGURA: f32 = 30.0;
+pub const INK: &str = "#0B0E11";
 pub const RISCO_LARGURA: f32 = 46.0;
 
 pub fn cor_do_nivel(percent: i32, vermelho_abaixo: i32, ambar_abaixo: i32) -> &'static str {

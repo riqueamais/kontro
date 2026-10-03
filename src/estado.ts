@@ -46,6 +46,13 @@ export interface Recusa {
   motivo: "Invalida" | "EmUso";
 }
 
+export interface VersaoNova {
+  versao: string;
+  notas: string | null;
+  beta: boolean;
+  atual: string;
+}
+
 export interface Sessao {
   inicio: number;
   fim: number;
@@ -110,6 +117,11 @@ const fonteDaConfig = criarFonte<Config | null>("configuracoes", "kontro://confi
 const fonteDaPilulaSolta = criarFonte<boolean>("pilula_solta", "kontro://solta", false);
 const fonteDaPilulaCoberta = criarFonte<string | null>("pilula_coberta", "kontro://coberta", null);
 const fonteDosAtalhosRecusados = criarFonte<Recusa[]>("atalhos_recusados", "kontro://atalhos", []);
+const fonteDaNovidade = criarFonte<VersaoNova | null>(
+  "versao_disponivel",
+  "kontro://novidade",
+  null,
+);
 const fonteDoTemaDoSistema = criarFonte<boolean>(
   "windows_no_claro",
   "kontro://tema-do-sistema",
@@ -163,6 +175,10 @@ export function useLimiares(): Limiares {
   const critico = cfg?.CriticalThreshold ?? LIMIARES_PADRAO.critico;
   const aviso = cfg?.WarnThreshold ?? LIMIARES_PADRAO.aviso;
   return useMemo(() => ({ critico, aviso }), [critico, aviso]);
+}
+
+export function useNovidade(): VersaoNova | null {
+  return useFonte(fonteDaNovidade);
 }
 
 export function usePilulaSolta(): boolean {

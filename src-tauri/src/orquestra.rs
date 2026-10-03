@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_notification::NotificationExt;
 
 use crate::configuracoes::{Limiares, OverlayMode, Settings};
 use crate::janelas;
@@ -243,7 +242,8 @@ impl Orquestrador {
         let titulo =
             if limite == cfg.critical_threshold { "Carga crítica" } else { "Carga baixa" };
 
-        let _ = app.notification().builder().title(titulo).body(corpo).show();
+        let imagem = crate::avisos::imagem_do_nivel(estado, cfg.limiares());
+        crate::avisos::mostrar(app, titulo, &corpo, imagem);
     }
 }
 

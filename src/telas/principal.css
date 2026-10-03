@@ -672,3 +672,16 @@ body[data-janela="principal"] .cartao.novidade .falha {
   font-size: var(--fs-body);
   color: var(--atencao);
 }
+
+body[data-janela="principal"] .linha.versao .descricao {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+}
+
+body[data-janela="principal"] .aba .aviso {
+  width: 6px;
+  height: 6px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--realce);
+}

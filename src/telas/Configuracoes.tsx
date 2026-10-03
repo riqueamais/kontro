@@ -13,14 +13,16 @@ import {
 } from "../ajustes";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import { Teclas } from "../componentes/Teclas";
-import { decimal } from "../formato";
+import { decimal, quando } from "../formato";
 import {
   Config,
   OverlayMode,
   Recusa,
+  VersaoNova,
   Theme,
   useAtalhosRecusados,
   useConfig,
+  useNovidade,
   usePilulaCoberta,
   usePilulaSolta,
 } from "../estado";
@@ -62,13 +64,6 @@ const MODOS: Record<OverlayMode, string> = {
   Sempre: "Sempre visível",
 };
 
-interface VersaoNova {
-  versao: string;
-  notas: string | null;
-  beta: boolean;
-  atual: string;
-}
-
 interface Busca {
   estado: "nova" | "em-dia" | "falhou";
   versao: string | null;
@@ -93,11 +88,14 @@ type Passo =
 
 export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
   const doRust = useConfig();
+  const [recusadas, setRecusadas] = useState<string[]>([]);
   const [cfg, setCfg] = useState<Config | null>(doRust);
-  const [nova, setNova] = useState<VersaoNova | null>(null);
+  const nova = useNovidade();
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
   const [telas, setTelas] = useState(1);
   const [atual, setAtual] = useState("");
+  const [veioDe, setVeioDe] = useState<string | null>(null);
+  const [ultima, setUltima] = useState(0);
   const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
     "parado",
   );
@@ -110,7 +108,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   }, [doRust]);
 
   useEffect(() => {
-    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
+    invoke<{ atual: string; veioDe: string | null }>("versao_do_app")
+      .then(({ atual, veioDe }) => {
+        setAtual(atual);
+        setVeioDe(veioDe);
+      })
+      .catch(() => {});
+    invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -122,11 +126,11 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
 
   useEffect(() => {
     if (!ativa) return;
-    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
     invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
   }, [ativa]);
 
   const procurar = async () => {
+    setVeioDe(null);
     setPasso({ tipo: "procurando" });
     try {
       const busca = await invoke<Busca>("procurar_atualizacao");
@@ -140,14 +144,8 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         return;
       }
 
-      if (busca.estado === "nova" && busca.versao) {
-        setNova({ versao: busca.versao, notas: busca.notas, beta: busca.beta, atual: busca.atual });
-        setPasso({ tipo: "parado" });
-        return;
-      }
-
-      setNova(null);
-      setPasso({ tipo: "atualizado" });
+      invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
+      setPasso(busca.estado === "nova" ? { tipo: "parado" } : { tipo: "atualizado" });
     } catch {
       setPasso({
         tipo: "falhou",
@@ -174,7 +172,6 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
     try {
       const achou = await invoke<boolean>("instalar_atualizacao");
       if (!achou) {
-        setNova(null);
         setPasso({ tipo: "atualizado" });
         return;
       }
@@ -191,7 +188,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   };
 
   if (!cfg) return null;
-  const gravar = (mudanca: Partial<Config>) => setCfg(salvar(cfg, mudanca));
+  const gravar = (mudanca: Partial<Config>) => {
+    setCfg({ ...cfg, ...mudanca });
+    void salvar(cfg, mudanca).then(({ config, recusadas }) => {
+      setCfg(config);
+      setRecusadas(recusadas);
+    });
+  };
   const ocupado =
     passo.tipo === "procurando" ||
     passo.tipo === "preparando" ||
@@ -208,10 +211,16 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   return (
     <>
       <h1 className="titulo-da-pagina">Configurações</h1>
+      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <h2>Inicialização</h2>
       <Linha
         titulo="Iniciar com o Windows"
-        descricao="Sobe junto com o sistema e já começa a monitorar."
+        descricao={
+          recusadas.includes("StartWithWindows")
+            ? "O Windows não deixou gravar o início automático. Veja Configurações > Aplicativos > Inicialização."
+            : "Sobe junto com o sistema e já começa a monitorar."
+        }
+        erro={recusadas.includes("StartWithWindows")}
       >
         <Chave
           ligado={cfg.StartWithWindows}
@@ -397,15 +406,18 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
       />
       <h2>Versão</h2>
-      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
-      <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
+      <Linha
+        titulo="Procurar atualizações"
+        descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
+        classe="versao"
+      >
         <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
         </button>
       </Linha>
       <Linha
         titulo="Avisar sobre versões novas"
-        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
+        descricao="Consulta o repositório uma vez por dia, sem baixar nada sozinho."
       >
         <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
       </Linha>
@@ -450,23 +462,15 @@ function rotulo(degraus: [number, string][], valor: number): string {
   return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
 }
 
-function tituloDaVersao(passo: Passo): string {
-  switch (passo.tipo) {
-    case "atualizado":
-      return "Você está na versão mais recente";
-    case "falhou":
-      return passo.ao === "verificar" ? "Sem resposta do GitHub" : "Procurar atualizações";
-    default:
-      return "Procurar atualizações";
+function linhaDaVersao(atual: string, passo: Passo, ultima: number, veioDe: string | null): string {
+  if (passo.tipo === "procurando") return "Consultando o repositório…";
+  if (passo.tipo === "atualizado") return "Nada novo desde esta versão";
+  if (passo.tipo === "falhou" && passo.ao === "verificar") {
+    return `Não foi possível verificar: ${passo.motivo}`;
   }
-}
-function detalheDaVersao(atual: string, passo: Passo): string {
-  if (passo.tipo === "falhou" && passo.ao === "verificar") return passo.motivo;
-  if (passo.tipo === "procurando") return "Consultando o repositório...";
-  if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
-
-  const onde = atual ? `Você está na ${atual}. ` : "";
-  return `${onde}O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.`;
+  if (veioDe) return `Atualizado para a ${atual} · você estava na ${veioDe}`;
+  const verificado = ultima > 0 ? `verificado ${quando(ultima)}` : "ainda não verificado";
+  return `Você está na ${atual} · ${verificado}`;
 }
 
 function Novidade({
@@ -495,7 +499,7 @@ function Novidade({
             {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
           </div>
           <div className="rodape">
-            você está na <span className="mono">{nova.atual}</span>
+            Você está na <span className="mono">{nova.atual}</span>
           </div>
         </div>
         {!andando && (
