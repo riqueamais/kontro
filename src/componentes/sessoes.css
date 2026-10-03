@@ -5,9 +5,10 @@
 }
 
 .sessoes .sessoes-titulo {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  font-family: var(--font-text);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--rastreio-rotulo);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);
@@ -18,7 +19,7 @@
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2);
-  font-size: 12.5px;
+  font-size: var(--fs-caption);
 }
 
 .sessoes .sessao-icone {
@@ -27,7 +28,7 @@
   height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--surface-alt);
   overflow: hidden;
 }
@@ -44,11 +45,11 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
 .sessoes .sessao-titulo {
-  font-size: 13px;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
@@ -57,7 +58,7 @@
 }
 
 .sessoes .sessao-quando {
-  font-size: 11.5px;
+  font-size: var(--fs-caption);
   color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
@@ -69,12 +70,12 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
+  gap: 0;
 }
 
 .sessoes .sessao-carga {
   font-family: var(--font-mono);
-  font-size: 12.5px;
+  font-size: var(--fs-mono);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -85,7 +86,7 @@
 
 .sessoes .sessao-taxa {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-mono);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -97,8 +98,9 @@
   background: transparent;
   font-family: inherit;
   text-align: left;
-  cursor: default;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition:
+    background var(--motion-fast) var(--curva),
+    border-color var(--motion-fast) var(--curva);
 }
 
 .sessoes button.sessao:hover {
@@ -108,4 +110,9 @@
 .sessoes button.sessao.escolhida {
   background: var(--surface-alt);
   border-color: var(--stroke-strong);
+}
+
+.sessoes button.sessao:active {
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
 }

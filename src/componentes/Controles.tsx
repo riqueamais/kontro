@@ -58,7 +58,7 @@ export function MiniTela({
   return (
     <span
       className={solta ? "mini-tela solta" : "mini-tela"}
-      style={{ width: largura, height: altura, borderRadius: 4 + escala }}
+      style={{ width: largura, height: altura, borderRadius: "var(--radius-control)" }}
       aria-hidden="true"
     >
       <span

@@ -1,9 +1,11 @@
 .painel {
   position: relative;
+  max-height: 100vh;
+  overflow-y: auto;
   padding: var(--space-4);
   background: var(--fundo-painel);
   border: 1px solid var(--contorno-painel);
-  box-shadow: var(--sombra-painel);
+  border-radius: var(--radius-sistema);
   animation: kontro-subir var(--motion-slow) var(--curva);
 }
 .painel.guardado {
@@ -24,26 +26,6 @@
     opacity: 0;
     transform: translateY(8px);
   }
-}
-.painel .fechar {
-  position: absolute;
-  z-index: 1;
-  top: 10px;
-  right: 10px;
-  width: 24px;
-  height: 24px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  transition: background var(--motion-fast), color var(--motion-fast);
-}
-.painel .fechar:hover {
-  background: var(--surface-alt);
-  color: var(--text-primary);
 }
 .painel .topo {
   position: relative;
@@ -71,9 +53,9 @@
 }
 .painel .numero {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: var(--fs-display);
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .painel .acoes {

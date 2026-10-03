@@ -11,7 +11,7 @@ body {
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-text);
-  font-size: 14px;
+  font-size: var(--fs-body);
   overflow: hidden;
   user-select: none;
   cursor: default;
@@ -27,7 +27,6 @@ button {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
-  cursor: pointer;
 }
 
 :focus-visible {

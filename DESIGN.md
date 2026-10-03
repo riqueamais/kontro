@@ -117,13 +117,24 @@ fallback `Segoe UI`. `Consolas` só para número medido e timestamp.
 | Body | 14 / Regular | texto de configuração |
 | Caption | 12 / Regular, TextTertiary | rótulo, "há 4 min" |
 | Mono | 12 / Regular, Consolas | mAh, horários, diagnóstico |
+| Rótulo | 12 / SemiBold, caixa alta, 0.12em, TextTertiary | título de seção |
+
+São seis tokens em `tokens.css` (`--fs-display` a `--fs-mono`, mais `--rastreio-rotulo`) e
+nenhum `font-size` em pixel fora dele. Meio pixel em Segoe UI Variable rende com métrica
+fracionária e fica borrado ao lado de texto inteiro, e nada fica abaixo de 12px. O rótulo de
+seção é uma receita só, em Segoe, nunca em Consolas.
 
 ## 5. Espaço, raio, elevação
 
 Escala de espaço: 4, 8, 12, 16, 24, 32. Nada fora dela.
-Raios: 8 (campo, botão), 12 (cartão), 16 (janela/flyout), pill (anel de status).
-Elevação: apenas duas. Cartão = sem sombra, borda `Stroke`. Flyout = sombra
-`0 18 40 rgba(0,0,0,0.55)`, blur 32, opacidade 0.55.
+Raios: 2 (trilho de 3px), 4 (controle: tecla, mini-tela, campo de renomear), 8 (campo,
+botão, e o flyout, que é o raio do DWM), 12 (cartão, inclusive o aviso de conexão), 16
+(janela que não passa pelo DWM), pill (anel de status, chave). Altura de controle: 32.
+Elevação: apenas duas. Cartão = sem sombra, borda `Stroke`. O flyout usa a sombra do
+sistema, não uma de CSS: sem material a janela tem o tamanho do `div` e cortaria a dela.
+O aviso de conexão usa `0 8 24 rgba(0,0,0,0.45)`, σ=12 com cauda de 30px, que cabe nos
+32px das laterais, nos 24 de cima mais o deslocamento e nos 56 de baixo, sem degrau sobre
+fundo claro. A pílula, `0 2 8 rgba(0,0,0,0.6)`. Toda sombra é token em `tokens.css`.
 
 Controle tem preenchimento sutil; cartão não. O botão (`.botao`, em `botao.css`) é o do
 WinUI: fundo TextPrimary a 5% (8% no hover), borda TextPrimary a 12%, 32px de altura (28px
@@ -138,9 +149,15 @@ flyout. Easing `CubicEase EaseOut` sempre. O anel **anima** entre percentuais em
 180ms — nunca salta. Nenhuma animação em loop: um app de bandeja que pisca é um
 app que o usuário desliga.
 
+Pressed é o do WinUI: preenchimento TextPrimary a 4% e texto em TextSecondary, mais fraco
+que o hover; botão de destaque e de perigo escurecem 10%. A chave engorda a bolinha no
+hover e a estica no pressed. Toda `transition` leva `var(--curva)` depois da duração, e o
+cursor é a seta em todo botão: a mão fica só no arrastar da pílula solta.
+
 ## 7. Telas
 
-**Flyout (clique no ícone)** — 320x220, raio 16, fundo Ink, borda Stroke.
+**Flyout (clique no ícone)** — 320x220, raio 8 com a sombra do sistema, fundo Ink, borda
+Stroke. Nunca passa da área útil: acima disso, rola por dentro.
 Ancorado ao canto da bandeja com 12px de folga. Conteúdo, de cima para baixo:
 anel 96px com a porcentagem em Display no centro · nome do controle em Subtitle ·
 estimativa de tempo restante em Body · última leitura em Caption/Mono ·

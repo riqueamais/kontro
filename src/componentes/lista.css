@@ -5,9 +5,10 @@
 }
 
 .lista .lista-titulo {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  font-family: var(--font-text);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  letter-spacing: var(--rastreio-rotulo);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin-bottom: var(--space-2);
@@ -17,7 +18,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 7px 8px;
+  padding: var(--space-2);
   border-radius: var(--radius-field);
   border: 1px solid transparent;
 }
@@ -37,31 +38,32 @@
   border: 0;
   background: transparent;
   text-align: left;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   border-bottom: 1px dashed transparent;
-  transition: border-color var(--motion-fast);
+  transition: border-color var(--motion-fast) var(--curva);
 }
 .lista .item-nome:hover {
   border-bottom-color: var(--stroke-strong);
 }
 .lista .renomear {
   width: 100%;
-  padding: 2px 6px;
-  border-radius: 4px;
+  min-height: var(--altura-controle);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
   border: 1px solid var(--realce);
   background: var(--surface-alt);
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: var(--fs-body);
 }
 .lista .item-estado {
-  margin-top: 2px;
-  font-size: 11.5px;
+  margin-top: var(--space-1);
+  font-size: var(--fs-caption);
   color: var(--text-tertiary);
   white-space: nowrap;
   overflow: hidden;
@@ -92,8 +94,10 @@
   background: transparent;
   color: var(--text-tertiary);
   opacity: 0;
-  transition: opacity var(--motion-fast), background var(--motion-fast),
-    color var(--motion-fast);
+  transition:
+    opacity var(--motion-fast) var(--curva),
+    background var(--motion-fast) var(--curva),
+    color var(--motion-fast) var(--curva);
 }
 .lista .item:hover .esquecer,
 .lista .esquecer:focus-visible {
@@ -106,4 +110,9 @@
 .lista .confirmar {
   display: flex;
   gap: var(--space-2);
+}
+
+.lista .esquecer:active {
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
 }
