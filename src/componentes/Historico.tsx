@@ -85,8 +85,11 @@ export function Historico({
     !janela && autonomiaMinutos && autonomiaMinutos > 0
       ? agora + autonomiaMinutos * 60_000
       : null;
-  const fim = janela ? janela.fim + folga : Math.max(agora, ultimaLida, zeraEm ?? 0);
   const inicio = janela ? janela.inicio - folga : agora - (compacto ? 7 : dias) * DIA;
+  const tetoDaProjecao = agora + (agora - inicio) / 3;
+  const fim = janela
+    ? janela.fim + folga
+    : Math.max(agora, ultimaLida, Math.min(zeraEm ?? 0, tetoDaProjecao));
 
   const decidiuAJanela = useRef(false);
   useEffect(() => {
@@ -106,7 +109,18 @@ export function Historico({
   const y = (p: number) => M.topo + (1 - p / 100) * altura;
 
   const ultima = amostras[amostras.length - 1];
-  const projecao = zeraEm && ultima && zeraEm > ultima.t ? { de: ultima, zeraEm } : null;
+  const projecao =
+    zeraEm && ultima && zeraEm > ultima.t
+      ? {
+          de: ultima,
+          zeraEm,
+          cortada: zeraEm > fim,
+          ate:
+            zeraEm > fim
+              ? { t: fim, p: ultima.p * (1 - (fim - ultima.t) / (zeraEm - ultima.t)) }
+              : { t: zeraEm, p: 0 },
+        }
+      : null;
 
   const estatico = useMemo(
     () => (
@@ -174,6 +188,17 @@ export function Historico({
             </text>
           ))}
 
+        {!dentroDeUmaSessao && (
+          <g>
+            <line x1={x(agora)} x2={x(agora)} y1={M.topo} y2={y(0)} className="agora" />
+            {!compacto && (
+              <text x={x(agora) - 4} y={M.topo + 11} className="rotulo-x rotulo-agora">
+                agora
+              </text>
+            )}
+          </g>
+        )}
+
         {trocadaEm && trocadaEm > inicio && (
           <g>
             <line x1={x(trocadaEm)} x2={x(trocadaEm)} y1={M.topo} y2={y(0)} className="troca" />
@@ -209,17 +234,18 @@ export function Historico({
         {projecao && (
           <g className="projecao">
             <path
-              d={`M${x(projecao.de.t)} ${y(projecao.de.p)} L${x(projecao.zeraEm)} ${y(0)}`}
+              d={`M${x(projecao.de.t)} ${y(projecao.de.p)} L${x(projecao.ate.t)} ${y(projecao.ate.p)}`}
               className="linha-projetada"
             />
             {!compacto && (
               <text
-                x={Math.min(x(projecao.zeraEm), LARGURA - M.direita) - 4}
+                x={Math.min(x(projecao.ate.t), LARGURA - M.direita) - 4}
                 y={y(0) - 6}
                 className="rotulo-projecao"
                 textAnchor="end"
               >
-                zera {quandoZera(projecao.zeraEm)}
+                zera {quandoZera(projecao.zeraEm, agora)}
+                {projecao.cortada && " →"}
               </text>
             )}
           </g>
@@ -237,6 +263,8 @@ export function Historico({
       trocadaEm,
       dentroDeUmaSessao,
       projecao?.zeraEm,
+      projecao?.ate.t,
+      agora,
       tinta,
     ],
   );
@@ -248,26 +276,61 @@ export function Historico({
     const px = e.clientX - caixa.left;
     const t = inicio + ((px - M.esquerda) / largura) * (fim - inicio);
     const perto = maisPerto(amostras, t);
-    setSob((atual) => (atual === perto ? atual : perto));
+    const alvo = Math.abs(x(perto.t) - px) <= ALCANCE_DO_CURSOR ? perto : null;
+    setSob((atual) => (atual === alvo ? atual : alvo));
   };
+
+  const aoTeclar = (e: React.KeyboardEvent<SVGSVGElement>) => {
+    const i = sob ? amostras.indexOf(sob) : -1;
+    const proximo = {
+      ArrowLeft: i < 0 ? amostras.length - 1 : Math.max(0, i - 1),
+      ArrowRight: i < 0 ? 0 : Math.min(amostras.length - 1, i + 1),
+      Home: 0,
+      End: amostras.length - 1,
+    }[e.key];
+    if (e.key === "Escape") {
+      setSob(null);
+      return;
+    }
+    if (proximo === undefined) return;
+    e.preventDefault();
+    setSob(amostras[proximo]);
+  };
+
+  const legenda = vazio ? "" : janela ? resumoDaSessao(amostras, janela) : resumo(amostras, trechos.length);
 
   return (
     <div ref={setRaiz} className={`historico${compacto ? " compacto" : ""}`}>
       {!compacto && (
         <div className="historico-topo">
-          <span className={`historico-titulo${janela ? " livre" : ""}`}>
+          <span className={`historico-titulo${janela ? " livre" : ""}`} title={janela?.titulo}>
             {janela ? janela.titulo : "Carga"}
           </span>
           <div className="faixas">
             {janela ? (
-              <button className="faixa ativa" onClick={aoSairDaJanela}>
-                voltar
+              <button
+                className="faixa ativa"
+                aria-label="Voltar ao gráfico de 7 dias"
+                onClick={aoSairDaJanela}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                  <path
+                    d="M10 6H2.5M5.5 2.5 2 6l3.5 3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.4"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Voltar
               </button>
             ) : (
               FAIXAS.map((f) => (
                 <button
                   key={f.dias}
                   className={`faixa${dias === f.dias ? " ativa" : ""}`}
+                  aria-pressed={dias === f.dias}
                   onClick={() => setDias(f.dias)}
                 >
                   {f.rotulo}
@@ -299,33 +362,47 @@ export function Historico({
         </div>
       ) : (
         <>
-          <svg
-            width={LARGURA}
-            height={ALTURA}
-            viewBox={`0 0 ${LARGURA} ${ALTURA}`}
-            className="grafico"
-            onMouseMove={aoMover}
-            onMouseLeave={() => setSob(null)}
-          >
-            {estatico}
+          <div className="grafico-area">
+            <svg
+              width={LARGURA}
+              height={ALTURA}
+              viewBox={`0 0 ${LARGURA} ${ALTURA}`}
+              className="grafico"
+              tabIndex={0}
+              role="img"
+              aria-label={legenda}
+              onMouseMove={aoMover}
+              onMouseLeave={() => setSob(null)}
+              onKeyDown={aoTeclar}
+              onBlur={() => setSob(null)}
+            >
+              {estatico}
 
+              {sob && (
+                <g>
+                  <line x1={x(sob.t)} x2={x(sob.t)} y1={M.topo} y2={y(0)} className="mira" />
+                  <circle cx={x(sob.t)} cy={y(sob.p)} r={4} className="ponto" />
+                </g>
+              )}
+            </svg>
             {sob && (
-              <g>
-                <line x1={x(sob.t)} x2={x(sob.t)} y1={M.topo} y2={y(0)} className="mira" />
-                <circle cx={x(sob.t)} cy={y(sob.p)} r={4} className="ponto" />
-              </g>
+              <div
+                className={`dica${y(sob.p) < 40 ? " abaixo" : ""}`}
+                role="status"
+                aria-live="polite"
+                style={{ left: x(sob.t), top: y(sob.p) }}
+              >
+                <span className="dica-valor">{sob.p}%</span>
+                <span className="dica-quando">
+                  {quando(sob.t)}
+                  {sob.via && ` · ${NOME_DA_VIA[sob.via]}`}
+                </span>
+              </div>
             )}
-          </svg>
+          </div>
 
           <div className="historico-rodape">
-            {sob ? (
-              <>
-                <span className="destaque">{sob.p}%</span>
-                <span>{quando(sob.t)}</span>
-              </>
-            ) : (
-              <span>{janela ? resumoDaSessao(amostras, janela) : resumo(amostras, trechos.length)}</span>
-            )}
+            <span>{legenda}</span>
           </div>
         </>
       )}
@@ -429,17 +506,30 @@ function marcas(inicio: number, fim: number, dentroDeUmaSessao: boolean) {
   return saida;
 }
 
-function quandoZera(ms: number): string {
-  return diasAtras(new Date(ms)) === 0 ? `às ${hora(new Date(ms))}` : quando(ms);
+const DOZE_HORAS = 12 * 3_600_000;
+
+const ALCANCE_DO_CURSOR = 24;
+
+const NOME_DA_VIA: Record<NonNullable<Amostra["via"]>, string> = {
+  Bluetooth: "Bluetooth",
+  Cabo: "cabo",
+  SemFio: "sem fio",
+  Desligado: "desligado",
+};
+
+function quandoZera(ms: number, agora: number): string {
+  return ms - agora > DOZE_HORAS || diasAtras(new Date(ms)) !== 0
+    ? quando(ms)
+    : `às ${hora(new Date(ms))}`;
 }
 
 function resumoDaSessao(amostras: Amostra[], janela: Janela): string {
   const de = amostras[0].p;
   const ate = amostras[amostras.length - 1].p;
   const minutos = Math.round((janela.fim - janela.inicio) / 60_000);
-  if (de <= ate || minutos <= 0) return `${amostras.length} leituras nesta sessão`;
-
-  return `${de - ate} pontos em ${duracao(minutos)} · ${taxa(((de - ate) * 60) / minutos)}`;
+  const partes = [quando(amostras[0].t), `${de}% → ${ate}%`, duracao(minutos)];
+  if (de > ate && minutos > 0) partes.push(taxa(((de - ate) * 60) / minutos));
+  return partes.join(" · ");
 }
 
 function resumo(amostras: Amostra[], trechos: number): string {

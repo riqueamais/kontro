@@ -37,7 +37,7 @@ export function Resumo() {
 
   useAoMudarOHistorico(() => {
     invoke<DoControle>("resumo_do_controle").then(setDoControle).catch(() => {});
-  }, [estado?.chave]);
+  }, [estado?.chave, estado?.via, estado?.lidoEm]);
 
   if (!estado) return null;
 
@@ -47,6 +47,7 @@ export function Resumo() {
 
       <section
         className={estado.leituraAntiga ? "cartao estado antiga" : "cartao estado"}
+        aria-live="polite"
         style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
       >
         <Anel
@@ -65,11 +66,20 @@ export function Resumo() {
         </Anel>
 
         <div className="coluna">
-          <Leitura estado={estado} comAutonomia={false} />
+          <Leitura
+            estado={estado}
+            comAutonomia={false}
+            renomeavel={estado.quantosConhecidos < 2}
+          />
           <Indicadores estado={estado} cargaCheiaMinutos={saude?.cargaCheiaMinutos ?? null} />
         </div>
 
-        <BotaoLerAgora estado={estado} className="botao" />
+        <div className="acoes-do-estado">
+          <BotaoLerAgora estado={estado} className="botao" />
+          {estado.quantosConhecidos === 1 && estado.via === "Desligado" && (
+            <Esquecer chave={estado.chave} />
+          )}
+        </div>
       </section>
 
       <section className="cartao">
@@ -92,7 +102,7 @@ export function Resumo() {
         />
       </section>
 
-      <ListaDeControles principal={estado.chave} sempre />
+      {estado.quantosConhecidos >= 2 && <ListaDeControles principal={estado.chave} sempre />}
     </>
   );
 }
@@ -122,6 +132,30 @@ function Indicadores({
           <span className="indicador-rotulo">{b.rotulo}</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function Esquecer({ chave }: { chave: string }) {
+  const [confirmando, setConfirmando] = useState(false);
+  if (!confirmando) {
+    return (
+      <button className="botao fantasma" onClick={() => setConfirmando(true)}>
+        Esquecer
+      </button>
+    );
+  }
+  return (
+    <div className="confirmar">
+      <button
+        className="botao perigo miudo"
+        onClick={() => void invoke("esquecer_controle", { chave })}
+      >
+        Esquecer
+      </button>
+      <button className="botao miudo" onClick={() => setConfirmando(false)}>
+        Cancelar
+      </button>
     </div>
   );
 }

@@ -101,7 +101,5 @@ function taxa(s: Sessao): string {
 }
 
 export function rotuloDaSessao(s: Sessao): string {
-  const inicio = quando(s.inicio);
-  const carga = `${s.de}% a ${s.ate}%`;
-  return s.jogo ? `${s.jogo} · ${inicio} · ${carga}` : `${inicio} · ${carga}`;
+  return s.jogo ?? quando(s.inicio);
 }

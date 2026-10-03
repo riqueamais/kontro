@@ -586,3 +586,64 @@ body[data-janela="principal"] .cartao.estado .indicador-rotulo {
   font-size: var(--fs-caption);
   color: var(--text-tertiary);
 }
+
+body[data-janela="principal"] .cartao.estado .acoes-do-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .cartao.estado .confirmar {
+  display: flex;
+  gap: var(--space-2);
+}
+
+body[data-janela="principal"] .cartao.estado .item-nome {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px dashed transparent;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+body[data-janela="principal"] .cartao.estado .item-nome-texto {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-janela="principal"] .cartao.estado .item-nome .lapis {
+  flex: 0 0 auto;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--curva);
+}
+
+body[data-janela="principal"] .cartao.estado .item-nome:hover .lapis,
+body[data-janela="principal"] .cartao.estado .item-nome:focus-visible .lapis {
+  opacity: 1;
+}
+
+body[data-janela="principal"] .cartao.estado .item-nome:hover {
+  border-bottom-color: var(--stroke-strong);
+}
+
+body[data-janela="principal"] .cartao.estado .renomear {
+  width: 100%;
+  min-height: var(--altura-controle);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--realce);
+  background: var(--surface-alt);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--fs-body);
+}

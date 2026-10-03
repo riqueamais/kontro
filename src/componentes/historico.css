@@ -30,9 +30,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
 }
 
 .historico .historico-titulo {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-text);
   font-size: var(--fs-caption);
   font-weight: 600;
@@ -49,11 +54,15 @@
 }
 
 .historico .faixas {
+  flex: 0 0 auto;
   display: flex;
   gap: var(--space-1);
 }
 
 .historico .faixa {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-1) var(--space-2);
   border: 0;
   border-radius: var(--radius-field);
@@ -72,9 +81,46 @@
   color: var(--text-primary);
 }
 
+.historico .grafico-area {
+  position: relative;
+}
+
 .historico .grafico {
   display: block;
   overflow: visible;
+  border-radius: var(--radius-control);
+}
+
+.historico .grafico:focus-visible {
+  outline: 2px solid var(--realce);
+  outline-offset: 4px;
+}
+
+.historico .dica {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-field);
+  background: var(--surface-alt);
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+}
+
+.historico .dica.abaixo {
+  transform: translate(-50%, var(--space-2));
+}
+
+.historico .dica-valor {
+  color: var(--text-primary);
+}
+
+.historico .dica-quando {
+  color: var(--text-tertiary);
 }
 
 .historico .grafico .grade {
@@ -95,6 +141,16 @@
 
 .historico .grafico .rotulo-x {
   text-anchor: middle;
+}
+
+.historico .grafico .rotulo-x.rotulo-agora {
+  text-anchor: end;
+}
+
+.historico .grafico .agora {
+  stroke: var(--stroke-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
 }
 
 .historico .grafico .linha {

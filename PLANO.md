@@ -10,8 +10,8 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T67 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
-de sistema de design e temas e de textos e estados inteiros, e as três primeiras do Resumo —,
+T71 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
+de sistema de design e temas e de textos e estados inteiros, e as sete primeiras do Resumo —,
 mais a T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
@@ -48,7 +48,12 @@ janela da sessão, a mesma conta da lista, e não do primeiro e do último ponto
 dois rótulos do eixo cairiam a menos de 12px, a prioridade é aviso, crítico, 100, 50 e 0:
 com aviso em 30 e crítico em 20 os dois ficam a 11,8px no gráfico de 150, e só o "30" sai —
 a linha tracejada vermelha continua lá. Na T66 o bloco "por carga cheia" aparece também com o
-controle desligado, porque é medida da bateria e não da sessão; os que dependem de taxa somem. Falta a parte que só um jogo responde — o `QUNS`
+controle desligado, porque é medida da bateria e não da sessão; os que dependem de taxa somem. Na T68 o
+relógio de minuto e o rótulo "zera amanhã às 02:30" já existiam desde a T33 e a T63; o
+Resumo já recarregava a cada `kontro://historico`, e `via`/`lidoEm` entraram nas dependências
+mesmo assim. Na T70 o nome editável vai onde o nome aparece: no título com o controle
+ligado e na segunda linha com ele desligado, onde o título é "Desconectado"; e "Esquecer" é
+um `.botao.fantasma` abaixo de "Ler agora", já que o `.ciclo` não existe desde a T55. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
