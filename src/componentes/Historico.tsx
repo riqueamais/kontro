@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Amostra, useLimiares } from "../estado";
-import { hora, momento } from "../formato";
+import { diaEMes, diasAtras, duracao, hora, quando, taxa } from "../formato";
 import "./historico.css";
 
 const DIA = 86_400_000;
@@ -189,7 +189,7 @@ export function Historico({
                 className="rotulo-projecao"
                 textAnchor="end"
               >
-                zera {hora(new Date(projecao.zeraEm))}
+                zera {quandoZera(projecao.zeraEm)}
               </text>
             )}
           </g>
@@ -276,10 +276,10 @@ export function Historico({
         {sob ? (
           <>
             <span className="destaque">{sob.p}%</span>
-            <span>{momento(sob.t)}</span>
+            <span>{quando(sob.t)}</span>
           </>
         ) : (
-          <span>{janela ? resumoDaSessao(amostras) : resumo(amostras, trechos.length)}</span>
+          <span>{janela ? resumoDaSessao(amostras, janela) : resumo(amostras, trechos.length)}</span>
         )}
       </div>
     </div>
@@ -340,7 +340,7 @@ function marcas(inicio: number, fim: number, dentroDeUmaSessao: boolean) {
       const t = inicio + ((fim - inicio) * i) / 5;
       saida.push({
         t,
-        texto: new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+        texto: hora(new Date(t)),
       });
     }
     return saida;
@@ -355,21 +355,24 @@ function marcas(inicio: number, fim: number, dentroDeUmaSessao: boolean) {
     if (t > inicio + passo / 2) {
       saida.push({
         t,
-        texto: new Date(t).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        texto: diaEMes(new Date(t)),
       });
     }
   }
   return saida;
 }
 
-function resumoDaSessao(amostras: Amostra[]): string {
+function quandoZera(ms: number): string {
+  return diasAtras(new Date(ms)) === 0 ? `às ${hora(new Date(ms))}` : quando(ms);
+}
+
+function resumoDaSessao(amostras: Amostra[], janela: Janela): string {
   const de = amostras[0].p;
   const ate = amostras[amostras.length - 1].p;
-  const horas = (amostras[amostras.length - 1].t - amostras[0].t) / 3_600_000;
-  if (de <= ate || horas <= 0) return `${amostras.length} leituras nesta sessão`;
+  const minutos = Math.round((janela.fim - janela.inicio) / 60_000);
+  if (de <= ate || minutos <= 0) return `${amostras.length} leituras nesta sessão`;
 
-  const taxa = (de - ate) / horas;
-  return `${(de - ate)} pontos em ${Math.round(horas * 60)} min, ou ${taxa.toFixed(1).replace(".", ",")}% por hora`;
+  return `${de - ate} pontos em ${duracao(minutos)} · ${taxa(((de - ate) * 60) / minutos)}`;
 }
 
 function resumo(amostras: Amostra[], trechos: number): string {

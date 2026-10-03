@@ -111,3 +111,11 @@
   border-color: var(--realce);
   color: var(--realce);
 }
+
+.sobreposicao.antiga .pilula > .valor {
+  color: var(--text-secondary);
+}
+
+.sobreposicao.antiga .pilula > .anel .carga {
+  opacity: 0.6;
+}

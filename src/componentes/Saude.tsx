@@ -1,4 +1,4 @@
-import { diaEMes, duracao } from "../formato";
+import { diaEMes, duracao, taxa } from "../formato";
 import "./saude.css";
 
 export interface Saude {
@@ -72,9 +72,7 @@ function detalhe(s: Saude): string {
     return `${desde}Ainda não houve descarga suficiente nas duas janelas para comparar.`;
   }
 
-  const recente = (s.consumoRecente ?? 0).toFixed(1).replace(".", ",");
-  const antes = (s.consumoAntes ?? 0).toFixed(1).replace(".", ",");
-  const base = `${recente}% por hora esta semana, contra ${antes}% antes.`;
+  const base = `${taxa(s.consumoRecente ?? 0)} esta semana, contra ${taxa(s.consumoAntes ?? 0)} antes.`;
 
   if (s.estado === "estavel") return `${base} Nada mudou.`;
   if (s.estado === "melhorando") return `${base} Você deve estar usando menos.`;

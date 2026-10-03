@@ -75,7 +75,12 @@ export function Sobreposicao() {
     <div
       ref={raiz}
       key={entradas}
-      className={classes(solta, (cfg?.OverlayX ?? 1) > 0.5, critica)}
+      className={classes(
+        solta,
+        (cfg?.OverlayX ?? 1) > 0.5,
+        critica,
+        estado.leituraAntiga && !estado.girando,
+      )}
       style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}
       onMouseDown={(evento) => {
         if (solta && evento.button === 0) void getCurrentWindow().startDragging();
@@ -89,9 +94,13 @@ export function Sobreposicao() {
           tamanho={30}
           girando={estado.girando}
         >
-          <Glifo tamanho={15} cor="var(--text-primary)" />
+          {estado.via === "Cabo" ? (
+            <Raio carregando={estado.carregando} />
+          ) : (
+            <Glifo tamanho={15} cor="var(--text-primary)" />
+          )}
         </Anel>
-        <span className="valor">{resumir(estado)}</span>
+        {resumir(estado) && <span className="valor">{resumir(estado)}</span>}
         {acompanhantes.length > 0 && (
           <div className="acompanhantes">
             {acompanhantes.map((c) => (
@@ -105,7 +114,7 @@ export function Sobreposicao() {
                 >
                   <Glifo tamanho={10} cor="var(--text-secondary)" />
                 </Anel>
-                <span className="valor menor">{resumir(c)}</span>
+                {resumir(c) && <span className="valor menor">{resumir(c)}</span>}
               </div>
             ))}
           </div>
@@ -124,10 +133,30 @@ export function Sobreposicao() {
     </div>
   );
 }
-function classes(solta: boolean, aDireita: boolean, critica: boolean): string {
-  return ["sobreposicao", solta && "solta", aDireita && "espelhada", critica && "critica"]
+function classes(solta: boolean, aDireita: boolean, critica: boolean, antiga: boolean): string {
+  return [
+    "sobreposicao",
+    solta && "solta",
+    aDireita && "espelhada",
+    critica && "critica",
+    antiga && "antiga",
+  ]
     .filter(Boolean)
     .join(" ");
+}
+
+function Raio({ carregando }: { carregando: boolean }) {
+  return (
+    <svg className="raio" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M9 1.5 3.5 9H7.6l-1 5.5L12.5 7H8.4Z"
+        fill={carregando ? "var(--accent-teal)" : "none"}
+        stroke={carregando ? "none" : "var(--gray)"}
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function Cadeado() {
@@ -145,10 +174,10 @@ function Cadeado() {
   );
 }
 
-function resumir(estado: Estado): string {
+function resumir(estado: Estado): string | null {
   if (estado.girando) return "cabo";
   if (estado.precisao === "Aproximada" && estado.nivel !== null) {
     return ["baixa", "baixa", "média", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)];
   }
-  return estado.textoDaCarga || "sem leitura";
+  return estado.textoDaCarga || null;
 }

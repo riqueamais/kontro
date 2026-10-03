@@ -51,6 +51,9 @@
 .painel .topo > * {
   position: relative;
 }
+.painel .topo.antiga .numero {
+  color: var(--text-secondary);
+}
 .painel .numero {
   font-family: var(--font-display);
   font-size: var(--fs-display);

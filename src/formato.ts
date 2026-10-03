@@ -13,18 +13,30 @@ export function diasAtras(quando: Date): number {
   return Math.round((meiaNoite(new Date()) - meiaNoite(quando)) / 86_400_000);
 }
 
-export function momento(ms: number): string {
+export function dia(ms: number): string {
   const quando = new Date(ms);
-  return `${diaEMes(quando)} às ${hora(quando)}`;
+  switch (diasAtras(quando)) {
+    case 0:
+      return "hoje";
+    case 1:
+      return "ontem";
+    case -1:
+      return "amanhã";
+    default:
+      return diaEMes(quando);
+  }
 }
 
-export function momentoRelativo(ms: number): string {
-  const quando = new Date(ms);
-  const dias = diasAtras(quando);
+export function quando(ms: number): string {
+  return `${dia(ms)} às ${hora(new Date(ms))}`;
+}
 
-  if (dias === 0) return `hoje, ${hora(quando)}`;
-  if (dias === 1) return `ontem, ${hora(quando)}`;
-  return `${diaEMes(quando)}, ${hora(quando)}`;
+export function decimal(n: number): string {
+  return n.toFixed(1).replace(".", ",");
+}
+
+export function taxa(porHora: number): string {
+  return `${decimal(porHora)} %/h`;
 }
 
 export function duracao(minutos: number): string {
@@ -35,20 +47,29 @@ export function duracao(minutos: number): string {
   return m > 0 ? `${h} h ${m} min` : `${h} h`;
 }
 
-export function quandoLeu(estado: Estado): string {
-  if (!estado.lidoEm) return "sem leitura ainda";
+export interface Rodape {
+  texto: string;
+  hora: string | null;
+}
 
-  const quando = new Date(estado.lidoEm);
-  const verbo = estado.leituraAntiga ? "lido" : "atualizado";
-  const dias = diasAtras(quando);
+export function quandoLeu(estado: Estado): Rodape {
+  if (estado.procurando) return { texto: "", hora: null };
+  if (!estado.lidoEm) return { texto: "sem leitura ainda", hora: null };
 
-  if (dias === 0) return `${verbo} às ${hora(quando)}`;
-  if (dias === 1) return `${verbo} ontem às ${hora(quando)}`;
-  return `${verbo} em ${diaEMes(quando)}, às ${hora(quando)}`;
+  const lido = new Date(estado.lidoEm);
+  const abertura = estado.leituraAntiga ? "última leitura" : "atualizado";
+  const dias = diasAtras(lido);
+  const ponte = dias === 0 ? "às" : dias === 1 ? "ontem às" : `em ${diaEMes(lido)}, às`;
+  return { texto: `${abertura} ${ponte}`, hora: hora(lido) };
 }
 
 export function detalhe(estado: Estado): string {
-  if (estado.via === "Desligado") return estado.nome;
+  if (estado.procurando) return "";
+  if (estado.via === "Desligado") {
+    return estado.quantosConhecidos === 0
+      ? "Ligue um controle por Bluetooth ou pelo cabo"
+      : estado.nome;
+  }
   if (estado.conectadoSemCarga) {
     return `conectado ${estado.textoDaLigacao} · não informa bateria`;
   }

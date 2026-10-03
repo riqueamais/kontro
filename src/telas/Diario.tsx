@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useMemo, useRef, useState } from "react";
 
 import { Sessao, useAoMudarOHistorico, useLimiares } from "../estado";
-import { diaEMes, duracao } from "../formato";
+import { diaEMes, duracao, taxa } from "../formato";
 import "./diario.css";
 
 const DIA = 86_400_000;
@@ -125,7 +125,7 @@ function Ranking({ famintos }: { famintos: Faminto[] }) {
           <span className="faminto-barra">
             <span style={{ width: `${(f.porHora / teto) * 100}%` }} />
           </span>
-          <span className="faminto-taxa">{f.porHora.toFixed(1).replace(".", ",")} %/h</span>
+          <span className="faminto-taxa">{taxa(f.porHora)}</span>
           <span className="faminto-quantas">
             {f.sessoes} {f.sessoes === 1 ? "sessão" : "sessões"}
           </span>
@@ -169,7 +169,7 @@ function Exportar({
       setMotivo("");
     } catch (e) {
       setPasso("falhou");
-      setMotivo(String(e));
+      setMotivo(typeof e === "string" ? e : "não deu para desenhar o cartão");
     }
   };
 
@@ -304,7 +304,7 @@ async function desenharCartao(tela: HTMLCanvasElement | null, r: Retrato): Promi
     r.famintos.length > 0
       ? r.famintos.slice(0, 3).map((f) => ({
           titulo: f.jogo,
-          valor: `${f.porHora.toFixed(1).replace(".", ",")} %/h`,
+          valor: taxa(f.porHora),
         }))
       : numerosDoMes(r);
 

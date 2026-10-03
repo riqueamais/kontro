@@ -133,7 +133,7 @@ export function Painel() {
       }}
     >
       <div
-        className="topo"
+        className={estado.leituraAntiga ? "topo antiga" : "topo"}
         style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
       >
         <Anel

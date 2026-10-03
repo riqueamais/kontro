@@ -479,6 +479,7 @@ impl Monitor {
             quantos_conhecidos: self.conhecidos.quantidade(),
             autonomia: self.autonomia(&chave, &registro, modo),
             autonomia_minutos: self.autonomia_minutos(&chave, &registro, modo),
+            procurando: false,
         })
     }
 

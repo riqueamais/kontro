@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 
 import { Sessao } from "../estado";
-import { duracao, momentoRelativo } from "../formato";
+import { duracao, quando, taxa as porHoraEmTexto } from "../formato";
 import { Glifo } from "./Glifo";
 import "./sessoes.css";
 
@@ -33,9 +33,9 @@ export function Sessoes({
           <Icone jogo={s.jogo} />
 
           <span className="sessao-texto">
-            <span className="sessao-titulo">{s.jogo ?? momentoRelativo(s.inicio)}</span>
+            <span className="sessao-titulo">{s.jogo ?? quando(s.inicio)}</span>
             <span className="sessao-quando">
-              {s.jogo && `${momentoRelativo(s.inicio)} · `}
+              {s.jogo && `${quando(s.inicio)} · `}
               {duracao(minutos(s))}
             </span>
           </span>
@@ -97,11 +97,11 @@ function taxa(s: Sessao): string {
   const min = minutos(s);
   if (gastou <= 0 || min < MINUTOS_PARA_TAXA) return "";
   const porHora = (gastou * 60) / min;
-  return `${porHora.toFixed(1).replace(".", ",")} %/h`;
+  return porHoraEmTexto(porHora);
 }
 
 export function rotuloDaSessao(s: Sessao): string {
-  const quando = momentoRelativo(s.inicio);
+  const inicio = quando(s.inicio);
   const carga = `${s.de}% a ${s.ate}%`;
-  return s.jogo ? `${s.jogo} · ${quando} · ${carga}` : `${quando} · ${carga}`;
+  return s.jogo ? `${s.jogo} · ${inicio} · ${carga}` : `${inicio} · ${carga}`;
 }
