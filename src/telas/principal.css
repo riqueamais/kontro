@@ -556,3 +556,33 @@ body[data-janela="principal"] .cartao.novidade .mono {
   font-family: var(--font-mono);
   font-size: var(--fs-mono);
 }
+
+body[data-janela="principal"] .cartao.estado .coluna {
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-janela="principal"] .cartao.estado .indicadores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-3);
+}
+
+body[data-janela="principal"] .cartao.estado .indicador {
+  display: flex;
+  flex-direction: column;
+}
+
+body[data-janela="principal"] .cartao.estado .indicador-numero {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+body[data-janela="principal"] .cartao.estado .indicador-rotulo {
+  font-size: var(--fs-caption);
+  color: var(--text-tertiary);
+}

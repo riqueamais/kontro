@@ -1,4 +1,4 @@
-import { diaEMes, duracao, taxa } from "../formato";
+import { diaEMes, taxa } from "../formato";
 import "./saude.css";
 
 export interface Saude {
@@ -20,12 +20,6 @@ export function Saude({ saude }: { saude: Saude | null }) {
     <div className={`saude ${saude.estado}`}>
       <div className="veredito">{titulo(saude)}</div>
       <div className="explica">{detalhe(saude)}</div>
-      {saude.cargaCheiaMinutos && (
-        <div className="carga-cheia">
-          Uma carga cheia dura <strong>{duracao(saude.cargaCheiaMinutos)}</strong> neste
-          controle.
-        </div>
-      )}
       {saude.estado === "medindo" && (
         <div className="trilho" aria-hidden="true">
           <span

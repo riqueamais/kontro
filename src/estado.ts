@@ -29,6 +29,7 @@ export interface Estado {
   girando: boolean;
   autonomia: string | null;
   autonomiaMinutos: number | null;
+  consumoPorHora: number | null;
   procurando: boolean;
   titulo: string;
 }

@@ -479,6 +479,10 @@ impl Monitor {
             quantos_conhecidos: self.conhecidos.quantidade(),
             autonomia: self.autonomia(&chave, &registro, modo),
             autonomia_minutos: self.autonomia_minutos(&chave, &registro, modo),
+            consumo_por_hora: match modo {
+                Via::Desligado | Via::Cabo => None,
+                _ => self.historico.consumo_por_hora(&chave),
+            },
             procurando: false,
         })
     }

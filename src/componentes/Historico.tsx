@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 import { Amostra, useLimiares } from "../estado";
@@ -88,6 +88,15 @@ export function Historico({
   const fim = janela ? janela.fim + folga : Math.max(agora, ultimaLida, zeraEm ?? 0);
   const inicio = janela ? janela.inicio - folga : agora - (compacto ? 7 : dias) * DIA;
 
+  const decidiuAJanela = useRef(false);
+  useEffect(() => {
+    if (decidiuAJanela.current || compacto || janela || serie.length === 0) return;
+    decidiuAJanela.current = true;
+    const semana = segmentar(serie, agora - 7 * DIA, agora).flat().length;
+    const mes = segmentar(serie, agora - 30 * DIA, agora).flat().length;
+    if (semana < 2 && mes >= 2) setDias(30);
+  }, [serie, compacto, janela, agora]);
+
   const trechos = useMemo(() => segmentar(serie, inicio, fim), [serie, inicio, fim]);
   const amostras = useMemo(() => trechos.flat(), [trechos]);
 
@@ -127,15 +136,36 @@ export function Historico({
         </g>
 
         {[0, 50, 100].map((p) => (
-          <g key={p}>
-            <line x1={M.esquerda} x2={LARGURA - M.direita} y1={y(p)} y2={y(p)} className="grade" />
-            {!compacto && (
-              <text x={M.esquerda - 6} y={y(p) + 4} className="rotulo-y">
-                {p}
-              </text>
-            )}
-          </g>
+          <line
+            key={p}
+            x1={M.esquerda}
+            x2={LARGURA - M.direita}
+            y1={y(p)}
+            y2={y(p)}
+            className="grade"
+          />
         ))}
+
+        {[
+          { p: limiares.aviso, classe: "aviso" },
+          { p: limiares.critico, classe: "critico" },
+        ].map(({ p, classe }) => (
+          <line
+            key={classe}
+            x1={M.esquerda}
+            x2={LARGURA - M.direita}
+            y1={y(p)}
+            y2={y(p)}
+            className={`limiar ${classe}`}
+          />
+        ))}
+
+        {!compacto &&
+          rotulosDoEixo(limiares, y).map(({ p, classe }) => (
+            <text key={`${classe}-${p}`} x={M.esquerda - 6} y={y(p) + 4} className={`rotulo-y ${classe}`}>
+              {p}
+            </text>
+          ))}
 
         {!compacto &&
           marcas(inicio, fim, dentroDeUmaSessao).map(({ t, texto }) => (
@@ -211,13 +241,7 @@ export function Historico({
     ],
   );
 
-  if (amostras.length < 2) {
-    return (
-      <div ref={setRaiz} className={`historico vazio${compacto ? " compacto" : ""}`}>
-        sem histórico nesta janela
-      </div>
-    );
-  }
+  const vazio = amostras.length < 2;
 
   const aoMover = (e: React.MouseEvent<SVGSVGElement>) => {
     const caixa = e.currentTarget.getBoundingClientRect();
@@ -254,36 +278,79 @@ export function Historico({
         </div>
       )}
 
-      <svg
-        width={LARGURA}
-        height={ALTURA}
-        viewBox={`0 0 ${LARGURA} ${ALTURA}`}
-        className="grafico"
-        onMouseMove={aoMover}
-        onMouseLeave={() => setSob(null)}
-      >
-        {estatico}
+      {vazio ? (
+        <div className="vazio" style={{ height: ALTURA }}>
+          {serie.length === 0 ? (
+            "O histórico começa na primeira leitura com o controle ligado."
+          ) : compacto ? (
+            "Sem leituras esta semana"
+          ) : janela ? (
+            "Nenhuma leitura nesta sessão."
+          ) : dias === 7 ? (
+            <>
+              Nada nos últimos 7 dias.{" "}
+              <button className="para-30" onClick={() => setDias(30)}>
+                Veja os 30 dias.
+              </button>
+            </>
+          ) : (
+            "Nada nos últimos 30 dias."
+          )}
+        </div>
+      ) : (
+        <>
+          <svg
+            width={LARGURA}
+            height={ALTURA}
+            viewBox={`0 0 ${LARGURA} ${ALTURA}`}
+            className="grafico"
+            onMouseMove={aoMover}
+            onMouseLeave={() => setSob(null)}
+          >
+            {estatico}
 
-        {sob && (
-          <g>
-            <line x1={x(sob.t)} x2={x(sob.t)} y1={M.topo} y2={y(0)} className="mira" />
-            <circle cx={x(sob.t)} cy={y(sob.p)} r={4} className="ponto" />
-          </g>
-        )}
-      </svg>
+            {sob && (
+              <g>
+                <line x1={x(sob.t)} x2={x(sob.t)} y1={M.topo} y2={y(0)} className="mira" />
+                <circle cx={x(sob.t)} cy={y(sob.p)} r={4} className="ponto" />
+              </g>
+            )}
+          </svg>
 
-      <div className="historico-rodape">
-        {sob ? (
-          <>
-            <span className="destaque">{sob.p}%</span>
-            <span>{quando(sob.t)}</span>
-          </>
-        ) : (
-          <span>{janela ? resumoDaSessao(amostras, janela) : resumo(amostras, trechos.length)}</span>
-        )}
-      </div>
+          <div className="historico-rodape">
+            {sob ? (
+              <>
+                <span className="destaque">{sob.p}%</span>
+                <span>{quando(sob.t)}</span>
+              </>
+            ) : (
+              <span>{janela ? resumoDaSessao(amostras, janela) : resumo(amostras, trechos.length)}</span>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
+}
+
+const DISTANCIA_ENTRE_ROTULOS = 12;
+
+function rotulosDoEixo(
+  limiares: { aviso: number; critico: number },
+  y: (p: number) => number,
+): { p: number; classe: string }[] {
+  const candidatos = [
+    { p: limiares.aviso, classe: "aviso" },
+    { p: limiares.critico, classe: "critico" },
+    { p: 100, classe: "" },
+    { p: 50, classe: "" },
+    { p: 0, classe: "" },
+  ];
+  const aceitos: { p: number; classe: string }[] = [];
+  for (const c of candidatos) {
+    if (aceitos.every((a) => Math.abs(y(a.p) - y(c.p)) >= DISTANCIA_ENTRE_ROTULOS)) aceitos.push(c);
+  }
+  return aceitos;
 }
 
 function maisPerto(amostras: Amostra[], t: number): Amostra {

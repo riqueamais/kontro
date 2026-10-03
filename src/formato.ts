@@ -63,7 +63,7 @@ export function quandoLeu(estado: Estado): Rodape {
   return { texto: `${abertura} ${ponte}`, hora: hora(lido) };
 }
 
-export function detalhe(estado: Estado): string {
+export function detalhe(estado: Estado, comAutonomia = true): string {
   if (estado.procurando) return "";
   if (estado.via === "Desligado") {
     return estado.quantosConhecidos === 0
@@ -76,5 +76,5 @@ export function detalhe(estado: Estado): string {
   if (estado.precisao === "Aproximada") {
     return `${estado.textoDaCarga} · sem percentual neste controle`;
   }
-  return estado.autonomia ?? estado.textoDaLigacao;
+  return (comAutonomia && estado.autonomia) || estado.textoDaLigacao;
 }

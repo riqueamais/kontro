@@ -10,7 +10,16 @@ import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
-import { Amostra, Sessao, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
+import {
+  Amostra,
+  Estado,
+  Sessao,
+  corDoAnel,
+  useAoMudarOHistorico,
+  useEstado,
+  useLimiares,
+} from "../estado";
+import { duracao, taxa } from "../formato";
 
 interface DoControle {
   serie: Amostra[];
@@ -55,7 +64,10 @@ export function Resumo() {
           )}
         </Anel>
 
-        <Leitura estado={estado} />
+        <div className="coluna">
+          <Leitura estado={estado} comAutonomia={false} />
+          <Indicadores estado={estado} cargaCheiaMinutos={saude?.cargaCheiaMinutos ?? null} />
+        </div>
 
         <BotaoLerAgora estado={estado} className="botao" />
       </section>
@@ -82,5 +94,34 @@ export function Resumo() {
 
       <ListaDeControles principal={estado.chave} sempre />
     </>
+  );
+}
+
+function Indicadores({
+  estado,
+  cargaCheiaMinutos,
+}: {
+  estado: Estado;
+  cargaCheiaMinutos: number | null;
+}) {
+  const blocos = [
+    estado.autonomiaMinutos !== null && {
+      numero: `~${duracao(estado.autonomiaMinutos)}`,
+      rotulo: "restam de jogo",
+    },
+    cargaCheiaMinutos !== null && { numero: duracao(cargaCheiaMinutos), rotulo: "por carga cheia" },
+    estado.consumoPorHora !== null && { numero: taxa(estado.consumoPorHora), rotulo: "de consumo" },
+  ].filter((b): b is { numero: string; rotulo: string } => !!b);
+
+  if (blocos.length === 0) return null;
+  return (
+    <div className="indicadores">
+      {blocos.map((b) => (
+        <div className="indicador" key={b.rotulo}>
+          <span className="indicador-numero">{b.numero}</span>
+          <span className="indicador-rotulo">{b.rotulo}</span>
+        </div>
+      ))}
+    </div>
   );
 }

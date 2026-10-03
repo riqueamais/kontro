@@ -5,7 +5,8 @@ import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes
 import { Anel } from "../componentes/Anel";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import { Glifo } from "../componentes/Glifo";
-import { Config, useConfig, usePilulaSolta } from "../estado";
+import { Teclas } from "../componentes/Teclas";
+import { Config, Recusa, useAtalhosRecusados, useConfig, usePilulaSolta } from "../estado";
 import "./passos.css";
 
 const TOTAL = 6;
@@ -20,6 +21,7 @@ const CORES: [number, string, string][] = [
 export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
   const cfg = useConfig();
   const solta = usePilulaSolta();
+  const recusados = useAtalhosRecusados();
   const [passo, setPasso] = useState(0);
 
   useEffect(() => {
@@ -58,7 +60,7 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
         ))}
       </div>
 
-      <div className="folha">{folha(passo, cfg, solta)}</div>
+      <div className="folha">{folha(passo, cfg, solta, recusados)}</div>
 
       <div className="rodape">
         {ultimo ? (
@@ -86,7 +88,7 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
   );
 }
 
-function folha(passo: number, cfg: Config, solta: boolean) {
+function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) {
   switch (passo) {
     case 0:
       return (
@@ -182,8 +184,8 @@ function folha(passo: number, cfg: Config, solta: boolean) {
             </p>
           ) : (
             <p>
-              É onde a carga aparece por cima do jogo. Está presa no ponto do desenho acima —
-              <b> Ctrl + Shift + M</b> solta ela de novo a qualquer momento, sem sair do jogo.
+              É onde a carga aparece por cima do jogo. Está presa no ponto do desenho acima.{" "}
+              <ComoSoltar cfg={cfg} recusados={recusados} />
             </p>
           )}
           {!solta && (
@@ -277,4 +279,30 @@ function folha(passo: number, cfg: Config, solta: boolean) {
         </>
       );
   }
+}
+
+function ComoSoltar({ cfg, recusados }: { cfg: Config; recusados: Recusa[] }) {
+  if (!cfg.OverlayShortcutEnabled) {
+    return (
+      <>
+        Os atalhos estão desligados; dá para ligar em Configurações &gt; Atalhos, e o botão Soltar
+        de lá solta ela de novo.
+      </>
+    );
+  }
+  if (recusados.some((r) => r.atalho === "Mover")) {
+    return <>O Windows recusou esse atalho; escolha outro em Configurações &gt; Atalhos.</>;
+  }
+  return (
+    <>
+      <span className="teclas">
+        <Teclas combinacao={cfg.OverlayMoveShortcut} />
+      </span>{" "}
+      solta ela de novo, e{" "}
+      <span className="teclas">
+        <Teclas combinacao={cfg.OverlayShortcut} />
+      </span>{" "}
+      esconde e traz de volta, sem sair do jogo.
+    </>
+  );
 }
