@@ -39,6 +39,16 @@
   color: var(--ink);
 }
 
+.botao.primario {
+  background: var(--realce);
+  border-color: var(--realce);
+  color: var(--ink);
+  font-weight: 600;
+}
+.botao.primario:hover {
+  background: color-mix(in srgb, var(--realce) 88%, #fff);
+}
+
 .botao.perigo {
   border-color: var(--red);
   color: var(--red);
@@ -68,6 +78,7 @@
   color: var(--text-secondary);
 }
 .botao.destaque:active:not(:disabled),
+.botao.primario:active:not(:disabled),
 .botao.perigo:active:not(:disabled) {
   filter: brightness(0.9);
 }
