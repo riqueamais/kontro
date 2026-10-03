@@ -21,6 +21,12 @@ pub fn windows_no_claro() -> bool {
         .unwrap_or(false)
 }
 
+pub fn barra_clara() -> bool {
+    registro::numero(HKEY_CURRENT_USER, PERSONALIZACAO, "SystemUsesLightTheme")
+        .map(|v| v != 0)
+        .unwrap_or(false)
+}
+
 pub fn transparencia_ligada() -> bool {
     registro::numero(HKEY_CURRENT_USER, PERSONALIZACAO, "EnableTransparency")
         .map(|v| v != 0)

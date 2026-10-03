@@ -79,7 +79,9 @@ fn vetores_de_referencia(pasta: &Path) -> io::Result<()> {
 
     for (nome, preenchimento, modo) in estados {
         let estado = bandeja::estado_demo(*preenchimento, *modo);
-        std::fs::write(pasta.join(nome), bandeja::montar_svg(&estado, Limiares::PADRAO))?;
+        std::fs::write(pasta.join(nome), bandeja::montar_svg(&estado, Limiares::PADRAO, false))?;
+        let claro = nome.replace(".svg", "-claro.svg");
+        std::fs::write(pasta.join(claro), bandeja::montar_svg(&estado, Limiares::PADRAO, true))?;
     }
 
     Ok(())

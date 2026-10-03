@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
@@ -73,6 +74,20 @@ export function Principal() {
     setPagina(proxima);
     if (focar) abas.current[proxima]?.focus();
   };
+
+  const irParaAgora = useRef(irPara);
+  irParaAgora.current = irPara;
+
+  useEffect(() => {
+    let vivo = true;
+    const parar = listen<Pagina>("kontro://abrir-aba", ({ payload }) => {
+      if (vivo) irParaAgora.current(payload);
+    });
+    return () => {
+      vivo = false;
+      void parar.then((f) => f());
+    };
+  }, []);
 
   const vizinha = (passo: number) => {
     const i = PAGINAS.findIndex((p) => p.id === pagina);

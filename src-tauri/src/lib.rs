@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::sync::{mpsc, Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
@@ -44,7 +44,7 @@ pub struct Compartilhado {
     saude: Mutex<Option<historico::Saude>>,
     sobreposicao_a_mao: Mutex<Option<bool>>,
     sobreposicao_solta: Mutex<bool>,
-    atalhos_recusados: Mutex<Vec<String>>,
+    atalhos_recusados: Mutex<Vec<atalho::Recusa>>,
     config: Mutex<Settings>,
     novidade: Mutex<Option<atualizacao::Novidade>>,
     jogos: Mutex<Vec<historico::JogoSalvo>>,
@@ -148,11 +148,7 @@ pub fn executar() {
 
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            if let Some(janela) = app.get_webview_window(janelas::PRINCIPAL) {
-                let _ = janela.unminimize();
-                let _ = janela.show();
-                let _ = janela.set_focus();
-            }
+            trazer_principal(app);
         }))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -182,10 +178,12 @@ pub fn executar() {
             procurar_atualizacao,
             instalar_atualizacao,
             mostrar_janela,
+            abrir_aba,
             esconder_janela,
             soltar_a_pilula,
             pilula_solta,
             atalhos_recusados,
+            pausar_atalhos,
             pilula_coberta,
             quantidade_de_telas,
             salvar_diagnostico,
@@ -298,6 +296,7 @@ fn iniciar_ciclo(
 
         let mut monitor = monitor::Monitor::novo();
         let mut ultimo_icone = String::new();
+        let mut ultima_dica = String::new();
         let mut orquestrador = orquestra::Orquestrador::novo();
         let mut proxima_checagem = atualizacao::ultima_checagem() + atualizacao::JANELA_MS;
         let mut ultimo_material = sistema::material_disponivel();
@@ -333,8 +332,12 @@ fn iniciar_ciclo(
                 let _ = app.emit("kontro://estado", &principal);
                 let _ = app.emit("kontro://controles", &panorama.todos);
                 let _ = app.emit("kontro://historico", ());
+            }
+
+            {
+                let estado = compartilhado.estado.lock().unwrap().clone();
                 let limiares = compartilhado.config.lock().unwrap().limiares();
-                atualizar_bandeja(&app, &principal, limiares, &mut ultimo_icone);
+                atualizar_bandeja(&app, &estado, limiares, &mut ultimo_icone, &mut ultima_dica);
             }
 
             let material = sistema::material_disponivel();
@@ -420,10 +423,29 @@ fn abrir_pendente(app: &AppHandle, rotulo: &str) {
         abrir_painel(app, None);
         return;
     }
+    if rotulo == janelas::PRINCIPAL {
+        trazer_principal(app);
+        return;
+    }
     let Some(janela) = app.get_webview_window(rotulo) else { return };
+    let _ = janela.show();
+}
+
+fn trazer_principal(app: &AppHandle) {
+    if let Some(painel) = app.get_webview_window(janelas::PAINEL) {
+        let _ = painel.hide();
+    }
+    let Some(janela) = app.get_webview_window(janelas::PRINCIPAL) else { return };
     let _ = janela.unminimize();
     let _ = janela.show();
     let _ = janela.set_focus();
+}
+
+fn abrir_aba_principal(app: &AppHandle, aba: Option<&str>) {
+    trazer_principal(app);
+    if let Some(aba) = aba {
+        let _ = app.emit_to(janelas::PRINCIPAL, "kontro://abrir-aba", aba);
+    }
 }
 
 fn abrir_mesmo_sem_aviso(app: &AppHandle, compartilhado: Arc<Compartilhado>) {
@@ -469,24 +491,46 @@ pub(crate) fn marcar_coberta(app: &AppHandle, por: Option<String>) {
     let _ = app.emit("kontro://coberta", por);
 }
 
+struct MenusDaBandeja {
+    estado: MenuItem<tauri::Wry>,
+    pilula: CheckMenuItem<tauri::Wry>,
+}
+
 fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
-    let abrir = MenuItem::with_id(app, "abrir", "Configurações", true, None::<&str>)?;
-    let atualizar = MenuItem::with_id(app, "atualizar", "Ler a bateria agora", true, None::<&str>)?;
-    let sair = MenuItem::with_id(app, "sair", "Sair", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&abrir, &atualizar, &sair])?;
+    let estado = MenuItem::with_id(app, "estado", "Kontro", false, None::<&str>)?;
+    let abrir = MenuItem::with_id(app, "abrir", "&Abrir o Kontro", true, None::<&str>)?;
+    let configurar = MenuItem::with_id(app, "configurar", "&Configurações", true, None::<&str>)?;
+    let ler = MenuItem::with_id(app, "ler", "&Ler a bateria agora", true, None::<&str>)?;
+    let pilula =
+        CheckMenuItem::with_id(app, "pilula", "Mostrar a &pílula", true, false, None::<&str>)?;
+    let sair = MenuItem::with_id(app, "sair", "&Sair", true, None::<&str>)?;
+    let menu = Menu::with_items(
+        app,
+        &[
+            &estado,
+            &PredefinedMenuItem::separator(app)?,
+            &abrir,
+            &configurar,
+            &ler,
+            &pilula,
+            &PredefinedMenuItem::separator(app)?,
+            &sair,
+        ],
+    )?;
+    app.manage(MenusDaBandeja { estado, pilula });
 
     TrayIconBuilder::with_id("kontro")
         .tooltip("Kontro")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, evento| match evento.id.as_ref() {
-            "abrir" => {
-                if let Some(j) = app.get_webview_window(janelas::PRINCIPAL) {
-                    let _ = j.show();
-                    let _ = j.set_focus();
-                }
+            "abrir" => abrir_aba_principal(app, None),
+            "configurar" => abrir_aba_principal(app, Some("config")),
+            "pilula" => {
+                atalho::alternar(app);
+                marcar_pilula_no_menu(app);
             }
-            "atualizar" => {
+            "ler" => {
                 if let Some(envio) = app.try_state::<mpsc::Sender<Pedido>>() {
                     let _ = envio.send(Pedido::LerAgora);
                 }
@@ -535,15 +579,28 @@ fn atualizar_bandeja(
     estado: &EstadoDoControle,
     limiares: Limiares,
     ultimo: &mut String,
+    ultima_dica: &mut String,
 ) {
     let Some(bandeja) = app.tray_by_id("kontro") else { return };
 
     let dica = format!("{} - {} - {}", estado.nome, estado.texto_da_carga, estado.texto_da_ligacao);
-    let _ = bandeja.set_tooltip(Some(dica));
+    if dica != *ultima_dica {
+        let _ = bandeja.set_tooltip(Some(dica.as_str()));
+        *ultima_dica = dica;
+    }
+
+    marcar_pilula_no_menu(app);
+    if let Some(menus) = app.try_state::<MenusDaBandeja>() {
+        let linha = format!("{} · {}", estado.nome, modelo::resumo_do_estado(estado, limiares));
+        if menus.estado.text().ok().as_deref() != Some(linha.as_str()) {
+            let _ = menus.estado.set_text(linha);
+        }
+    }
 
     let tamanho = bandeja::tamanho_do_icone();
+    let barra_clara = sistema::barra_clara();
     let assinatura = format!(
-        "{:?}|{:?}|{tamanho}|{}|{}",
+        "{:?}|{:?}|{tamanho}|{}|{}|{barra_clara}",
         estado.via, estado.preenchimento, limiares.critico, limiares.aviso
     );
     if assinatura == *ultimo {
@@ -551,7 +608,7 @@ fn atualizar_bandeja(
     }
     *ultimo = assinatura;
 
-    if let Some(icone) = bandeja::desenhar(estado, tamanho, limiares) {
+    if let Some(icone) = bandeja::desenhar(estado, tamanho, limiares, barra_clara) {
         let _ = bandeja.set_icon(Some(icone));
     }
 }
@@ -662,6 +719,14 @@ fn salvar_configuracoes(
     }
 
     novas.ajustar();
+
+    {
+        let anterior = compartilhado.config.lock().unwrap().clone();
+        let recusas = atalho::aplicar_sem_perder_o_anterior(&app, &mut novas, &anterior);
+        let _ = app.emit("kontro://atalhos", &recusas);
+        *compartilhado.atalhos_recusados.lock().unwrap() = recusas;
+    }
+
     novas.salvar();
 
     {
@@ -671,14 +736,8 @@ fn salvar_configuracoes(
         }
     }
 
-    {
-        let recusados = atalho::aplicar(&app, &novas);
-        let _ = app.emit("kontro://atalhos", &recusados);
-        *compartilhado.atalhos_recusados.lock().unwrap() = recusados;
-    }
-
     if !*compartilhado.sobreposicao_solta.lock().unwrap() {
-        janelas::posicionar_sobreposicao(&app, &novas);
+        janelas::posicionar_sobreposicao(&app, &novas, tela::Tela::atual().conta_como_jogo());
     }
 
     let _ = app.emit("kontro://config", &novas);
@@ -704,7 +763,7 @@ pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
     let mut cfg = compartilhado.config.lock().unwrap().clone();
 
     if solta {
-        janelas::posicionar_sobreposicao(app, &cfg);
+        janelas::posicionar_sobreposicao(app, &cfg, tela::Tela::atual().conta_como_jogo());
         janelas::mostrar_por_cima(&janela);
     } else {
         if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
@@ -717,7 +776,7 @@ pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
             *compartilhado.config.lock().unwrap() = cfg.clone();
             let _ = app.emit("kontro://config", &cfg);
         }
-        janelas::posicionar_sobreposicao(app, &cfg);
+        janelas::posicionar_sobreposicao(app, &cfg, tela::Tela::atual().conta_como_jogo());
     }
 
     let _ = app.emit("kontro://solta", solta);
@@ -739,8 +798,20 @@ fn pilula_coberta(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<Str
 }
 
 #[tauri::command]
-fn atalhos_recusados(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<String> {
+fn atalhos_recusados(compartilhado: tauri::State<Arc<Compartilhado>>) -> Vec<atalho::Recusa> {
     compartilhado.atalhos_recusados.lock().unwrap().clone()
+}
+
+#[tauri::command]
+fn pausar_atalhos(app: AppHandle, compartilhado: tauri::State<Arc<Compartilhado>>, pausar: bool) {
+    if pausar {
+        atalho::pausar(&app);
+        return;
+    }
+    let cfg = compartilhado.config.lock().unwrap().clone();
+    let recusas = atalho::aplicar(&app, &cfg);
+    let _ = app.emit("kontro://atalhos", &recusas);
+    *compartilhado.atalhos_recusados.lock().unwrap() = recusas;
 }
 
 #[tauri::command]
@@ -954,8 +1025,28 @@ fn quantidade_de_telas(app: AppHandle) -> usize {
 
 #[tauri::command]
 fn mostrar_janela(app: AppHandle, rotulo: String) {
+    if rotulo == janelas::PRINCIPAL {
+        trazer_principal(&app);
+        return;
+    }
     if let Some(j) = app.get_webview_window(&rotulo) {
         let _ = j.show();
+    }
+}
+
+#[tauri::command]
+fn abrir_aba(app: AppHandle, aba: Option<String>) {
+    abrir_aba_principal(&app, aba.as_deref());
+}
+
+fn marcar_pilula_no_menu(app: &AppHandle) {
+    let Some(menus) = app.try_state::<MenusDaBandeja>() else { return };
+    let visivel = app
+        .get_webview_window(janelas::SOBREPOSICAO)
+        .and_then(|j| j.is_visible().ok())
+        .unwrap_or(false);
+    if menus.pilula.is_checked().ok() != Some(visivel) {
+        let _ = menus.pilula.set_checked(visivel);
     }
 }
 

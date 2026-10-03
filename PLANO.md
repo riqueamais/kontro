@@ -10,7 +10,7 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T43 — o movimento da tela cheia inteiro, o de desempenho e fluidez inteiro e as duas
+T47 — o movimento da tela cheia inteiro, o de desempenho e fluidez inteiro e as seis
 primeiras de janelas, bandeja e atalhos —, mais a T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
@@ -18,7 +18,17 @@ ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele 
 carimbo e manda `kontro://painel-fechar`, e a página faz a saída de 120 ms da T35 antes de
 esconder — esconder do Rust cortaria a animação. Na T43 o painel é assentado pela área do
 cliente, descontando a borda invisível de redimensionar que o Windows põe na janela com
-sombra: sem isso a margem de 12 px virava 3 px na lateral e 10 px embaixo. Falta a parte que só um jogo responde — o `QUNS`
+sombra: sem isso a margem de 12 px virava 3 px na lateral e 10 px embaixo. Na T44 o
+ícone da bandeja foi conferido pixel a pixel contra os PNGs de referência do pacote de
+assets (`tray/dark` e `tray/light`, 16 a 32 px, sete estados): além de tirar o disco, o
+desligado passou a 45% de opacidade, o cabo virou anel cinza a 90% sem trilha, e o controle
+da bandeja ficou cheio — os PNGs não vazam os sticks, e o §3 do DESIGN.md foi corrigido para
+dizer isso. Sobra só antisserrilhado: no máximo 4 pixels por ícone diferem mais que 32/255.
+Na T45 cada recusa carrega também qual atalho foi recusado (`Mostrar` ou `Mover`), porque o
+campo volta ao anterior e a combinação recusada deixa de ser a que está na tela. Na T46
+`modelo::resumo_do_estado`, `EstadoDoControle::faixa` e `tempo::quando`, que são da T48,
+vieram antes, porque a primeira linha do menu é feita deles; a dica da bandeja continua a
+antiga até a T48. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

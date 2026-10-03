@@ -30,6 +30,7 @@
   --gray: #8d979f;
 
   --realce: var(--accent-teal);
+  --atencao: #ff8fa3;
   --ring-track: rgba(255, 255, 255, 0.13);
   --polegar: #3a444d;
 
@@ -124,6 +125,7 @@ body[data-tema="dia"] {
   --gray: #5f6b78;
 
   --realce: #0a7f68;
+  --atencao: #b4235a;
   --polegar: #9aa6b4;
   --ring-track: rgba(15, 21, 27, 0.14);
 }
