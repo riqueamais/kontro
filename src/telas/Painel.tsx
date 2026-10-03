@@ -176,7 +176,7 @@ export function Painel() {
       <ListaDeControles principal={estado.chave} />
 
       <div className="acoes">
-        <button onClick={() => invoke("mostrar_janela", { rotulo: "principal" })}>
+        <button onClick={() => invoke("abrir_aba", { aba: "config" })}>
           Configurações
         </button>
         <BotaoLerAgora estado={estado} />

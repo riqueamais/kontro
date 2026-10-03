@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::configuracoes::Limiares;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Precisao {
     Nenhuma,
@@ -58,6 +60,54 @@ pub fn descrever_autonomia(minutos: i64) -> String {
         }
     } else {
         format!("~{} min de jogo", minutos.max(1))
+    }
+}
+
+fn autonomia_curta(minutos: i64) -> String {
+    match (minutos / 60, minutos % 60) {
+        (0, m) => format!("~{} min", m.max(1)),
+        (h, 0) => format!("~{h} h"),
+        (h, m) => format!("~{h} h {m} min"),
+    }
+}
+
+pub fn resumo_do_estado(estado: &EstadoDoControle, limiares: Limiares) -> String {
+    let carga = match (estado.tem_numero, estado.percentual) {
+        (true, Some(p)) => Some(format!("{p}%, {}", estado.faixa(limiares))),
+        _ if estado.precisao == Precisao::Aproximada => Some(estado.texto_da_carga.clone()),
+        _ => None,
+    };
+
+    if estado.via == Via::Desligado {
+        return match (carga, estado.percentual, estado.lido_em) {
+            (Some(_), Some(p), Some(em)) => {
+                format!("Desligado · {p}% {}", crate::tempo::quando(em))
+            }
+            _ => "Desligado".to_string(),
+        };
+    }
+
+    let mut partes = Vec::new();
+    match carga {
+        Some(carga) => partes.push(carga),
+        None if estado.via == Via::Cabo && estado.carregando => {
+            partes.push("No cabo, carregando".to_string())
+        }
+        None if estado.via == Via::Cabo => partes.push("No cabo".to_string()),
+        None => partes.push("sem leitura".to_string()),
+    }
+    if estado.preenchimento.is_some() || estado.via != Via::Cabo {
+        partes.push(estado.texto_da_ligacao.clone());
+    }
+    if let Some(minutos) = estado.autonomia_minutos {
+        partes.push(autonomia_curta(minutos));
+    }
+
+    let resumo = partes.join(" · ");
+    if estado.leitura_antiga {
+        format!("leitura antiga · {resumo}")
+    } else {
+        resumo
     }
 }
 
@@ -190,6 +240,14 @@ impl EstadoDoControle {
         }
     }
 
+    pub fn faixa(&self, limiares: Limiares) -> &'static str {
+        match self.preenchimento {
+            Some(p) if p < limiares.critico => "carga crítica",
+            Some(p) if p < limiares.aviso => "carga baixa",
+            _ => "com folga",
+        }
+    }
+
     pub fn igual_a(&self, o: &EstadoDoControle) -> bool {
         self.via == o.via
             && self.percentual == o.percentual
@@ -201,5 +259,49 @@ impl EstadoDoControle {
             && self.precisao == o.precisao
             && self.nivel == o.nivel
             && self.autonomia == o.autonomia
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    fn estado(via: Via, percentual: Option<i32>) -> EstadoDoControle {
+        EstadoDoControle::montar(Bruto {
+            via,
+            percentual,
+            precisao: if percentual.is_some() { Precisao::Exata } else { Precisao::Nenhuma },
+            nome: "Xbox Wireless Controller".into(),
+            chave: "x".into(),
+            ..Default::default()
+        })
+    }
+
+    #[test]
+    fn o_resumo_diz_a_faixa_com_os_limiares_de_quem_usa() {
+        let mut baixo = estado(Via::Bluetooth, Some(18));
+        baixo.autonomia_minutos = Some(130);
+        assert_eq!(
+            resumo_do_estado(&baixo, Limiares::PADRAO),
+            "18%, carga baixa · Bluetooth · ~2 h 10 min"
+        );
+        let folga = estado(Via::Bluetooth, Some(77));
+        assert_eq!(resumo_do_estado(&folga, Limiares::PADRAO), "77%, com folga · Bluetooth");
+    }
+
+    #[test]
+    fn no_cabo_sem_numero_e_desligado_sem_leitura_nao_inventam_carga() {
+        let mut cabo = estado(Via::Cabo, None);
+        assert_eq!(resumo_do_estado(&cabo, Limiares::PADRAO), "No cabo");
+        cabo.carregando = true;
+        assert_eq!(resumo_do_estado(&cabo, Limiares::PADRAO), "No cabo, carregando");
+        assert_eq!(resumo_do_estado(&estado(Via::Desligado, None), Limiares::PADRAO), "Desligado");
+    }
+
+    #[test]
+    fn desligado_diz_quando_foi_a_ultima_leitura() {
+        let mut parado = estado(Via::Desligado, Some(77));
+        parado.lido_em = Some(crate::tempo::agora());
+        assert!(resumo_do_estado(&parado, Limiares::PADRAO).starts_with("Desligado · 77% hoje às "));
     }
 }

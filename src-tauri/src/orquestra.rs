@@ -117,7 +117,7 @@ impl Orquestrador {
         self.sobreposicao(app, estado, cfg, mao, solta, tela_cheia);
         self.reafirmar_topo(app);
         self.transicao(app, estado, cfg);
-        self.talvez_avisar(app, estado);
+        self.talvez_avisar(app, estado, cfg);
         self.limiares(app, estado, cfg);
     }
 
@@ -158,7 +158,7 @@ impl Orquestrador {
         };
 
         if mostrar {
-            janelas::posicionar_sobreposicao(app, cfg);
+            janelas::posicionar_sobreposicao(app, cfg, tela_cheia);
             if !janela.is_visible().unwrap_or(false) {
                 janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
                 let _ = app.emit("kontro://pilula-apareceu", ());
@@ -187,7 +187,7 @@ impl Orquestrador {
 
         if estado.via == Via::Desligado {
             self.conexao_a_avisar = None;
-            mostrar_aviso(app, estado, AvisoDeLigacao::Desconectou);
+            mostrar_aviso(app, estado, cfg, AvisoDeLigacao::Desconectou);
             return;
         }
 
@@ -196,10 +196,10 @@ impl Orquestrador {
             return;
         }
 
-        mostrar_aviso(app, estado, AvisoDeLigacao::TrocouDeVia);
+        mostrar_aviso(app, estado, cfg, AvisoDeLigacao::TrocouDeVia);
     }
 
-    fn talvez_avisar(&mut self, app: &AppHandle, estado: &EstadoDoControle) {
+    fn talvez_avisar(&mut self, app: &AppHandle, estado: &EstadoDoControle, cfg: &Settings) {
         let Some(desde) = self.conexao_a_avisar else { return };
         if estado.via == Via::Desligado {
             self.conexao_a_avisar = None;
@@ -213,7 +213,7 @@ impl Orquestrador {
         }
 
         self.conexao_a_avisar = None;
-        mostrar_aviso(app, estado, AvisoDeLigacao::Conectou);
+        mostrar_aviso(app, estado, cfg, AvisoDeLigacao::Conectou);
     }
 
     fn limiares(&mut self, app: &AppHandle, estado: &EstadoDoControle, cfg: &Settings) {
@@ -258,10 +258,15 @@ struct Pacote<'a> {
     estado: &'a EstadoDoControle,
 }
 
-fn mostrar_aviso(app: &AppHandle, estado: &EstadoDoControle, assunto: AvisoDeLigacao) {
+fn mostrar_aviso(
+    app: &AppHandle,
+    estado: &EstadoDoControle,
+    cfg: &Settings,
+    assunto: AvisoDeLigacao,
+) {
     let Some(janela) = app.get_webview_window(janelas::AVISO) else { return };
 
-    janelas::posicionar_aviso(app);
+    janelas::posicionar_aviso(app, cfg);
     janelas::mostrar_por_cima_da_thread_da_interface(app, janela);
     let _ = app.emit("kontro://aviso", Pacote { assunto, estado });
 }

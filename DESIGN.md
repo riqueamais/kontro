@@ -68,7 +68,7 @@ Mesma marca, sem o fundo circular — a bandeja é o fundo.
 | ------ | ----- |
 | Anel | r=194, largura 56 (bem mais grosso que no app: precisa existir em 16px) |
 | Trilha | mesma cor do glifo a 22% |
-| Controle | `scale(0.5)` centrado em (256, 268), sticks vazados |
+| Controle | `scale(0.5)` centrado em (256, 268), cheio: em 16px os sticks vazados viram ruído |
 | Glifo em barra escura | `#FFFFFF` |
 | Glifo em barra clara | `#1B1F24` |
 

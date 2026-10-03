@@ -261,8 +261,9 @@ function folha(passo: number, cfg: Config, solta: boolean) {
           </div>
           <h1>Pronto</h1>
           <p>
-            O ícone fica na bandeja: um clique nele abre o resumo, e o menu do botão direito leva às
-            configurações, onde mora tudo o que você viu aqui — e o resto.
+            O ícone fica na bandeja: um clique abre o painel rápido com a carga, e o botão direito
+            abre o menu. Configurações traz esta janela de volta, já na aba certa, onde mora tudo o
+            que você viu aqui e o resto.
           </p>
           <Linha
             titulo="Iniciar com o Windows"

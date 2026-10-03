@@ -10,7 +10,6 @@ pub const STICK_DIR: (f32, f32) = (382.7, 228.0);
 
 pub const PAD_CENTRO_Y: f32 = 288.0;
 
-pub const FUNDO_RAIO: f32 = 252.0;
 pub const FUNDO: &str = "#0F1318";
 
 pub const APP_ANEL_RAIO: f32 = 202.0;
@@ -36,6 +35,7 @@ pub const VERMELHO: &str = "#F2564E";
 pub const CINZA: &str = "#8D979F";
 pub const BRANCO: &str = "#FFFFFF";
 pub const GLIFO_CLARO: &str = "#F4F7F9";
+pub const GLIFO_ESCURO: &str = "#1B1F24";
 
 pub const GRADIENTE: (f32, f32, f32, f32) = (120.0, 80.0, 400.0, 440.0);
 
@@ -43,7 +43,8 @@ pub const BORDA_LARGURA: f32 = 8.0;
 pub const BORDA_OPACIDADE: f32 = 0.10;
 pub const APP_TRILHO_OPACIDADE: f32 = 0.13;
 pub const TRILHO_OPACIDADE: f32 = 0.22;
-pub const GLIFO_APAGADO: f32 = 0.7;
+pub const GLIFO_APAGADO: f32 = 0.45;
+pub const CABO_OPACIDADE: f32 = 0.9;
 
 pub const GLIFO_CAIXA: &str = "50 158 412 260";
 

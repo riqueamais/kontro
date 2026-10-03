@@ -1,13 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, ciclar, salvar } from "../ajustes";
+import {
+  ATALHO_DA_PILULA,
+  ATALHO_DE_MOVER,
+  LIMIARES_CRITICOS,
+  LIMIARES_DE_AVISO,
+  ciclar,
+  salvar,
+} from "../ajustes";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import {
   Config,
   OverlayMode,
+  Recusa,
   Theme,
   useAtalhosRecusados,
   useConfig,
@@ -383,36 +391,30 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
           aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
         />
       </Linha>
-      <Linha
+      <LinhaDeAtalho
         titulo="Mostrar e esconder a pílula"
-        descricao={descricaoDoAtalho(
-          "Tira a pílula da frente e traz de volta.",
-          cfg.OverlayShortcut,
-          recusados,
-        )}
-      >
-        <Captura
-          combinacao={cfg.OverlayShortcut}
-          desabilitado={!cfg.OverlayShortcutEnabled}
-          ativa={ativa}
-          aoTrocar={(c) => gravar({ OverlayShortcut: c })}
-        />
-      </Linha>
-      <Linha
+        base="Tira a pílula da frente e traz de volta."
+        recusa={recusados.find((r) => r.atalho === "Mostrar")}
+        combinacao={cfg.OverlayShortcut}
+        padrao={ATALHO_DA_PILULA}
+        outra={cfg.OverlayMoveShortcut}
+        nomeDaOutra="soltar a pílula"
+        desabilitado={!cfg.OverlayShortcutEnabled}
+        ativa={ativa}
+        aoTrocar={(c) => gravar({ OverlayShortcut: c })}
+      />
+      <LinhaDeAtalho
         titulo="Soltar a pílula para mover"
-        descricao={descricaoDoAtalho(
-          "Solta a pílula para arrastar, e prende de novo onde você largar.",
-          cfg.OverlayMoveShortcut,
-          recusados,
-        )}
-      >
-        <Captura
-          combinacao={cfg.OverlayMoveShortcut}
-          desabilitado={!cfg.OverlayShortcutEnabled}
-          ativa={ativa}
-          aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
-        />
-      </Linha>
+        base="Solta a pílula para arrastar, e prende de novo onde você largar."
+        recusa={recusados.find((r) => r.atalho === "Mover")}
+        combinacao={cfg.OverlayMoveShortcut}
+        padrao={ATALHO_DE_MOVER}
+        outra={cfg.OverlayShortcut}
+        nomeDaOutra="mostrar a pílula"
+        desabilitado={!cfg.OverlayShortcutEnabled}
+        ativa={ativa}
+        aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
+      />
       <h2>Versão</h2>
       {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
@@ -617,34 +619,113 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
   }
 }
 
-function descricaoDoAtalho(base: string, combinacao: string, recusados: string[]): string {
-  if (recusados.includes(combinacao)) {
-    return "Outro programa já usa essa combinação. Escolha outra.";
-  }
-  return base;
+const PRAZO_DA_DICA_MS = 2000;
+
+function descricaoDoAtalho(base: string, recusa: Recusa | undefined) {
+  if (!recusa) return { texto: base, erro: false };
+  if (recusa.motivo === "Invalida") return { texto: "O Windows não aceita essa combinação.", erro: true };
+  return { texto: "Outro programa já usa essa combinação. Escolha outra.", erro: true };
+}
+
+function LinhaDeAtalho({
+  titulo,
+  base,
+  recusa,
+  combinacao,
+  padrao,
+  outra,
+  nomeDaOutra,
+  desabilitado,
+  ativa,
+  aoTrocar,
+}: {
+  titulo: string;
+  base: string;
+  recusa: Recusa | undefined;
+  combinacao: string;
+  padrao: string;
+  outra: string;
+  nomeDaOutra: string;
+  desabilitado: boolean;
+  ativa: boolean;
+  aoTrocar: (combinacao: string) => void;
+}) {
+  const { texto, erro } = descricaoDoAtalho(base, recusa);
+  return (
+    <Linha titulo={titulo} descricao={texto} erro={erro}>
+      {combinacao !== padrao && (
+        <button
+          className="ciclo padrao-do-atalho"
+          disabled={desabilitado}
+          onClick={() => aoTrocar(padrao)}
+        >
+          Padrão
+        </button>
+      )}
+      <Captura
+        combinacao={combinacao}
+        outra={outra}
+        nomeDaOutra={nomeDaOutra}
+        recusada={erro}
+        desabilitado={desabilitado}
+        ativa={ativa}
+        aoTrocar={aoTrocar}
+      />
+    </Linha>
+  );
 }
 
 function Captura({
   combinacao,
+  outra,
+  nomeDaOutra,
+  recusada,
   aoTrocar,
   desabilitado,
   ativa,
 }: {
   combinacao: string;
+  outra: string;
+  nomeDaOutra: string;
+  recusada: boolean;
   aoTrocar: (combinacao: string) => void;
   desabilitado: boolean;
   ativa: boolean;
 }) {
   const [ouvindo, setOuvindo] = useState(false);
+  const [dica, setDica] = useState<string | null>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const gravou = useRef(false);
 
   useEffect(() => {
     if (!ativa) setOuvindo(false);
   }, [ativa]);
 
   useEffect(() => {
+    if (!ouvindo) return;
+    gravou.current = false;
+    void invoke("pausar_atalhos", { pausar: true });
+    return () => {
+      setDica(null);
+      if (!gravou.current) void invoke("pausar_atalhos", { pausar: false });
+    };
+  }, [ouvindo]);
+
+  useEffect(() => {
+    if (!dica) return;
+    const apagar = window.setTimeout(() => setDica(null), PRAZO_DA_DICA_MS);
+    return () => window.clearTimeout(apagar);
+  }, [dica]);
+
+  useEffect(() => {
     if (!ouvindo || !ativa) return;
 
     const aoTeclar = (evento: KeyboardEvent) => {
+      if (evento.key === "Tab") {
+        setOuvindo(false);
+        return;
+      }
+
       evento.preventDefault();
       evento.stopPropagation();
 
@@ -654,24 +735,50 @@ function Captura({
       }
 
       const nova = lerCombinacao(evento);
-      if (!nova) return;
+      if (!nova) {
+        if (!MODIFICADORES.includes(evento.key)) setDica("Junte Ctrl, Alt, Shift ou Win");
+        return;
+      }
+      if (nova === outra) {
+        setDica(`Já é o atalho de ${nomeDaOutra}`);
+        return;
+      }
 
+      gravou.current = true;
       setOuvindo(false);
       aoTrocar(nova);
     };
 
+    const largar = () => setOuvindo(false);
+    const aoApontar = (evento: PointerEvent) => {
+      if (!botao.current?.contains(evento.target as Node)) setOuvindo(false);
+    };
+
     window.addEventListener("keydown", aoTeclar, true);
-    return () => window.removeEventListener("keydown", aoTeclar, true);
-  }, [ouvindo, ativa, aoTrocar]);
+    window.addEventListener("blur", largar);
+    document.addEventListener("pointerdown", aoApontar, true);
+    return () => {
+      window.removeEventListener("keydown", aoTeclar, true);
+      window.removeEventListener("blur", largar);
+      document.removeEventListener("pointerdown", aoApontar, true);
+    };
+  }, [ouvindo, ativa, aoTrocar, outra, nomeDaOutra]);
+
+  const classe = ["captura", ouvindo && "ouvindo", recusada && !ouvindo && "recusada"]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
-      className={ouvindo ? "captura ouvindo" : "captura"}
+      ref={botao}
+      className={classe}
       disabled={desabilitado}
       onClick={() => setOuvindo(!ouvindo)}
     >
       {ouvindo ? (
-        <span className="pedindo">pressione a combinação</span>
+        <span className="pedindo" role="status">
+          {dica ?? "Pressione a combinação · Esc cancela"}
+        </span>
       ) : (
         combinacao.split("+").map((parte, i) => (
           <kbd className="tecla" key={i}>

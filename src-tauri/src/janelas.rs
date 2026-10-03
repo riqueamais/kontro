@@ -1,6 +1,6 @@
 use tauri::window::{Color, Effect, EffectsBuilder, Monitor};
 use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
+    AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
 use windows::Win32::Foundation::HWND;
@@ -26,6 +26,8 @@ const ALTURA_DA_SOBREPOSICAO: f64 = 72.0;
 const FOLGA_DO_ENCAIXE: f64 = 28.0;
 
 const MARGEM_DO_AVISO: f64 = 24.0;
+const LARGURA_DO_AVISO: f64 = 384.0;
+const ALTURA_DO_AVISO: f64 = 180.0;
 
 const TINTA_DA_NOITE: Color = Color(11, 14, 17, 255);
 const TINTA_DO_DIA: Color = Color(238, 241, 245, 255);
@@ -241,7 +243,7 @@ fn criar_sobreposicao(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result
 fn criar_aviso(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
     let janela = WebviewWindowBuilder::new(app, AVISO, nascimento.endereco(AVISO))
         .title("Kontro")
-        .inner_size(384.0, 180.0)
+        .inner_size(LARGURA_DO_AVISO, ALTURA_DO_AVISO)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -273,7 +275,7 @@ pub fn redimensionar_sobreposicao(
     let _ = janela.set_size(LogicalSize::new(largura, altura));
 
     if !solta {
-        posicionar_sobreposicao(app, cfg);
+        posicionar_sobreposicao(app, cfg, tela::Tela::atual().conta_como_jogo());
         return;
     }
 
@@ -290,10 +292,10 @@ pub fn redimensionar_sobreposicao(
     ));
 }
 
-pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
+pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings, tela_cheia: bool) {
     let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
     let Some(monitor) = monitor_da_sobreposicao(app, cfg) else { return };
-    let Some(palco) = palco(&monitor, &janela) else { return };
+    let Some(palco) = palco(&monitor, &janela, tela_cheia) else { return };
 
     let x = palco.esquerda + palco.livre_x * cfg.overlay_x;
     let y = palco.topo + palco.livre_y * cfg.overlay_y;
@@ -315,7 +317,7 @@ pub struct Pouso {
 pub fn onde_a_sobreposicao_parou(app: &AppHandle) -> Option<Pouso> {
     let janela = app.get_webview_window(SOBREPOSICAO)?;
     let monitor = janela.current_monitor().ok().flatten()?;
-    let palco = palco(&monitor, &janela)?;
+    let palco = palco(&monitor, &janela, tela::Tela::atual().conta_como_jogo())?;
 
     let posicao = janela.outer_position().ok()?;
 
@@ -334,13 +336,17 @@ struct Palco {
     folga: f64,
 }
 
-fn palco(monitor: &Monitor, janela: &WebviewWindow) -> Option<Palco> {
+fn palco(monitor: &Monitor, janela: &WebviewWindow, tela_cheia: bool) -> Option<Palco> {
     let escala_do_monitor = monitor.scale_factor();
     let escala_da_janela = janela.scale_factor().unwrap_or(escala_do_monitor);
     let conversao = escala_do_monitor / escala_da_janela;
 
-    let posicao = monitor.position();
-    let tamanho = monitor.size();
+    let area = monitor.work_area();
+    let (posicao, tamanho) = if tela_cheia {
+        (monitor.position(), monitor.size())
+    } else {
+        (&area.position, &area.size)
+    };
     let janela = janela.outer_size().ok()?;
 
     Some(Palco {
@@ -383,21 +389,17 @@ fn indice_do_monitor(app: &AppHandle, alvo: &Monitor) -> Option<i32> {
     i32::try_from(onde).ok()
 }
 
-pub fn posicionar_aviso(app: &AppHandle) {
+pub fn posicionar_aviso(app: &AppHandle, cfg: &Settings) {
     let Some(janela) = app.get_webview_window(AVISO) else { return };
-    let monitor =
-        janela.current_monitor().ok().flatten().or_else(|| janela.primary_monitor().ok().flatten());
-    let Some(monitor) = monitor else { return };
+    let Some(monitor) = monitor_da_sobreposicao(app, cfg) else { return };
 
     let escala = monitor.scale_factor();
-    let posicao = monitor.position().to_logical::<f64>(escala);
-    let tamanho = monitor.size().to_logical::<f64>(escala);
-    let Ok(tam_janela) = janela.outer_size() else { return };
-    let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
+    let area = monitor.work_area();
+    let largura = LARGURA_DO_AVISO * escala;
 
-    let x = posicao.x + (tamanho.width - tam_janela.width) / 2.0;
-    let y = posicao.y + MARGEM_DO_AVISO - SANGRIA_SUPERIOR_DO_AVISO;
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+    let x = area.position.x as f64 + (area.size.width as f64 - largura) / 2.0;
+    let y = area.position.y as f64 + (MARGEM_DO_AVISO - SANGRIA_SUPERIOR_DO_AVISO) * escala;
+    let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

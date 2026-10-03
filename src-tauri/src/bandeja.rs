@@ -8,27 +8,22 @@ pub fn desenhar(
     estado: &EstadoDoControle,
     tamanho: u32,
     limiares: Limiares,
+    barra_clara: bool,
 ) -> Option<Image<'static>> {
-    rasterizar(&montar_svg(estado, limiares), tamanho)
+    rasterizar(&montar_svg(estado, limiares, barra_clara), tamanho)
 }
 
-pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> String {
+pub(crate) fn montar_svg(
+    estado: &EstadoDoControle,
+    limiares: Limiares,
+    barra_clara: bool,
+) -> String {
     let caixa = g::CAIXA;
     let centro = caixa / 2.0;
     let raio = g::ANEL_RAIO;
     let grossura = g::ANEL_LARGURA;
 
-    let cor_glifo = g::BRANCO;
-
-    let fundo = format!(
-        r##"<circle cx="{centro}" cy="{centro}" r="{}" fill="{}"/><circle cx="{centro}" cy="{centro}" r="{}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{}"/>"##,
-        g::FUNDO_RAIO,
-        g::FUNDO,
-        g::FUNDO_RAIO - g::BORDA_LARGURA / 2.0,
-        g::BRANCO,
-        g::BORDA_OPACIDADE,
-        g::BORDA_LARGURA
-    );
+    let cor_glifo = if barra_clara { g::GLIFO_ESCURO } else { g::BRANCO };
 
     let trilho = format!(
         r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{cor_glifo}" stroke-opacity="{}" stroke-width="{grossura}"/>"##,
@@ -42,7 +37,7 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
             g::PAD_ESCALA_BANDEJA,
             -centro,
             -g::PAD_CENTRO_Y,
-            g::pad_com_sticks_vazados()
+            g::PAD
         )
     };
 
@@ -55,8 +50,9 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
         ),
 
         (Via::Cabo, None) => format!(
-            r##"{trilho}<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-width="{grossura}"/>{}"##,
+            r##"<circle cx="{centro}" cy="{centro}" r="{raio}" fill="none" stroke="{}" stroke-opacity="{}" stroke-width="{grossura}"/>{}"##,
             g::CINZA,
+            g::CABO_OPACIDADE,
             desenhar_glifo(1.0)
         ),
 
@@ -81,7 +77,7 @@ pub(crate) fn montar_svg(estado: &EstadoDoControle, limiares: Limiares) -> Strin
     };
 
     format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{fundo}{miolo}</svg>"##
+        r##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {caixa} {caixa}" width="{caixa}" height="{caixa}">{miolo}</svg>"##
     )
 }
 
@@ -124,7 +120,7 @@ pub fn salvar_previa(caminho: &str, tamanho: u32, fundo_claro: bool) -> Option<(
         tiny_skia::PixmapPaint { quality: tiny_skia::FilterQuality::Nearest, ..Default::default() };
 
     for (i, (preenchimento, modo)) in exemplos.iter().enumerate() {
-        let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO);
+        let svg = montar_svg(&estado_demo(*preenchimento, *modo), Limiares::PADRAO, fundo_claro);
         let arvore = usvg::Tree::from_str(&svg, &usvg::Options::default()).ok()?;
 
         let mut um = tiny_skia::Pixmap::new(tamanho, tamanho)?;

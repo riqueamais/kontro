@@ -362,6 +362,16 @@ body[data-janela="principal"] .captura.ouvindo {
   border-style: dashed;
   border-color: var(--accent-green);
 }
+body[data-janela="principal"] .captura.recusada {
+  border-color: var(--atencao);
+}
+body[data-janela="principal"] .padrao-do-atalho {
+  margin-right: var(--space-2);
+  font-size: 12px;
+}
+body[data-janela="principal"] .linha.erro .descricao {
+  color: var(--atencao);
+}
 body[data-janela="principal"] .captura .pedindo {
   padding: 0 4px;
   font-size: 12px;

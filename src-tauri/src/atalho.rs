@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Shortcut, ShortcutState};
 
@@ -11,6 +12,25 @@ use crate::Compartilhado;
 enum Acao {
     MostrarOuEsconder,
     SoltarOuPrender,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum Atalho {
+    Mostrar,
+    Mover,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum Motivo {
+    Invalida,
+    EmUso,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Recusa {
+    pub atalho: Atalho,
+    pub combinacao: String,
+    pub motivo: Motivo,
 }
 
 pub fn combinacao(texto: &str) -> Option<Shortcut> {
@@ -43,7 +63,12 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         .build()
 }
 
-pub fn aplicar(app: &AppHandle, cfg: &Settings) -> Vec<String> {
+pub fn pausar(app: &AppHandle) {
+    use tauri_plugin_global_shortcut::GlobalShortcutExt;
+    let _ = app.global_shortcut().unregister_all();
+}
+
+pub fn aplicar(app: &AppHandle, cfg: &Settings) -> Vec<Recusa> {
     use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
     let gerenciador = app.global_shortcut();
@@ -53,14 +78,49 @@ pub fn aplicar(app: &AppHandle, cfg: &Settings) -> Vec<String> {
         return Vec::new();
     }
 
-    let mut recusados = Vec::new();
-    for texto in [&cfg.overlay_shortcut, &cfg.overlay_move_shortcut] {
-        let registrou = combinacao(texto).is_some_and(|c| gerenciador.register(c).is_ok());
-        if !registrou {
-            recusados.push(texto.clone());
+    let mut recusas = Vec::new();
+    for (atalho, texto) in
+        [(Atalho::Mostrar, &cfg.overlay_shortcut), (Atalho::Mover, &cfg.overlay_move_shortcut)]
+    {
+        let motivo = match combinacao(texto) {
+            None => Some(Motivo::Invalida),
+            Some(c) if gerenciador.register(c).is_err() => Some(Motivo::EmUso),
+            Some(_) => None,
+        };
+        if let Some(motivo) = motivo {
+            recusas.push(Recusa { atalho, combinacao: texto.clone(), motivo });
         }
     }
-    recusados
+    recusas
+}
+
+pub fn aplicar_sem_perder_o_anterior(
+    app: &AppHandle,
+    novas: &mut Settings,
+    anterior: &Settings,
+) -> Vec<Recusa> {
+    let mut recusas = aplicar(app, novas);
+
+    let mut voltou = false;
+    for recusa in &recusas {
+        let (campo, antes) = match recusa.atalho {
+            Atalho::Mostrar => (&mut novas.overlay_shortcut, &anterior.overlay_shortcut),
+            Atalho::Mover => (&mut novas.overlay_move_shortcut, &anterior.overlay_move_shortcut),
+        };
+        if *campo != *antes {
+            campo.clone_from(antes);
+            voltou = true;
+        }
+    }
+
+    if voltou {
+        for recusa in aplicar(app, novas) {
+            if !recusas.iter().any(|r| r.atalho == recusa.atalho) {
+                recusas.push(recusa);
+            }
+        }
+    }
+    recusas
 }
 
 fn acao(app: &AppHandle, atalho: &Shortcut) -> Option<Acao> {
@@ -76,7 +136,7 @@ fn acao(app: &AppHandle, atalho: &Shortcut) -> Option<Acao> {
     None
 }
 
-fn alternar(app: &AppHandle) {
+pub(crate) fn alternar(app: &AppHandle) {
     let Some(compartilhado) = app.try_state::<Arc<Compartilhado>>() else {
         return;
     };

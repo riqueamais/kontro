@@ -37,6 +37,12 @@ export interface Amostra {
   via: Via | null;
 }
 
+export interface Recusa {
+  atalho: "Mostrar" | "Mover";
+  combinacao: string;
+  motivo: "Invalida" | "EmUso";
+}
+
 export interface Sessao {
   inicio: number;
   fim: number;
@@ -100,7 +106,7 @@ const fonteDosControles = criarFonte<Estado[]>("controles", "kontro://controles"
 const fonteDaConfig = criarFonte<Config | null>("configuracoes", "kontro://config", null);
 const fonteDaPilulaSolta = criarFonte<boolean>("pilula_solta", "kontro://solta", false);
 const fonteDaPilulaCoberta = criarFonte<string | null>("pilula_coberta", "kontro://coberta", null);
-const fonteDosAtalhosRecusados = criarFonte<string[]>("atalhos_recusados", "kontro://atalhos", []);
+const fonteDosAtalhosRecusados = criarFonte<Recusa[]>("atalhos_recusados", "kontro://atalhos", []);
 const fonteDoTemaDoSistema = criarFonte<boolean>(
   "windows_no_claro",
   "kontro://tema-do-sistema",
@@ -174,7 +180,7 @@ export function usePilulaCoberta(): string | null {
   return useFonte(fonteDaPilulaCoberta);
 }
 
-export function useAtalhosRecusados(): string[] {
+export function useAtalhosRecusados(): Recusa[] {
   return useFonte(fonteDosAtalhosRecusados);
 }
 

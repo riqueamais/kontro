@@ -1,14 +1,16 @@
 export function Linha({
   titulo,
   descricao,
+  erro,
   children,
 }: {
   titulo: string;
   descricao: string;
+  erro?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="linha">
+    <div className={erro ? "linha erro" : "linha"}>
       <div className="rotulo">
         <div className="titulo">{titulo}</div>
         <div className="descricao">{descricao}</div>
