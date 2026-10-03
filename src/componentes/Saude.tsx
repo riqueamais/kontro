@@ -59,11 +59,11 @@ function detalhe(s: Saude): string {
       ? `Contando desde a troca, em ${diaEMes(new Date(s.trocadaEm))}. `
       : "";
 
-    if (s.dias === 0) return `${desde}Preciso de duas semanas de uso para comparar.`;
+    if (s.dias === 0) return `${desde}São necessárias duas semanas de uso para comparar.`;
     if (faltam > 0) {
-      return `${desde}${s.dias} ${s.dias === 1 ? "dia" : "dias"} de histórico. Faltam ${faltam} para eu poder comparar.`;
+      return `${desde}${s.dias} ${s.dias === 1 ? "dia" : "dias"} de histórico. Faltam ${faltam} ${faltam === 1 ? "dia" : "dias"} para comparar.`;
     }
-    return `${desde}Ainda não houve descarga suficiente nas duas janelas para comparar.`;
+    return `${desde}Ainda não houve descarga suficiente nas duas semanas para comparar.`;
   }
 
   const base = `${taxa(s.consumoRecente ?? 0)} esta semana, contra ${taxa(s.consumoAntes ?? 0)} antes.`;

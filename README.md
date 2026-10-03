@@ -159,7 +159,10 @@ vai para a `main`. A pipeline lê só o `tauri.conf.json` e carimba o mesmo núm
 
 A nota da release é a lista dos assuntos dos commits desde a última estável publicada,
 sem os commits `Versao`: o assunto do commit é o que a pessoa lê em Configurações. Quem
-quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge.
+quiser escrever a nota da estável à mão empurra uma tag anotada `vX.Y.Z` antes do merge. O
+formato que o cartão de versão nova entende é: uma manchete na primeira linha, uma linha em
+branco, e depois parágrafos separados por linha em branco ou uma lista com `-`; `**trecho**`
+sai em negrito, e uma linha começando por `#` vira rótulo de seção.
 
 A beta parte do número da `develop`, mas nunca fica abaixo da última estável: com a
 `v2.13.4` publicada e a `develop` ainda em `2.13.4`, a beta sai `2.13.5-beta.N`. Assim

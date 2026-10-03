@@ -10,9 +10,10 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T71 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
-de sistema de design e temas e de textos e estados inteiros, e as sete primeiras do Resumo —,
-mais a T89, que a T32 tornou obrigatória.
+T81 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
+de sistema de design e temas, de textos e estados, do Resumo e da pílula e aviso inteiros, e
+as três primeiras de instalação, atualização e avisos do sistema —, mais a T89, que a T32
+tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -53,7 +54,14 @@ relógio de minuto e o rótulo "zera amanhã às 02:30" já existiam desde a T33
 Resumo já recarregava a cada `kontro://historico`, e `via`/`lidoEm` entraram nas dependências
 mesmo assim. Na T70 o nome editável vai onde o nome aparece: no título com o controle
 ligado e na segunda linha com ele desligado, onde o título é "Desconectado"; e "Esquecer" é
-um `.botao.fantasma` abaixo de "Ler agora", já que o `.ciclo` não existe desde a T55. Falta a parte que só um jogo responde — o `QUNS`
+um `.botao.fantasma` abaixo de "Ler agora", já que o `.ciclo` não existe desde a T55. Na T76
+a prévia da pílula segue a prop `ativa` das Configurações, e não a montagem: desde a T32 as
+três páginas ficam montadas. Na T75 a raiz da pílula nasce com a classe `guardada`
+(opacidade 0) até a primeira entrada, e ao montar ela pergunta se a janela já está visível,
+porque na partida o ciclo pode mostrar a pílula antes de a página escutar o evento. Na T78 o
+dígito do acompanhante usa `calc(var(--fs-caption) * 0.75)`, os 9px pedidos, sem número em
+pixel fora do `tokens.css`. Na T80, uma falha da atualização deixa a linha "Procurar
+atualizações" com o título de sempre, porque a falha agora mora no cartão. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

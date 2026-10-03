@@ -16,6 +16,8 @@ import {
 } from "../estado";
 import "./sobreposicao.css";
 
+const SAIDA_MS = 180;
+
 export function Sobreposicao() {
   const estado = useEstado();
   const todos = useControles();
@@ -25,6 +27,8 @@ export function Sobreposicao() {
   const raiz = useRef<HTMLDivElement>(null);
   const medida = useRef("");
   const [entradas, setEntradas] = useState(0);
+  const [saindo, setSaindo] = useState(false);
+  const saida = useRef<number | undefined>(undefined);
 
   const medir = useCallback(() => {
     const alvo = raiz.current;
@@ -45,11 +49,29 @@ export function Sobreposicao() {
   useLayoutEffect(medir);
 
   useEffect(() => {
-    const parar = listen("kontro://pilula-apareceu", () => {
+    const apareceu = listen("kontro://pilula-apareceu", () => {
+      window.clearTimeout(saida.current);
+      setSaindo(false);
       setEntradas((n) => n + 1);
     });
+    const vaiSumir = listen("kontro://pilula-vai-sumir", () => {
+      window.clearTimeout(saida.current);
+      setSaindo(true);
+      saida.current = window.setTimeout(() => {
+        void invoke("esconder_janela", { rotulo: "sobreposicao" });
+      }, SAIDA_MS);
+    });
+    void apareceu.then(() =>
+      getCurrentWindow()
+        .isVisible()
+        .then((visivel) => {
+          if (visivel) setEntradas((n) => Math.max(n, 1));
+        }),
+    );
     return () => {
-      void parar.then((f) => f());
+      window.clearTimeout(saida.current);
+      void apareceu.then((f) => f());
+      void vaiSumir.then((f) => f());
     };
   }, []);
 
@@ -80,13 +102,15 @@ export function Sobreposicao() {
         (cfg?.OverlayX ?? 1) > 0.5,
         critica,
         estado.leituraAntiga && !estado.girando,
+        saindo,
+        entradas === 0,
       )}
-      style={{ transform: `scale(${escala})`, transformOrigin: "top left" }}
+      style={{ "--alfa": solta ? 1 : opacidade, "--escala": escala } as React.CSSProperties}
       onMouseDown={(evento) => {
         if (solta && evento.button === 0) void getCurrentWindow().startDragging();
       }}
     >
-      <div className="pilula" style={{ opacity: solta ? 1 : opacidade }}>
+      <div className="pilula">
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
@@ -104,7 +128,7 @@ export function Sobreposicao() {
         {acompanhantes.length > 0 && (
           <div className="acompanhantes">
             {acompanhantes.map((c) => (
-              <div className="acompanhante" key={c.chave} title={c.nome}>
+              <div className="acompanhante" key={c.chave}>
                 <Anel
                   valor={c.preenchimento}
                   cor={corDoAnel(c, limiares)}
@@ -112,7 +136,7 @@ export function Sobreposicao() {
                   tamanho={20}
                   girando={c.girando}
                 >
-                  <Glifo tamanho={10} cor="var(--text-secondary)" />
+                  <span className="ordem">{todos.indexOf(c) + 1}</span>
                 </Anel>
                 {resumir(c) && <span className="valor menor">{resumir(c)}</span>}
               </div>
@@ -133,13 +157,22 @@ export function Sobreposicao() {
     </div>
   );
 }
-function classes(solta: boolean, aDireita: boolean, critica: boolean, antiga: boolean): string {
+function classes(
+  solta: boolean,
+  aDireita: boolean,
+  critica: boolean,
+  antiga: boolean,
+  saindo: boolean,
+  nuncaEntrou: boolean,
+): string {
   return [
     "sobreposicao",
     solta && "solta",
     aDireita && "espelhada",
     critica && "critica",
     antiga && "antiga",
+    saindo && "saindo",
+    nuncaEntrou && !solta && "guardada",
   ]
     .filter(Boolean)
     .join(" ");
@@ -177,7 +210,7 @@ function Cadeado() {
 function resumir(estado: Estado): string | null {
   if (estado.girando) return "cabo";
   if (estado.precisao === "Aproximada" && estado.nivel !== null) {
-    return ["baixa", "baixa", "média", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)];
+    return ["acabando", "baixa", "média", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)];
   }
   return estado.textoDaCarga || null;
 }

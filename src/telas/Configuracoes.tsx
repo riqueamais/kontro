@@ -114,6 +114,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   }, []);
 
   useEffect(() => {
+    void invoke("previa_da_pilula", { ligada: ativa });
+    return () => {
+      void invoke("previa_da_pilula", { ligada: false });
+    };
+  }, [ativa]);
+
+  useEffect(() => {
     if (!ativa) return;
     invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
     invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
@@ -448,15 +455,13 @@ function tituloDaVersao(passo: Passo): string {
     case "atualizado":
       return "Você está na versão mais recente";
     case "falhou":
-      return passo.ao === "verificar"
-        ? "Sem resposta do GitHub"
-        : "A atualização não terminou";
+      return passo.ao === "verificar" ? "Sem resposta do GitHub" : "Procurar atualizações";
     default:
       return "Procurar atualizações";
   }
 }
 function detalheDaVersao(atual: string, passo: Passo): string {
-  if (passo.tipo === "falhou") return passo.motivo;
+  if (passo.tipo === "falhou" && passo.ao === "verificar") return passo.motivo;
   if (passo.tipo === "procurando") return "Consultando o repositório...";
   if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
 
@@ -480,6 +485,7 @@ function Novidade({
   const porcento = passo.tipo === "baixando" ? passo.porcento : null;
   const bytes = passo.tipo === "baixando" ? passo.bytes : 0;
   const indefinido = preparando || (baixando && porcento === null);
+  const falhou = passo.tipo === "falhou" && passo.ao === "atualizar" ? passo.motivo : null;
 
   return (
     <section className="cartao novidade">
@@ -493,11 +499,17 @@ function Novidade({
           </div>
         </div>
         {!andando && (
-          <button className="botao destaque" onClick={aoAtualizar}>
-            Atualizar agora
+          <button className="botao primario" onClick={aoAtualizar}>
+            {falhou ? "Tentar de novo" : "Atualizar agora"}
           </button>
         )}
       </div>
+
+      {falhou && (
+        <p className="falha" role="alert">
+          {falhou}
+        </p>
+      )}
 
       {andando && (
         <div className="andamento">
@@ -538,34 +550,79 @@ function Notas({ texto }: { texto: string | null }) {
 
   return (
     <div className="notas">
-      {blocos.map((bloco, i) =>
-        bloco.tipo === "titulo" ? (
-          <h3 key={i}>{bloco.texto}</h3>
-        ) : (
-          <ul key={i}>
-            {bloco.itens.map((item, j) => (
-              <li key={j}>{item}</li>
-            ))}
-          </ul>
-        ),
-      )}
+      {blocos.map((bloco, i) => {
+        switch (bloco.tipo) {
+          case "manchete":
+            return (
+              <p key={i} className="manchete">
+                {comNegrito(bloco.texto)}
+              </p>
+            );
+          case "paragrafo":
+            return <p key={i}>{comNegrito(bloco.texto)}</p>;
+          case "titulo":
+            return <h3 key={i}>{bloco.texto}</h3>;
+          default:
+            return (
+              <ul key={i}>
+                {bloco.itens.map((item, j) => (
+                  <li key={j}>{comNegrito(item)}</li>
+                ))}
+              </ul>
+            );
+        }
+      })}
     </div>
   );
 }
 
-type Bloco = { tipo: "titulo"; texto: string } | { tipo: "lista"; itens: string[] };
+function comNegrito(texto: string): React.ReactNode[] {
+  return texto
+    .split(/\*\*(.+?)\*\*/)
+    .map((parte, i) => (i % 2 === 1 ? <strong key={i}>{parte}</strong> : parte));
+}
+
+type Bloco =
+  | { tipo: "manchete" | "paragrafo" | "titulo"; texto: string }
+  | { tipo: "lista"; itens: string[] };
 
 function emBlocos(texto: string | null): Bloco[] {
   const blocos: Bloco[] = [];
+  let paragrafo: string[] = [];
   let lista: string[] | null = null;
 
+  const fecharParagrafo = () => {
+    if (paragrafo.length === 0) return;
+    blocos.push({ tipo: blocos.length === 0 ? "manchete" : "paragrafo", texto: paragrafo.join(" ") });
+    paragrafo = [];
+  };
+
   for (const bruta of (texto ?? "").split(/\r?\n/)) {
-    const linha = bruta.replace(/^﻿/, "").trim();
-    if (!linha || /^kontro[\s\d.]*$/i.test(linha)) continue;
+    const linha = bruta.replace(/^\uFEFF/, "").trim();
+    if (!linha) {
+      fecharParagrafo();
+      lista = null;
+      continue;
+    }
+    if (/^kontro[\s\d.]*$/i.test(linha)) continue;
+
+    const titulo = linha.match(/^#+\s*(.*)$/);
+    if (titulo) {
+      fecharParagrafo();
+      lista = null;
+      blocos.push({ tipo: "titulo", texto: titulo[1] });
+      continue;
+    }
 
     const marcador = linha.match(/^[-*·]\s+(.*)$/);
     if (marcador) {
       if (!lista) {
+        if (paragrafo.length === 1) {
+          blocos.push({ tipo: "titulo", texto: paragrafo[0] });
+          paragrafo = [];
+        } else {
+          fecharParagrafo();
+        }
         lista = [];
         blocos.push({ tipo: "lista", itens: lista });
       }
@@ -579,9 +636,10 @@ function emBlocos(texto: string | null): Bloco[] {
     }
 
     lista = null;
-    blocos.push({ tipo: "titulo", texto: linha });
+    paragrafo.push(linha);
   }
 
+  fecharParagrafo();
   return blocos;
 }
 function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"): string {
