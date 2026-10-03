@@ -114,8 +114,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid rgba(232, 236, 239, 0.18);
   border-radius: 50%;
@@ -144,4 +144,14 @@
   font-family: var(--font-mono);
   font-size: calc(var(--fs-caption) * 0.75);
   color: var(--text-secondary);
+}
+
+@media (forced-colors: active) {
+  .sobreposicao .pilula {
+    background: Canvas;
+    border: 1px solid CanvasText;
+  }
+  .sobreposicao .prender {
+    border-color: ButtonText;
+  }
 }

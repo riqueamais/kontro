@@ -1,4 +1,4 @@
-import { Estado } from "./estado";
+import { Estado, Limiares, faixaDaCarga } from "./estado";
 
 export function hora(quando: Date): string {
   return quando.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -63,7 +63,18 @@ export function quandoLeu(estado: Estado): Rodape {
   return { texto: `${abertura} ${ponte}`, hora: hora(lido) };
 }
 
-export function detalhe(estado: Estado, comAutonomia = true): string {
+export function detalhe(estado: Estado, comAutonomia = true, limiares?: Limiares): string {
+  const texto = detalheSemFaixa(estado, comAutonomia);
+  if (!limiares || !estado.temNumero || estado.via === "Desligado") return texto;
+  return `${faixaDaCarga(estado, limiares)} · ${texto}`;
+}
+
+export function rotuloDoAnel(estado: Estado, limiares: Limiares): string {
+  if (!estado.temNumero) return detalhe(estado) || estado.titulo;
+  return `${estado.textoDaCarga}, ${faixaDaCarga(estado, limiares)}. Avisa em ${limiares.aviso}%, insiste em ${limiares.critico}%`;
+}
+
+function detalheSemFaixa(estado: Estado, comAutonomia: boolean): string {
   if (estado.procurando) return "";
   if (estado.via === "Desligado") {
     return estado.quantosConhecidos === 0

@@ -10,6 +10,7 @@ import { Historico } from "../componentes/Historico";
 import { Leitura } from "../componentes/Leitura";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Amostra, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
+import { rotuloDoAnel } from "../formato";
 import "./painel.css";
 
 type Fase = "guardado" | "aberto" | "saindo";
@@ -65,6 +66,10 @@ export function Painel() {
       void parar.then((f) => f());
     };
   }, [mudar]);
+
+  useEffect(() => {
+    if (aberto) painel.current?.focus();
+  }, [aberto, aberturas]);
 
   useEffect(() => {
     if (chegou && ouvindo) void invoke("janela_pronta", { rotulo: "painel" });
@@ -128,6 +133,9 @@ export function Painel() {
       key={remontagens}
       className={fase === "aberto" ? "painel" : `painel ${fase}`}
       ref={painel}
+      role="dialog"
+      aria-label={`Kontro, ${estado.textoDaCarga || estado.titulo}, ${estado.nome}`}
+      tabIndex={-1}
       onAnimationEnd={(e) => {
         if (e.target === e.currentTarget && e.animationName === "kontro-descer") guardar();
       }}
@@ -143,6 +151,7 @@ export function Painel() {
           tamanho={96}
           girando={estado.girando}
           marcas={estado.temNumero ? limiares : null}
+          rotulo={rotuloDoAnel(estado, limiares)}
         >
           {estado.temNumero ? (
             <span className="numero">{estado.percentual}%</span>

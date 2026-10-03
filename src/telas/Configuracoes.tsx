@@ -4,7 +4,6 @@ import { relaunch } from "@tauri-apps/plugin-process";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, salvar } from "../ajustes";
-import { BotaoDeCiclo } from "../componentes/BotaoDeCiclo";
 import {
   Chave,
   Deslizante,
@@ -30,20 +29,6 @@ import {
 } from "../estado";
 
 const MODIFICADORES = ["Control", "Shift", "Alt", "Meta"];
-
-const TAMANHOS: [number, string][] = [
-  [0.85, "Pequena"],
-  [1, "Padrão"],
-  [1.2, "Grande"],
-  [1.45, "Enorme"],
-];
-
-const OPACIDADES: [number, string][] = [
-  [1, "Sólida"],
-  [0.9, "90%"],
-  [0.75, "75%"],
-  [0.55, "55%"],
-];
 
 const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: string }[] = [
   {
@@ -99,9 +84,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   const [atual, setAtual] = useState("");
   const [veioDe, setVeioDe] = useState<string | null>(null);
   const [ultima, setUltima] = useState(0);
-  const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
-    "parado",
-  );
+  const [diagnostico, setDiagnostico] = useState<Diagnostico>({ passo: "parado" });
   const solta = usePilulaSolta();
   const coberta = usePilulaCoberta();
   const recusados = useAtalhosRecusados();
@@ -231,17 +214,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
           aoTrocar={(v) => gravar({ StartWithWindows: v })}
         />
       </Linha>
-      <Linha
-        titulo="Iniciar minimizado"
-        descricao="Abre direto na bandeja, sem mostrar esta janela."
-      >
+      <Linha titulo="Abrir na bandeja" descricao="Sobe sem mostrar esta janela.">
         <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
       </Linha>
-      <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
+      <Linha titulo="Botão de fechar" descricao="O que o X da janela faz.">
         <Seletor
           opcoes={[
-            { valor: "MinimizeToTray" as const, rotulo: "Minimizar para a bandeja" },
-            { valor: "Exit" as const, rotulo: "Encerrar o app" },
+            { valor: "MinimizeToTray" as const, rotulo: "Esconder na bandeja" },
+            { valor: "Exit" as const, rotulo: "Encerrar o Kontro" },
           ]}
           valor={cfg.CloseAction}
           aoEscolher={(CloseAction) => gravar({ CloseAction })}
@@ -310,7 +290,20 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         />
       </Linha>
       <h2>Sobreposição</h2>
-      <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
+      <div className="previa" aria-hidden="true">
+        <MiniTela
+          x={cfg.OverlayX}
+          y={cfg.OverlayY}
+          solta={solta}
+          escala={2}
+          escalaDaPilula={cfg.OverlayScale}
+          opacidade={cfg.OverlayOpacity}
+        />
+      </div>
+      <Linha
+        titulo="Quando aparecer"
+        descricao="Desligada, só durante um jogo em tela cheia, ou sempre."
+      >
         <Seletor
           opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
             valor,
@@ -335,7 +328,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
             : "A pílula fica onde você largar: solte e arraste até o ponto que quiser."
         }
       >
-        <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
+        {!solta && (
+          <MiniTela
+            x={cfg.OverlayX}
+            y={cfg.OverlayY}
+            solta={solta}
+            aoMover={(OverlayX, OverlayY) => gravar({ OverlayX, OverlayY })}
+          />
+        )}
         <BotaoDaLinha
           className={solta ? "botao destaque" : "botao"}
           onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
@@ -369,29 +369,31 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         desabilitada={pilulaDesligada}
         descricao="Quanto espaço a pílula ocupa na tela."
       >
-        <BotaoDeCiclo
-          opcoes={tamanhos()}
-          valor={cfg.OverlayScale}
-          rotulo={(v) => rotulo(TAMANHOS, v)}
-          aoMudar={(OverlayScale) => gravar({ OverlayScale })}
+        <Deslizante
+          min={75}
+          max={200}
+          passo={5}
+          valor={Math.round(cfg.OverlayScale * 100)}
+          aoMudar={(v) => gravar({ OverlayScale: v / 100 })}
         />
       </Linha>
       <Linha
-        titulo="Transparência"
+        titulo="Opacidade"
         desabilitada={pilulaDesligada}
-        descricao="Para a pílula não competir com o HUD do jogo."
+        descricao="Em 100% ela é sólida. Baixe para não competir com o HUD do jogo."
       >
-        <BotaoDeCiclo
-          opcoes={opacidades()}
-          valor={cfg.OverlayOpacity}
-          rotulo={(v) => rotulo(OPACIDADES, v)}
-          aoMudar={(OverlayOpacity) => gravar({ OverlayOpacity })}
+        <Deslizante
+          min={30}
+          max={100}
+          passo={5}
+          valor={Math.round(cfg.OverlayOpacity * 100)}
+          aoMudar={(v) => gravar({ OverlayOpacity: v / 100 })}
         />
       </Linha>
       <h2>Atalhos</h2>
       <Linha
-        titulo="Usar atalhos"
-        descricao="Valem por cima do jogo, sem precisar sair dele."
+        titulo="Atalhos de teclado"
+        descricao="Funcionam com o jogo em foco, sem sair dele."
       >
         <Chave
           ligado={cfg.OverlayShortcutEnabled}
@@ -427,6 +429,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         titulo="Procurar atualizações"
         descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
         classe="versao"
+        viva
       >
         <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
@@ -444,40 +447,38 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       >
         <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
       </Linha>
-      <h2>Problemas</h2>
+      <h2>Ajuda</h2>
       <Linha
-        titulo="Passo a passo"
+        titulo="Rever o passo a passo"
         descricao="As seis telas que explicam o app, de novo do começo."
       >
         <button className="botao" onClick={aoRever}>
           Rever
         </button>
       </Linha>
-      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
+      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)} viva>
         <button
           className="botao"
-          disabled={diagnostico === "gravando"}
+          disabled={diagnostico.passo === "gravando"}
           onClick={async () => {
-            setDiagnostico("gravando");
+            setDiagnostico({ passo: "gravando" });
             try {
-              await invoke<string>("salvar_diagnostico");
-              setDiagnostico("pronto");
+              const caminho = await invoke<string>("salvar_diagnostico");
+              setDiagnostico({ passo: "pronto", caminho });
             } catch {
-              setDiagnostico("falhou");
+              setDiagnostico({ passo: "falhou" });
             }
           }}
         >
-          {diagnostico === "gravando" ? "Gravando..." : "Salvar"}
+          {diagnostico.passo === "gravando" ? "Gravando…" : "Salvar"}
         </button>
       </Linha>
     </>
   );
 }
-const tamanhos = () => TAMANHOS.map(([v]) => v);
-const opacidades = () => OPACIDADES.map(([v]) => v);
-function rotulo(degraus: [number, string][], valor: number): string {
-  return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
-}
+type Diagnostico =
+  | { passo: "parado" | "gravando" | "falhou" }
+  | { passo: "pronto"; caminho: string };
 
 function linhaDaVersao(atual: string, passo: Passo, ultima: number, veioDe: string | null): string {
   if (passo.tipo === "procurando") return "Consultando o repositório…";
@@ -527,21 +528,30 @@ function Novidade({
       </div>
 
       {falhou && (
-        <p className="falha" role="alert">
+        <p className="falha" role="status" aria-live="polite">
           {falhou}
         </p>
       )}
 
       {andando && (
         <div className="andamento">
-          <div className={`trilho${indefinido ? " indefinido" : ""}`} aria-hidden="true">
+          <div
+            className={`trilho${indefinido ? " indefinido" : ""}`}
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={indefinido ? undefined : instalando ? 100 : (porcento ?? 0)}
+            aria-label="Download da atualização"
+          >
             <span
               style={
                 indefinido ? undefined : { width: `${instalando ? 100 : (porcento ?? 0)}%` }
               }
             />
           </div>
-          <div className="rodape">{andamento(passo, porcento, bytes)}</div>
+          <div className="rodape" role="status" aria-live="polite">
+            {andamento(passo, porcento, bytes)}
+          </div>
         </div>
       )}
 
@@ -663,12 +673,17 @@ function emBlocos(texto: string | null): Bloco[] {
   fecharParagrafo();
   return blocos;
 }
-function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"): string {
-  switch (passo) {
+function textoDoDiagnostico(diagnostico: Diagnostico): React.ReactNode {
+  switch (diagnostico.passo) {
     case "gravando":
-      return "Perguntando a cada fonte o que ela sabe da carga...";
+      return "Perguntando a cada fonte o que ela sabe da carga…";
     case "pronto":
-      return "Salvo como diagnostico.txt, e a pasta abriu. É o arquivo para anexar ao relatar um problema.";
+      return (
+        <>
+          Salvo em <code className="caminho">{diagnostico.caminho}</code>. Anexe ao relatar um
+          problema.
+        </>
+      );
     case "falhou":
       return "Não deu para gravar o arquivo.";
     default:

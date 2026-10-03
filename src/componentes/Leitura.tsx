@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useRef, useState } from "react";
 
-import type { Estado } from "../estado";
+import { type Estado, useLimiares } from "../estado";
 import { detalhe, quandoLeu } from "../formato";
 import "./leitura.css";
 
@@ -16,7 +16,8 @@ export function Leitura({
 }) {
   const { texto, hora } = quandoLeu(estado);
   const antiga = estado.leituraAntiga && estado.lidoEm !== null && !estado.procurando;
-  const linha = detalhe(estado, comAutonomia);
+  const limiares = useLimiares();
+  const linha = detalhe(estado, comAutonomia, limiares);
   const conhecido = renomeavel && estado.quantosConhecidos > 0 && !estado.procurando;
   const nomeNoTitulo = conhecido && estado.titulo === estado.nome;
   const nomeNoDetalhe = conhecido && !nomeNoTitulo && linha === estado.nome;
@@ -45,6 +46,11 @@ export function Leitura({
 function NomeEditavel({ estado }: { estado: Estado }) {
   const [editando, setEditando] = useState(false);
   const campo = useRef<HTMLInputElement>(null);
+  const botao = useRef<HTMLButtonElement>(null);
+  const sair = (voltarOFoco = true) => {
+    setEditando(false);
+    if (voltarOFoco) requestAnimationFrame(() => botao.current?.focus());
+  };
 
   useEffect(() => {
     if (!editando) return;
@@ -52,10 +58,10 @@ function NomeEditavel({ estado }: { estado: Estado }) {
     campo.current?.select();
   }, [editando]);
 
-  const salvar = () => {
+  const salvar = (voltarOFoco = true) => {
     const nome = campo.current?.value ?? "";
     if (nome !== estado.nome) void invoke("renomear_controle", { chave: estado.chave, nome });
-    setEditando(false);
+    sair(voltarOFoco);
   };
 
   if (editando) {
@@ -66,17 +72,18 @@ function NomeEditavel({ estado }: { estado: Estado }) {
         defaultValue={estado.nome}
         maxLength={40}
         placeholder="Nome do controle"
-        onBlur={salvar}
+        aria-label="Nome do controle"
+        onBlur={() => salvar(false)}
         onKeyDown={(e) => {
           if (e.key === "Enter") salvar();
-          if (e.key === "Escape") setEditando(false);
+          if (e.key === "Escape") sair();
         }}
       />
     );
   }
 
   return (
-    <button className="item-nome" title="Renomear" onClick={() => setEditando(true)}>
+    <button ref={botao} className="item-nome" title="Renomear" onClick={() => setEditando(true)}>
       <span className="item-nome-texto">{estado.nome}</span>
       <svg className="lapis" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
         <path

@@ -16,10 +16,13 @@ export function ListaDeControles({
   const controles = useControles();
   const limiares = useLimiares();
   const [editando, setEditando] = useState<string | null>(null);
+  const titulo = useRef<HTMLDivElement>(null);
   if (controles.length < (sempre ? 1 : 2)) return null;
   return (
     <div className={`lista${sempre ? " solta" : ""}`}>
-      <div className="lista-titulo">Seus controles</div>
+      <div className="lista-titulo" ref={titulo} tabIndex={-1}>
+        Seus controles
+      </div>
       {controles.map((c) => (
         <Linha
           key={c.chave}
@@ -30,6 +33,7 @@ export function ListaDeControles({
           editando={editando === c.chave}
           aoEditar={() => setEditando(c.chave)}
           aoSair={() => setEditando(null)}
+          aoEsquecer={() => titulo.current?.focus()}
         />
       ))}
     </div>
@@ -43,6 +47,7 @@ function Linha({
   editando,
   aoEditar,
   aoSair,
+  aoEsquecer,
 }: {
   controle: Estado;
   limiares: Limiares;
@@ -51,8 +56,15 @@ function Linha({
   editando: boolean;
   aoEditar: () => void;
   aoSair: () => void;
+  aoEsquecer: () => void;
 }) {
   const campo = useRef<HTMLInputElement>(null);
+  const nome = useRef<HTMLButtonElement>(null);
+  const esquecer = useRef<HTMLButtonElement>(null);
+  const sair = (voltarOFoco = true) => {
+    aoSair();
+    if (voltarOFoco) requestAnimationFrame(() => nome.current?.focus());
+  };
   const [confirmando, setConfirmando] = useState(false);
   useEffect(() => {
     if (editando) {
@@ -60,12 +72,12 @@ function Linha({
       campo.current?.select();
     }
   }, [editando]);
-  const salvar = () => {
+  const salvar = (voltarOFoco = true) => {
     const nome = campo.current?.value ?? "";
     if (nome !== controle.nome) {
       void invoke("renomear_controle", { chave: controle.chave, nome });
     }
-    aoSair();
+    sair(voltarOFoco);
   };
   const removivel = podeEsquecer && controle.via === "Desligado";
   return (
@@ -87,14 +99,15 @@ function Linha({
             defaultValue={controle.nome}
             maxLength={40}
             placeholder="Nome do controle"
-            onBlur={salvar}
+            aria-label="Nome do controle"
+            onBlur={() => salvar(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter") salvar();
-              if (e.key === "Escape") aoSair();
+              if (e.key === "Escape") sair();
             }}
           />
         ) : (
-          <button className="item-nome" title="Renomear" onClick={aoEditar}>
+          <button ref={nome} className="item-nome" title="Renomear" onClick={aoEditar}>
             {controle.nome}
           </button>
         )}
@@ -111,16 +124,26 @@ function Linha({
           <div className="confirmar">
             <button
               className="botao perigo miudo"
-              onClick={() => void invoke("esquecer_controle", { chave: controle.chave })}
+              onClick={() => {
+                aoEsquecer();
+                void invoke("esquecer_controle", { chave: controle.chave });
+              }}
             >
               Esquecer
             </button>
-            <button className="botao miudo" onClick={() => setConfirmando(false)}>
+            <button
+              className="botao miudo"
+              onClick={() => {
+                setConfirmando(false);
+                requestAnimationFrame(() => esquecer.current?.focus());
+              }}
+            >
               Cancelar
             </button>
           </div>
         ) : (
           <button
+            ref={esquecer}
             className="esquecer"
             title="Esquecer este controle"
             aria-label="Esquecer este controle"

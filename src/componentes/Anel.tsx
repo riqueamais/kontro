@@ -42,10 +42,11 @@ interface Props {
   tamanho: number;
   girando?: boolean;
   marcas?: Marcas | null;
+  rotulo?: string;
   children?: React.ReactNode;
 }
 
-export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children }: Props) {
+export function Anel({ valor, cor, espessura, tamanho, girando, marcas, rotulo, children }: Props) {
   const raio = (CAIXA - espessura) / 2;
   const luz = useId().replace(/:/g, "");
 
@@ -88,7 +89,14 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
         } as React.CSSProperties
       }
     >
-      <svg width={tamanho} height={tamanho} viewBox={`0 0 ${CAIXA} ${CAIXA}`}>
+      <svg
+        width={tamanho}
+        height={tamanho}
+        viewBox={`0 0 ${CAIXA} ${CAIXA}`}
+        role={rotulo ? "img" : undefined}
+        aria-label={rotulo}
+        aria-hidden={rotulo ? undefined : true}
+      >
         <defs>
           <linearGradient id={luz} x1="0.12" y1="0.08" x2="0.86" y2="0.94">
             <stop offset="0%" />

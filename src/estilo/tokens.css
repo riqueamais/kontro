@@ -173,3 +173,10 @@ body[data-janela="sobreposicao"] {
   --realce: #35d7a8;
   --ring-track: rgba(255, 255, 255, 0.16);
 }
+
+@media (forced-colors: active) {
+  :root,
+  body[data-janela="sobreposicao"] {
+    --ring-track: color-mix(in srgb, CanvasText 30%, transparent);
+  }
+}

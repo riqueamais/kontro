@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Sessao, useAoMudarOHistorico, useLimiares } from "../estado";
 import { diaEMes, duracao, taxa } from "../formato";
@@ -140,6 +140,8 @@ function Ranking({ famintos }: { famintos: Faminto[] }) {
   );
 }
 
+const AVISO_DO_CARTAO_MS = 4000;
+
 function Exportar({
   dias,
   famintos,
@@ -154,6 +156,12 @@ function Exportar({
   const [passo, setPasso] = useState<"parado" | "salvando" | "salvo" | "falhou">("parado");
   const [motivo, setMotivo] = useState("");
   const tela = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (passo !== "salvo" && passo !== "falhou") return;
+    const voltar = window.setTimeout(() => setPasso("parado"), AVISO_DO_CARTAO_MS);
+    return () => window.clearTimeout(voltar);
+  }, [passo]);
 
   const salvar = async () => {
     setPasso("salvando");
@@ -175,25 +183,25 @@ function Exportar({
 
   return (
     <div className="exportar">
+      <span
+        className={`exportar-aviso${passo === "falhou" ? " falhou" : ""}`}
+        role="status"
+        title={passo === "falhou" ? motivo : undefined}
+      >
+        {passo === "salvo" ? "Salvo em Downloads" : passo === "falhou" ? "Não consegui salvar" : ""}
+      </span>
       <button
         className="botao destaque"
         disabled={passo === "salvando"}
         onClick={() => void salvar()}
       >
-        {rotuloDoBotao(passo)}
+        {passo === "salvando" ? "Desenhando…" : "Salvar cartão"}
       </button>
-      {passo === "falhou" && <div className="exportar-erro">{motivo}</div>}
       <canvas ref={tela} width={1200} height={630} style={{ display: "none" }} />
     </div>
   );
 }
 
-function rotuloDoBotao(passo: string): string {
-  if (passo === "salvando") return "Desenhando…";
-  if (passo === "salvo") return "Salvo em Downloads";
-  if (passo === "falhou") return "Não deu";
-  return "Salvar cartão";
-}
 
 function porDia(sessoes: Sessao[]): Dia[] {
   const hoje = new Date();

@@ -85,8 +85,8 @@
   border-color: var(--stroke-strong);
 }
 .lista .esquecer {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   border: 0;
@@ -115,4 +115,26 @@
 .lista .esquecer:active {
   background: color-mix(in srgb, var(--text-primary) 4%, transparent);
   color: var(--text-secondary);
+}
+
+.lista .confirmar .botao {
+  min-height: var(--altura-controle);
+}
+
+.lista.solta .esquecer {
+  opacity: 0.5;
+}
+
+.lista.solta .item:hover .esquecer,
+.lista.solta .esquecer:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .lista .esquecer {
+    opacity: 1;
+  }
+  .lista .item-nome {
+    border-bottom-color: var(--stroke-strong);
+  }
 }

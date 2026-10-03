@@ -19,7 +19,7 @@ import {
   useEstado,
   useLimiares,
 } from "../estado";
-import { duracao, taxa } from "../formato";
+import { duracao, rotuloDoAnel, taxa } from "../formato";
 
 interface DoControle {
   serie: Amostra[];
@@ -57,6 +57,7 @@ export function Resumo() {
           tamanho={96}
           girando={estado.girando}
           marcas={estado.temNumero ? limiares : null}
+          rotulo={rotuloDoAnel(estado, limiares)}
         >
           {estado.temNumero ? (
             <span className="numero grande">{estado.percentual}%</span>

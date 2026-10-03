@@ -40,3 +40,9 @@
   display: grid;
   place-items: center;
 }
+
+@media (forced-colors: active) {
+  .anel > svg {
+    forced-color-adjust: none;
+  }
+}
