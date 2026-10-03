@@ -22,5 +22,6 @@ export interface Config {
   OverlayShortcut: string;
   OverlayMoveShortcut: string;
   FirstRunDone: boolean;
+  TrayHintShown: boolean;
   Theme: Theme;
 }

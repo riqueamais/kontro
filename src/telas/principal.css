@@ -8,7 +8,7 @@ body[data-janela="principal"] .app {
 
 body[data-janela="principal"] .barra {
   flex: 0 0 auto;
-  height: 38px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -23,9 +23,17 @@ body[data-janela="principal"] .marca {
   align-items: center;
   gap: var(--space-2);
   font-size: var(--fs-caption);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--text-secondary);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-primary);
+  transition: color var(--motion-fast) var(--curva);
+}
+body[data-janela="principal"][data-foco="nao"] .marca,
+body[data-janela="principal"][data-foco="nao"] .botao-janela {
+  color: var(--text-tertiary);
+}
+body[data-janela="principal"] .botao-janela:focus-visible {
+  outline-offset: -2px;
 }
 
 body[data-janela="principal"] .botoes-da-janela {
@@ -53,7 +61,7 @@ body[data-janela="principal"] .botao-janela:hover {
 }
 
 body[data-janela="principal"] .botao-janela.fechar:hover {
-  background: var(--red);
+  background: var(--fechar-janela);
   color: #fff;
 }
 

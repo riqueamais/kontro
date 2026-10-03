@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, salvar } from "../ajustes";
+import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, MODOS, salvar } from "../ajustes";
 import {
   Chave,
   Deslizante,
@@ -17,7 +17,6 @@ import { Teclas } from "../componentes/Teclas";
 import { decimal, quando } from "../formato";
 import {
   Config,
-  OverlayMode,
   Recusa,
   VersaoNova,
   Theme,
@@ -44,12 +43,6 @@ const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: s
   { id: "Brasa", rotulo: "Brasa", chao: "#100c0a", realce: "#e0925a", texto: "#f2ebe5" },
   { id: "Dia", rotulo: "Dia", chao: "#eef1f5", realce: "#0a6e5b", texto: "#0f151b" },
 ];
-
-const MODOS: Record<OverlayMode, string> = {
-  Desligada: "Desligada",
-  EmJogo: "Só em jogo",
-  Sempre: "Sempre visível",
-};
 
 interface Busca {
   estado: "nova" | "em-dia" | "falhou";

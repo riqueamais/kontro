@@ -9,7 +9,15 @@ import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { Leitura } from "../componentes/Leitura";
 import { ListaDeControles } from "../componentes/ListaDeControles";
-import { Amostra, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
+import { MODOS, ORDEM_DOS_MODOS, ciclar, salvar } from "../ajustes";
+import {
+  Amostra,
+  corDoAnel,
+  useAoMudarOHistorico,
+  useConfig,
+  useEstado,
+  useLimiares,
+} from "../estado";
 import { rotuloDoAnel } from "../formato";
 import "./painel.css";
 
@@ -19,6 +27,7 @@ const PRAZO_DA_SAIDA_MS = 400;
 
 export function Painel() {
   const estado = useEstado();
+  const cfg = useConfig();
   const limiares = useLimiares();
   const [serie, setSerie] = useState<Amostra[]>([]);
   const [fase, setFase] = useState<Fase>("guardado");
@@ -166,6 +175,19 @@ export function Painel() {
       <Historico serie={serie} compacto autonomiaMinutos={estado.autonomiaMinutos} />
 
       <ListaDeControles principal={estado.chave} />
+
+      {cfg && (
+        <div className="rapidos">
+          <button
+            className="botao chip"
+            onClick={() =>
+              void salvar(cfg, { OverlayMode: ciclar(cfg.OverlayMode, ORDEM_DOS_MODOS) })
+            }
+          >
+            Pílula · {MODOS[cfg.OverlayMode]}
+          </button>
+        </div>
+      )}
 
       <div className="acoes">
         <button className="botao" onClick={() => invoke("abrir_aba", { aba: "config" })}>
