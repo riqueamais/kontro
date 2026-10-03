@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tauri::window::{Color, Effect, EffectsBuilder, Monitor};
 use tauri::{
     AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
@@ -5,6 +6,7 @@ use tauri::{
 };
 use windows::Win32::Foundation::HWND;
 
+use crate::caminhos;
 use crate::configuracoes::{Settings, Theme};
 use crate::sistema;
 use crate::tela;
@@ -63,8 +65,55 @@ impl Nascimento {
     }
 }
 
-pub fn criar_todas(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<()> {
-    criar_principal(app, nascimento)?;
+const LARGURA_DA_PRINCIPAL: f64 = 840.0;
+const ALTURA_DA_PRINCIPAL: f64 = 600.0;
+const LARGURA_MINIMA_DA_PRINCIPAL: f64 = 720.0;
+const ALTURA_MINIMA_DA_PRINCIPAL: f64 = 520.0;
+const FOLGA_PARA_ACHAR_O_MONITOR: f64 = 24.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Geometria {
+    pub x: f64,
+    pub y: f64,
+    pub largura: f64,
+    pub altura: f64,
+}
+
+impl Geometria {
+    pub fn carregar() -> Option<Self> {
+        serde_json::from_str(&caminhos::ler("janela.json")?).ok()
+    }
+
+    pub fn salvar(&self) {
+        caminhos::garantir_dir();
+        if let Ok(texto) = serde_json::to_string_pretty(self) {
+            let _ = std::fs::write(caminhos::arquivo("janela.json"), texto);
+        }
+    }
+
+    pub fn medir(janela: &WebviewWindow) -> Option<Self> {
+        if janela.is_minimized().unwrap_or(false) {
+            return None;
+        }
+        let escala = janela.scale_factor().ok()?;
+        let posicao = janela.outer_position().ok()?;
+        let tamanho = janela.inner_size().ok()?.to_logical::<f64>(escala);
+        Some(Geometria {
+            x: posicao.x as f64,
+            y: posicao.y as f64,
+            largura: tamanho.width,
+            altura: tamanho.height,
+        })
+    }
+}
+
+pub fn criar_todas(
+    app: &AppHandle,
+    nascimento: &Nascimento,
+    geometria: Option<Geometria>,
+) -> tauri::Result<()> {
+    let principal = criar_principal(app, nascimento)?;
+    assentar_principal(app, &principal, geometria);
     criar_painel(app, nascimento)?;
     criar_sobreposicao(app, nascimento)?;
     criar_aviso(app, nascimento)?;
@@ -74,11 +123,10 @@ pub fn criar_todas(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<()
 fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
     let mut construtor = WebviewWindowBuilder::new(app, PRINCIPAL, nascimento.endereco(PRINCIPAL))
         .title("Kontro")
-        .inner_size(840.0, 600.0)
-        .min_inner_size(720.0, 520.0)
+        .inner_size(LARGURA_DA_PRINCIPAL, ALTURA_DA_PRINCIPAL)
+        .min_inner_size(LARGURA_MINIMA_DA_PRINCIPAL, ALTURA_MINIMA_DA_PRINCIPAL)
         .decorations(false)
-        .visible(false)
-        .center();
+        .visible(false);
 
     if nascimento.tem_material {
         construtor = construtor.transparent(true);
@@ -94,6 +142,34 @@ fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<We
     arredondar_cantos(&janela);
     vestir_icone(&janela);
     Ok(janela)
+}
+
+fn assentar_principal(app: &AppHandle, janela: &WebviewWindow, geometria: Option<Geometria>) {
+    let salva = geometria.filter(|g| {
+        app.monitor_from_point(g.x + FOLGA_PARA_ACHAR_O_MONITOR, g.y + FOLGA_PARA_ACHAR_O_MONITOR)
+            .ok()
+            .flatten()
+            .is_some()
+    });
+
+    if let Some(g) = salva {
+        let _ = janela.set_position(PhysicalPosition::new(g.x.round() as i32, g.y.round() as i32));
+        let _ = janela.set_size(LogicalSize::new(
+            g.largura.max(LARGURA_MINIMA_DA_PRINCIPAL),
+            g.altura.max(ALTURA_MINIMA_DA_PRINCIPAL),
+        ));
+        return;
+    }
+
+    let monitor = monitor_do_cursor(app).or_else(|| janela.primary_monitor().ok().flatten());
+    let Some(monitor) = monitor else { return };
+    let escala = monitor.scale_factor();
+    let area = monitor.work_area();
+    let largura = LARGURA_DA_PRINCIPAL * escala;
+    let altura = ALTURA_DA_PRINCIPAL * escala;
+    let x = area.position.x as f64 + (area.size.width as f64 - largura) / 2.0;
+    let y = area.position.y as f64 + (area.size.height as f64 - altura) / 2.0;
+    let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
 pub fn vestir_material(app: &AppHandle, cfg: &Settings) {

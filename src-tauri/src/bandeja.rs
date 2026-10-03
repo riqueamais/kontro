@@ -81,6 +81,10 @@ pub(crate) fn montar_svg(
     )
 }
 
+pub fn dica(estado: &EstadoDoControle, limiares: Limiares) -> String {
+    format!("Kontro · {}\n{}", estado.nome, crate::modelo::resumo_do_estado(estado, limiares))
+}
+
 pub(crate) fn estado_demo(preenchimento: Option<i32>, modo: Via) -> EstadoDoControle {
     EstadoDoControle::montar(crate::modelo::Bruto {
         via: modo,
@@ -217,11 +221,56 @@ fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
 }
 
 pub fn tamanho_do_icone() -> u32 {
-    use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSMICON};
-    let medido = unsafe { GetSystemMetrics(SM_CXSMICON) };
+    use windows::core::w;
+    use windows::Win32::UI::HiDpi::{GetDpiForWindow, GetSystemMetricsForDpi};
+    use windows::Win32::UI::WindowsAndMessaging::{FindWindowW, GetSystemMetrics, SM_CXSMICON};
+
+    let medido = unsafe {
+        let dpi = FindWindowW(w!("Shell_TrayWnd"), None).map(|barra| GetDpiForWindow(barra));
+        match dpi {
+            Ok(dpi) if dpi > 0 => GetSystemMetricsForDpi(SM_CXSMICON, dpi),
+            _ => GetSystemMetrics(SM_CXSMICON),
+        }
+    };
     if medido <= 0 {
         16
     } else {
         medido as u32
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    #[test]
+    fn a_dica_cabe_no_limite_da_bandeja() {
+        let longo = "Controle sem fio com um nome comprido que alguém escolheu";
+        let estados = [
+            (Some(100), Via::Bluetooth),
+            (Some(18), Via::Bluetooth),
+            (Some(7), Via::SemFio),
+            (None, Via::Cabo),
+            (None, Via::Bluetooth),
+            (Some(77), Via::Desligado),
+            (None, Via::Desligado),
+        ];
+        for (preenchimento, via) in estados {
+            let mut estado = estado_demo(preenchimento, via);
+            estado.nome = longo.into();
+            estado.leitura_antiga = true;
+            estado.lido_em = Some(0);
+            estado.autonomia_minutos = Some(735);
+            let texto = dica(&estado, Limiares::PADRAO);
+            assert!(texto.starts_with("Kontro · "));
+            assert!(!texto.contains("--"), "{texto}");
+            assert!(texto.encode_utf16().count() <= 127, "{texto}");
+        }
+    }
+
+    #[test]
+    fn a_dica_diz_carga_baixa_com_os_limiares_de_quem_usa() {
+        let estado = estado_demo(Some(18), Via::Bluetooth);
+        assert!(dica(&estado, Limiares::PADRAO).contains("18%, carga baixa"));
     }
 }

@@ -153,7 +153,7 @@ impl Orquestrador {
             && estado.preenchimento.map(|p| p <= cfg.critical_threshold).unwrap_or(false);
 
         let mostrar = match mao {
-            Some(escolha) => ligada && escolha,
+            Some(escolha) => escolha,
             None => ligada && (ajustando || (tem_leitura && (momento_de_jogo || critico))),
         };
 

@@ -52,6 +52,7 @@ pub struct Compartilhado {
     pilula: OnceLock<isize>,
     coberta_por: Mutex<Option<String>>,
     abrir_ao_carregar: Mutex<Vec<String>>,
+    geometria_da_principal: Mutex<Option<janelas::Geometria>>,
     painel_escondido_em: Mutex<Option<Instant>>,
     icone_do_painel: Mutex<Option<(f64, f64)>>,
     altura_do_painel: Mutex<f64>,
@@ -137,6 +138,7 @@ pub fn executar() {
         pilula: OnceLock::new(),
         coberta_por: Mutex::new(None),
         abrir_ao_carregar: Mutex::new(Vec::new()),
+        geometria_da_principal: Mutex::new(janelas::Geometria::carregar()),
         painel_escondido_em: Mutex::new(None),
         icone_do_painel: Mutex::new(None),
         altura_do_painel: Mutex::new(ALTURA_INICIAL_DO_PAINEL),
@@ -193,7 +195,8 @@ pub fn executar() {
         .setup(move |app| {
             let handle = app.handle().clone();
             let nascimento = janelas::Nascimento::de(&compartilhado.config.lock().unwrap());
-            janelas::criar_todas(&handle, &nascimento)?;
+            let geometria = *compartilhado.geometria_da_principal.lock().unwrap();
+            janelas::criar_todas(&handle, &nascimento, geometria)?;
             if let Some(pilula) =
                 handle.get_webview_window(janelas::SOBREPOSICAO).and_then(|j| janelas::hwnd_de(&j))
             {
@@ -203,7 +206,11 @@ pub fn executar() {
                 let cfg = compartilhado.config.lock().unwrap().clone();
                 janelas::vestir_material(&handle, &cfg);
             }
-            montar_bandeja(&handle)?;
+            {
+                let estado = compartilhado.estado.lock().unwrap().clone();
+                let limiares = compartilhado.config.lock().unwrap().limiares();
+                montar_bandeja(&handle, &estado, limiares)?;
+            }
 
             {
                 let cfg = compartilhado.config.lock().unwrap().clone();
@@ -255,7 +262,15 @@ pub fn executar() {
                 || app.try_state::<Arc<Compartilhado>>().map(|c| c.config.lock().unwrap().clone());
 
             match evento {
+                tauri::WindowEvent::Moved(_) | tauri::WindowEvent::Resized(_) => {
+                    let Some(c) = app.try_state::<Arc<Compartilhado>>() else { return };
+                    let Some(janela) = app.get_webview_window(janelas::PRINCIPAL) else { return };
+                    if let Some(geometria) = janelas::Geometria::medir(&janela) {
+                        *c.geometria_da_principal.lock().unwrap() = Some(geometria);
+                    }
+                }
                 tauri::WindowEvent::CloseRequested { api, .. } => {
+                    guardar_geometria(app);
                     if config().is_some_and(|c| c.close_action == CloseAction::Exit) {
                         app.exit(0);
                         return;
@@ -275,10 +290,11 @@ pub fn executar() {
         .build(tauri::generate_context!())
         .expect("nao foi possivel iniciar o Kontro");
 
-    app.run(move |_app, evento| {
+    app.run(move |app, evento| {
         if !matches!(evento, tauri::RunEvent::Exit) {
             return;
         }
+        guardar_geometria(app);
         let (feito, esperar) = mpsc::channel();
         if ao_encerrar.send(Pedido::Encerrar(feito)).is_ok() {
             let _ = esperar.recv_timeout(Duration::from_secs(3));
@@ -431,6 +447,14 @@ fn abrir_pendente(app: &AppHandle, rotulo: &str) {
     let _ = janela.show();
 }
 
+fn guardar_geometria(app: &AppHandle) {
+    let Some(c) = app.try_state::<Arc<Compartilhado>>() else { return };
+    let geometria = *c.geometria_da_principal.lock().unwrap();
+    if let Some(geometria) = geometria {
+        geometria.salvar();
+    }
+}
+
 fn trazer_principal(app: &AppHandle) {
     if let Some(painel) = app.get_webview_window(janelas::PAINEL) {
         let _ = painel.hide();
@@ -496,7 +520,11 @@ struct MenusDaBandeja {
     pilula: CheckMenuItem<tauri::Wry>,
 }
 
-fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
+fn montar_bandeja(
+    app: &AppHandle,
+    inicial: &EstadoDoControle,
+    limiares: Limiares,
+) -> tauri::Result<()> {
     let estado = MenuItem::with_id(app, "estado", "Kontro", false, None::<&str>)?;
     let abrir = MenuItem::with_id(app, "abrir", "&Abrir o Kontro", true, None::<&str>)?;
     let configurar = MenuItem::with_id(app, "configurar", "&Configurações", true, None::<&str>)?;
@@ -519,8 +547,14 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
     )?;
     app.manage(MenusDaBandeja { estado, pilula });
 
-    TrayIconBuilder::with_id("kontro")
-        .tooltip("Kontro")
+    let mut construtor = TrayIconBuilder::with_id("kontro").tooltip("Kontro · procurando controle");
+    let desenho =
+        bandeja::desenhar(inicial, bandeja::tamanho_do_icone(), limiares, sistema::barra_clara());
+    if let Some(icone) = desenho {
+        construtor = construtor.icon(icone);
+    }
+
+    construtor
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, evento| match evento.id.as_ref() {
@@ -583,7 +617,7 @@ fn atualizar_bandeja(
 ) {
     let Some(bandeja) = app.tray_by_id("kontro") else { return };
 
-    let dica = format!("{} - {} - {}", estado.nome, estado.texto_da_carga, estado.texto_da_ligacao);
+    let dica = bandeja::dica(estado, limiares);
     if dica != *ultima_dica {
         let _ = bandeja.set_tooltip(Some(dica.as_str()));
         *ultima_dica = dica;
