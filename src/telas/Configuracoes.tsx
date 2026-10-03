@@ -12,6 +12,7 @@ import {
   salvar,
 } from "../ajustes";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
+import { decimal } from "../formato";
 import {
   Config,
   OverlayMode,
@@ -153,7 +154,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         setPasso({
           tipo: "falhou",
           ao: "verificar",
-          motivo: busca.motivo ?? "não deu para consultar o repositório",
+          motivo: busca.motivo ?? "não deu para falar com o GitHub",
         });
         return;
       }
@@ -170,7 +171,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       setPasso({
         tipo: "falhou",
         ao: "verificar",
-        motivo: "não deu para consultar o repositório",
+        motivo: "não deu para falar com o GitHub",
       });
     }
   };
@@ -198,7 +199,11 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       }
       await relaunch();
     } catch (e) {
-      setPasso({ tipo: "falhou", ao: "atualizar", motivo: String(e) });
+      setPasso({
+        tipo: "falhou",
+        ao: "atualizar",
+        motivo: typeof e === "string" ? e : "não deu para baixar a versão nova",
+      });
     } finally {
       parar();
     }
@@ -470,8 +475,8 @@ function tituloDaVersao(passo: Passo): string {
       return "Você está na versão mais recente";
     case "falhou":
       return passo.ao === "verificar"
-        ? "Não foi possível verificar"
-        : "Não foi possível atualizar";
+        ? "Sem resposta do GitHub"
+        : "A atualização não terminou";
     default:
       return "Procurar atualizações";
   }
@@ -509,7 +514,9 @@ function Novidade({
           <div className="dispositivo">
             {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
           </div>
-          <div className="rodape">você está na {nova.atual}</div>
+          <div className="rodape">
+            você está na <span className="mono">{nova.atual}</span>
+          </div>
         </div>
         {!andando && (
           <button className="botao destaque" onClick={aoAtualizar}>
@@ -536,17 +543,19 @@ function Novidade({
   );
 }
 
-function andamento(passo: Passo, porcento: number | null, bytes: number): string {
+function andamento(passo: Passo, porcento: number | null, bytes: number): React.ReactNode {
   if (passo.tipo === "preparando") return "consultando a release publicada";
   if (passo.tipo === "instalando") return "instalando — o app reinicia sozinho";
-  if (porcento === null) {
-    return `baixando ${megabytes(bytes)} — o pacote é verificado antes de rodar`;
-  }
-  return `baixando ${porcento}% — o pacote é verificado antes de rodar`;
+  const quanto = porcento === null ? megabytes(bytes) : `${porcento}%`;
+  return (
+    <>
+      baixando <span className="mono">{quanto}</span> — o pacote é verificado antes de rodar
+    </>
+  );
 }
 
 function megabytes(bytes: number): string {
-  return `${(bytes / 1_048_576).toFixed(1).replace(".", ",")} MB`;
+  return `${decimal(bytes / 1_048_576)} MB`;
 }
 
 function Notas({ texto }: { texto: string | null }) {

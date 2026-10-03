@@ -37,7 +37,7 @@ export function Resumo() {
       <h1 className="titulo-da-pagina">Resumo</h1>
 
       <section
-        className="cartao estado"
+        className={estado.leituraAntiga ? "cartao estado antiga" : "cartao estado"}
         style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
       >
         <Anel

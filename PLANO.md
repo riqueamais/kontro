@@ -10,8 +10,9 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T59 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos e
-de sistema de design e temas inteiros —, mais a T89, que a T32 tornou obrigatória.
+T63 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos e
+de sistema de design e temas inteiros, e as quatro primeiras de textos e estados —, mais a
+T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -40,7 +41,10 @@ fora da escala, de propósito, a pílula (`sobreposicao.css`) e a réplica dela 
 passo, que têm medida própria conferida na tela cheia, e o `diario.css`, que a tarefa do
 calendário refaz; o topo do aviso foi de 28 para 24px, e `SANGRIA_SUPERIOR_DO_AVISO`
 acompanhou para o cartão não sair do lugar. Na T57 as transições de várias propriedades
-ficaram em várias linhas, cada uma com a curva. Falta a parte que só um jogo responde — o `QUNS`
+ficaram em várias linhas, cada uma com a curva. Na T61 o ponto de leitura velha e o rodapé em duas
+fontes moram no `<Leitura>` da T55, que é o mesmo nos dois lugares, em vez de repetidos em
+`principal.css` e `painel.css`. Na T63 a duração da sessão no rodapé do gráfico sai da
+janela da sessão, a mesma conta da lista, e não do primeiro e do último ponto. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

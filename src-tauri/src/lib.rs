@@ -120,7 +120,8 @@ pub fn executar() {
     let compartilhado = Arc::new(Compartilhado {
         estado: Mutex::new(modelo::EstadoDoControle::montar(modelo::Bruto {
             leitura_antiga: true,
-            nome: "Procurando controle".to_string(),
+            procurando: true,
+            nome: "Procurando controle…".to_string(),
             chave: "wired".to_string(),
             ..Default::default()
         })),
@@ -288,7 +289,7 @@ pub fn executar() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("nao foi possivel iniciar o Kontro");
+        .expect("não foi possível iniciar o Kontro");
 
     app.run(move |app, evento| {
         if !matches!(evento, tauri::RunEvent::Exit) {
@@ -901,15 +902,15 @@ fn icone_do_jogo(compartilhado: tauri::State<Arc<Compartilhado>>, nome: String) 
 
 #[tauri::command]
 fn salvar_cartao(png: String) -> Result<String, String> {
-    let bytes = de_base64(&png).ok_or("a imagem veio ilegivel")?;
+    let bytes = de_base64(&png).ok_or("a imagem veio ilegível")?;
 
     let pasta = std::env::var("USERPROFILE")
         .map(|casa| std::path::PathBuf::from(casa).join("Downloads"))
-        .map_err(|_| "nao achei a pasta de downloads")?;
-    std::fs::create_dir_all(&pasta).map_err(|e| e.to_string())?;
+        .map_err(|_| "não achei a pasta Downloads")?;
+    std::fs::create_dir_all(&pasta).map_err(|_| "não deu para gravar em Downloads")?;
 
     let destino = pasta.join(format!("kontro-{}.png", tempo::agora()));
-    std::fs::write(&destino, bytes).map_err(|e| e.to_string())?;
+    std::fs::write(&destino, bytes).map_err(|_| "não deu para gravar em Downloads")?;
 
     let _ = std::process::Command::new("explorer").arg("/select,").arg(&destino).spawn();
 

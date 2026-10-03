@@ -199,6 +199,10 @@ body[data-janela="principal"] .cartao .numero {
   font-weight: 600;
 }
 
+body[data-janela="principal"] .cartao.antiga .numero {
+  color: var(--text-secondary);
+}
+
 body[data-janela="principal"] .cartao .numero.grande {
   font-size: var(--fs-display);
   letter-spacing: -0.02em;
@@ -402,7 +406,7 @@ body[data-janela="principal"] .cartao.novidade .trilho.indefinido span {
 
 body[data-janela="principal"] .cartao.novidade .andamento .rodape {
   margin-top: var(--space-2);
-  font-family: var(--font-mono);
+  font-family: var(--font-text);
   font-size: var(--fs-mono);
   color: var(--text-tertiary);
 }
@@ -546,4 +550,9 @@ body[data-janela="principal"] .chave:active .bolinha {
 }
 body[data-janela="principal"] .chave.ligada:active .bolinha {
   transform: translateX(14px);
+}
+
+body[data-janela="principal"] .cartao.novidade .mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-mono);
 }

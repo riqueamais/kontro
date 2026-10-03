@@ -29,6 +29,8 @@ export interface Estado {
   girando: boolean;
   autonomia: string | null;
   autonomiaMinutos: number | null;
+  procurando: boolean;
+  titulo: string;
 }
 
 export interface Amostra {

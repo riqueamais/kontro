@@ -135,6 +135,7 @@ pub struct Bruto {
     pub quantos_conhecidos: usize,
     pub autonomia: Option<String>,
     pub autonomia_minutos: Option<i64>,
+    pub procurando: bool,
 }
 
 impl Default for Precisao {
@@ -167,6 +168,9 @@ pub struct EstadoDoControle {
 
     pub autonomia: Option<String>,
     pub autonomia_minutos: Option<i64>,
+
+    pub procurando: bool,
+    pub titulo: String,
 }
 
 impl EstadoDoControle {
@@ -185,6 +189,7 @@ impl EstadoDoControle {
             quantos_conhecidos,
             autonomia,
             autonomia_minutos,
+            procurando,
         } = bruto;
 
         let preenchimento = match precisao {
@@ -217,6 +222,14 @@ impl EstadoDoControle {
         let conectado_sem_carga = via != Via::Desligado && preenchimento.is_none();
         let girando = via == Via::Cabo && preenchimento.is_none();
 
+        let titulo = if procurando {
+            "Procurando controle…".to_string()
+        } else if via != Via::Desligado || quantos_conhecidos == 0 {
+            nome.clone()
+        } else {
+            "Desconectado".to_string()
+        };
+
         EstadoDoControle {
             via,
             percentual,
@@ -237,6 +250,8 @@ impl EstadoDoControle {
             girando,
             autonomia,
             autonomia_minutos,
+            procurando,
+            titulo,
         }
     }
 
@@ -259,6 +274,7 @@ impl EstadoDoControle {
             && self.precisao == o.precisao
             && self.nivel == o.nivel
             && self.autonomia == o.autonomia
+            && self.procurando == o.procurando
     }
 }
 
@@ -296,6 +312,31 @@ mod testes {
         cabo.carregando = true;
         assert_eq!(resumo_do_estado(&cabo, Limiares::PADRAO), "No cabo, carregando");
         assert_eq!(resumo_do_estado(&estado(Via::Desligado, None), Limiares::PADRAO), "Desligado");
+    }
+
+    #[test]
+    fn o_titulo_so_diz_desconectado_de_quem_ja_foi_visto() {
+        let procurando = EstadoDoControle::montar(Bruto {
+            procurando: true,
+            nome: "Procurando controle…".into(),
+            ..Default::default()
+        });
+        assert_eq!(procurando.titulo, "Procurando controle…");
+
+        let ninguem = EstadoDoControle::montar(Bruto {
+            nome: "Nenhum controle pareado".into(),
+            ..Default::default()
+        });
+        assert_eq!(ninguem.titulo, "Nenhum controle pareado");
+
+        let mut conhecido = estado(Via::Desligado, Some(77));
+        conhecido = EstadoDoControle::montar(Bruto {
+            quantos_conhecidos: 1,
+            nome: conhecido.nome.clone(),
+            ..Default::default()
+        });
+        assert_eq!(conhecido.titulo, "Desconectado");
+        assert_eq!(estado(Via::Bluetooth, Some(77)).titulo, "Xbox Wireless Controller");
     }
 
     #[test]

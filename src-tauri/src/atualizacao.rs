@@ -128,7 +128,7 @@ fn descrever(erro: &tauri_plugin_updater::Error) -> String {
 
     match erro {
         Error::Reqwest(_) | Error::Io(_) | Error::Network(_) => {
-            "não foi possível falar com o GitHub".into()
+            "não deu para falar com o GitHub".into()
         }
         Error::ReleaseNotFound => "o GitHub respondeu sem uma release legível".into(),
         Error::Serialization(_) | Error::Semver(_) => "a resposta do GitHub veio ilegível".into(),
@@ -138,7 +138,10 @@ fn descrever(erro: &tauri_plugin_updater::Error) -> String {
         Error::Minisign(_) | Error::Base64(_) | Error::SignatureUtf8(_) => {
             "a assinatura do pacote não confere".into()
         }
-        outro => outro.to_string(),
+        outro => {
+            eprintln!("atualização: {outro}");
+            "a atualização parou no meio".into()
+        }
     }
 }
 
