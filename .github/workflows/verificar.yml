@@ -56,9 +56,10 @@ jobs:
         shell: pwsh
         run: |
           # Icones, geometria e a interface Config saem do Rust. Se regerar produz
-          # diferenca, alguem editou a mao ou esqueceu de rodar `--gerar`.
+          # diferenca, alguem editou a mao ou esqueceu de rodar `--gerar`. Os BMP do
+          # instalador ficam de fora: tem texto, e texto depende da fonte instalada.
           cargo run --manifest-path src-tauri/Cargo.toml -- --gerar .
-          $sujo = git status --porcelain
+          $sujo = git status --porcelain -- . ':(exclude)assets/branding/installer/*.bmp'
           if ($sujo) {
             Write-Host $sujo
             git diff -- . ':(exclude)*.png' ':(exclude)*.ico'

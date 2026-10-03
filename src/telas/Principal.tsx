@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { BarraDeTitulo } from "../componentes/BarraDeTitulo";
-import { useConfig } from "../estado";
+import { useConfig, useNovidade } from "../estado";
 import { Configuracoes } from "./Configuracoes";
 import { Diario } from "./Diario";
 import { Passos } from "./Passos";
@@ -61,6 +61,7 @@ const ALTURA_DO_INDICADOR = 16;
 
 export function Principal() {
   const cfg = useConfig();
+  const novidade = useNovidade();
   const [pagina, setPagina] = useState<Pagina>("resumo");
   const [passos, setPassos] = useState<boolean | null>(null);
   const [indicador, setIndicador] = useState<number | null>(null);
@@ -74,6 +75,14 @@ export function Principal() {
     setPagina(proxima);
     if (focar) abas.current[proxima]?.focus();
   };
+
+  useEffect(() => {
+    invoke<{ veioDe: string | null }>("versao_do_app")
+      .then(({ veioDe }) => {
+        if (veioDe) setPagina("config");
+      })
+      .catch(() => {});
+  }, []);
 
   const irParaAgora = useRef(irPara);
   irParaAgora.current = irPara;
@@ -192,6 +201,9 @@ export function Principal() {
               >
                 {p.icone}
                 <span>{p.rotulo}</span>
+                {p.id === "config" && novidade && (
+                  <span className="aviso" aria-label="versão nova disponível" />
+                )}
               </button>
             );
           })}

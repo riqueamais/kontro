@@ -210,14 +210,18 @@ pub fn tamanho_do_icone_grande() -> u32 {
 }
 
 fn rasterizar(svg: &str, tamanho: u32) -> Option<Image<'static>> {
+    let mapa = pixmap(svg, tamanho)?;
+    Some(Image::new_owned(mapa.take(), tamanho, tamanho))
+}
+
+pub(crate) fn pixmap(svg: &str, tamanho: u32) -> Option<tiny_skia::Pixmap> {
     let opcoes = usvg::Options::default();
     let arvore = usvg::Tree::from_str(svg, &opcoes).ok()?;
 
     let mut mapa = tiny_skia::Pixmap::new(tamanho, tamanho)?;
     let escala = tamanho as f32 / g::CAIXA;
     resvg::render(&arvore, tiny_skia::Transform::from_scale(escala, escala), &mut mapa.as_mut());
-
-    Some(Image::new_owned(mapa.take(), tamanho, tamanho))
+    Some(mapa)
 }
 
 pub fn tamanho_do_icone() -> u32 {

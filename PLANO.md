@@ -10,10 +10,10 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T81 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
-de sistema de design e temas, de textos e estados, do Resumo e da pílula e aviso inteiros, e
-as três primeiras de instalação, atualização e avisos do sistema —, mais a T89, que a T32
-tornou obrigatória.
+T92 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
+de sistema de design e temas, de textos e estados, do Resumo, da pílula e aviso e de
+instalação, atualização e avisos do sistema inteiros, e as quatro primeiras de Configurações
+(a T89 tinha saído junto da T32).
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -61,7 +61,15 @@ três páginas ficam montadas. Na T75 a raiz da pílula nasce com a classe `guar
 porque na partida o ciclo pode mostrar a pílula antes de a página escutar o evento. Na T78 o
 dígito do acompanhante usa `calc(var(--fs-caption) * 0.75)`, os 9px pedidos, sem número em
 pixel fora do `tokens.css`. Na T80, uma falha da atualização deixa a linha "Procurar
-atualizações" com o título de sempre, porque a falha agora mora no cartão. Falta a parte que só um jogo responde — o `QUNS`
+atualizações" com o título de sempre, porque a falha agora mora no cartão. Na T83 a
+chegada de uma versão nova não muda o título da linha de versão, como a T83 pedia: a T84
+fixa o título, então "Atualizado para a X · você estava na Y" é a linha de estado embaixo
+dele. Na T86 o corpo do toast vai no `text1`: com só o `text2` o modelo do Windows deixaria
+a linha do meio vazia; e o anel do toast segue o tema da barra, para o glifo não sumir num
+toast claro. Na T88 a tagline mora só na coluna do instalador: no cabeçalho de 150px ela não
+cabe em 12px, e ali ficam a marca e "Kontro" sobre o branco do diálogo. Na T91 os ciclos que
+sobraram (Tamanho e Transparência, até a T93, e os do passo 4) viraram `BotaoDeCiclo`, que
+anda para os dois lados; os botões de ação levam só a descrição da linha. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

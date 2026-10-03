@@ -6,6 +6,8 @@ use crate::caminhos;
 use crate::tempo;
 
 pub const JANELA_MS: i64 = 24 * 60 * 60 * 1000;
+pub const REPETE_SEM_REDE_MS: i64 = 15 * 60 * 1000;
+pub const CARENCIA_DA_SUBIDA_MS: i64 = 2 * 60 * 1000;
 
 const CANAL_ESTAVEL: &str =
     "https://github.com/riqueamais/kontro/releases/latest/download/latest.json";
@@ -101,6 +103,7 @@ pub async fn instalar(app: &AppHandle, atualizacao: Box<Update>) -> Result<(), S
                     .emit("kontro://atualizacao", Andamento::Baixando { bytes: baixado, total });
             },
             move || {
+                crate::marcar_atualizacao();
                 let _ = fim.emit("kontro://atualizacao", Andamento::Instalando);
             },
         )

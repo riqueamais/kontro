@@ -1,26 +1,30 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
+import { ATALHO_DA_PILULA, ATALHO_DE_MOVER, salvar } from "../ajustes";
+import { BotaoDeCiclo } from "../componentes/BotaoDeCiclo";
 import {
-  ATALHO_DA_PILULA,
-  ATALHO_DE_MOVER,
-  LIMIARES_CRITICOS,
-  LIMIARES_DE_AVISO,
-  ciclar,
-  salvar,
-} from "../ajustes";
-import { Chave, Linha, MiniTela } from "../componentes/Controles";
+  Chave,
+  Deslizante,
+  Linha,
+  MiniTela,
+  Seletor,
+  useLinha,
+  useNomeDoControle,
+} from "../componentes/Controles";
 import { Teclas } from "../componentes/Teclas";
-import { decimal } from "../formato";
+import { decimal, quando } from "../formato";
 import {
   Config,
   OverlayMode,
   Recusa,
+  VersaoNova,
   Theme,
   useAtalhosRecusados,
   useConfig,
+  useNovidade,
   usePilulaCoberta,
   usePilulaSolta,
 } from "../estado";
@@ -62,13 +66,6 @@ const MODOS: Record<OverlayMode, string> = {
   Sempre: "Sempre visível",
 };
 
-interface VersaoNova {
-  versao: string;
-  notas: string | null;
-  beta: boolean;
-  atual: string;
-}
-
 interface Busca {
   estado: "nova" | "em-dia" | "falhou";
   versao: string | null;
@@ -93,11 +90,15 @@ type Passo =
 
 export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
   const doRust = useConfig();
+  const [recusadas, setRecusadas] = useState<string[]>([]);
   const [cfg, setCfg] = useState<Config | null>(doRust);
-  const [nova, setNova] = useState<VersaoNova | null>(null);
+  const nova = useNovidade();
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
-  const [telas, setTelas] = useState(1);
+  const [telas, setTelas] = useState<Tela[]>([]);
+  const [ajusteDoCritico, setAjusteDoCritico] = useState<number | null>(null);
   const [atual, setAtual] = useState("");
+  const [veioDe, setVeioDe] = useState<string | null>(null);
+  const [ultima, setUltima] = useState(0);
   const [diagnostico, setDiagnostico] = useState<"parado" | "gravando" | "pronto" | "falhou">(
     "parado",
   );
@@ -110,7 +111,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   }, [doRust]);
 
   useEffect(() => {
-    invoke<string>("versao_do_app").then(setAtual).catch(() => {});
+    invoke<{ atual: string; veioDe: string | null }>("versao_do_app")
+      .then(({ atual, veioDe }) => {
+        setAtual(atual);
+        setVeioDe(veioDe);
+      })
+      .catch(() => {});
+    invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -122,11 +129,11 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
 
   useEffect(() => {
     if (!ativa) return;
-    invoke<VersaoNova | null>("versao_disponivel").then(setNova).catch(() => {});
-    invoke<number>("quantidade_de_telas").then(setTelas).catch(() => {});
+    invoke<Tela[]>("telas").then(setTelas).catch(() => {});
   }, [ativa]);
 
   const procurar = async () => {
+    setVeioDe(null);
     setPasso({ tipo: "procurando" });
     try {
       const busca = await invoke<Busca>("procurar_atualizacao");
@@ -140,14 +147,8 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         return;
       }
 
-      if (busca.estado === "nova" && busca.versao) {
-        setNova({ versao: busca.versao, notas: busca.notas, beta: busca.beta, atual: busca.atual });
-        setPasso({ tipo: "parado" });
-        return;
-      }
-
-      setNova(null);
-      setPasso({ tipo: "atualizado" });
+      invoke<number>("ultima_verificacao").then(setUltima).catch(() => {});
+      setPasso(busca.estado === "nova" ? { tipo: "parado" } : { tipo: "atualizado" });
     } catch {
       setPasso({
         tipo: "falhou",
@@ -174,7 +175,6 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
     try {
       const achou = await invoke<boolean>("instalar_atualizacao");
       if (!achou) {
-        setNova(null);
         setPasso({ tipo: "atualizado" });
         return;
       }
@@ -191,7 +191,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   };
 
   if (!cfg) return null;
-  const gravar = (mudanca: Partial<Config>) => setCfg(salvar(cfg, mudanca));
+  const pilulaDesligada = cfg.OverlayMode === "Desligada";
+  const gravar = (mudanca: Partial<Config>) => {
+    setCfg({ ...cfg, ...mudanca });
+    void salvar(cfg, mudanca).then(({ config, recusadas }) => {
+      setCfg(config);
+      setRecusadas(recusadas);
+    });
+  };
   const ocupado =
     passo.tipo === "procurando" ||
     passo.tipo === "preparando" ||
@@ -208,10 +215,16 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   return (
     <>
       <h1 className="titulo-da-pagina">Configurações</h1>
+      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <h2>Inicialização</h2>
       <Linha
         titulo="Iniciar com o Windows"
-        descricao="Sobe junto com o sistema e já começa a monitorar."
+        descricao={
+          recusadas.includes("StartWithWindows")
+            ? "O Windows não deixou gravar o início automático. Veja Configurações > Aplicativos > Inicialização."
+            : "Sobe junto com o sistema e já começa a monitorar."
+        }
+        erro={recusadas.includes("StartWithWindows")}
       >
         <Chave
           ligado={cfg.StartWithWindows}
@@ -225,14 +238,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
       </Linha>
       <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({ CloseAction: ciclar(cfg.CloseAction, ["MinimizeToTray", "Exit"] as const) })
-          }
-        >
-          {cfg.CloseAction === "MinimizeToTray" ? "Minimizar" : "Encerrar"}
-        </button>
+        <Seletor
+          opcoes={[
+            { valor: "MinimizeToTray" as const, rotulo: "Minimizar para a bandeja" },
+            { valor: "Exit" as const, rotulo: "Encerrar o app" },
+          ]}
+          valor={cfg.CloseAction}
+          aoEscolher={(CloseAction) => gravar({ CloseAction })}
+        />
       </Linha>
       <h2>Aparência</h2>
       <Linha
@@ -243,49 +256,49 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
       </Linha>
 
+      <h2>Limiares de carga</h2>
+      <Linha
+        titulo="Carga baixa"
+        descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
+      >
+        <Deslizante
+          min={5}
+          max={90}
+          passo={5}
+          valor={cfg.WarnThreshold}
+          aoMudar={(aviso) => {
+            const critico = Math.min(cfg.CriticalThreshold, aviso - 1);
+            setAjusteDoCritico(critico !== cfg.CriticalThreshold ? critico : null);
+            gravar({ WarnThreshold: aviso, CriticalThreshold: critico });
+          }}
+        />
+      </Linha>
+      <Linha
+        titulo="Carga crítica"
+        descricao={
+          ajusteDoCritico !== null
+            ? `Ajustado para ${ajusteDoCritico}% para caber abaixo da carga baixa.`
+            : "Abaixo disto fica vermelho, e a pílula aparece mesmo fora de jogo."
+        }
+      >
+        <Deslizante
+          min={1}
+          max={cfg.WarnThreshold - 1}
+          passo={1}
+          valor={cfg.CriticalThreshold}
+          aoMudar={(CriticalThreshold) => {
+            setAjusteDoCritico(null);
+            gravar({ CriticalThreshold });
+          }}
+        />
+      </Linha>
+
       <h2>Avisos</h2>
-      <Linha titulo="Avisar carga baixa" descricao="Notificação ao cruzar os limiares abaixo.">
+      <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
         <Chave
           ligado={cfg.NotificationsEnabled}
           aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
         />
-      </Linha>
-      <Linha
-        titulo="Avisar em"
-        descricao="Carga a partir da qual o Kontro avisa que ela está baixa."
-      >
-        <button
-          className="botao"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() => {
-            const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
-            gravar({
-              WarnThreshold: aviso,
-              CriticalThreshold: Math.min(cfg.CriticalThreshold, aviso - 5),
-            });
-          }}
-        >
-          {cfg.WarnThreshold}%
-        </button>
-      </Linha>
-      <Linha
-        titulo="Avisar de novo em"
-        descricao="O segundo aviso, mais urgente. É ele que também traz a pílula para a tela fora de jogo."
-      >
-        <button
-          className="botao"
-          disabled={!cfg.NotificationsEnabled}
-          onClick={() =>
-            gravar({
-              CriticalThreshold: Math.min(
-                ciclar(cfg.CriticalThreshold, LIMIARES_CRITICOS),
-                cfg.WarnThreshold - 5,
-              ),
-            })
-          }
-        >
-          {cfg.CriticalThreshold}%
-        </button>
       </Linha>
       <Linha
         titulo="Avisar ao conectar"
@@ -298,16 +311,14 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       </Linha>
       <h2>Sobreposição</h2>
       <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({
-              OverlayMode: ciclar(cfg.OverlayMode, ["Desligada", "EmJogo", "Sempre"] as const),
-            })
-          }
-        >
-          {MODOS[cfg.OverlayMode]}
-        </button>
+        <Seletor
+          opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
+            valor,
+            rotulo: MODOS[valor],
+          }))}
+          valor={cfg.OverlayMode}
+          aoEscolher={(OverlayMode) => gravar({ OverlayMode })}
+        />
       </Linha>
       {coberta && (
         <p className="coberta" role="status">
@@ -317,6 +328,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       )}
       <Linha
         titulo="Posição"
+        desabilitada={pilulaDesligada}
         descricao={
           solta
             ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
@@ -324,43 +336,57 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         }
       >
         <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
-        <button
+        <BotaoDaLinha
           className={solta ? "botao destaque" : "botao"}
           onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
         >
           {solta ? "Prender" : "Soltar"}
-        </button>
+        </BotaoDaLinha>
       </Linha>
       <Linha
         titulo="Monitor"
-        descricao="Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        desabilitada={pilulaDesligada || telas.length <= 1}
+        descricao={
+          telas.length <= 1
+            ? "Só há uma tela ligada; a pílula fica nela."
+            : "Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+        }
       >
-        <button
-          className="botao"
-          onClick={() =>
-            gravar({
-              OverlayMonitor: cfg.OverlayMonitor + 1 >= telas ? -1 : cfg.OverlayMonitor + 1,
-            })
-          }
-        >
-          {cfg.OverlayMonitor < 0 ? "Segue o jogo" : `Monitor ${cfg.OverlayMonitor + 1}`}
-        </button>
+        <Seletor
+          opcoes={[
+            { valor: -1, rotulo: "Segue o jogo" },
+            ...telas.map((t, i) => ({
+              valor: i,
+              rotulo: `Monitor ${i + 1} · ${t.largura}×${t.altura}${t.principal ? " · principal" : ""}`,
+            })),
+          ]}
+          valor={cfg.OverlayMonitor < telas.length ? cfg.OverlayMonitor : -1}
+          aoEscolher={(OverlayMonitor) => gravar({ OverlayMonitor })}
+        />
       </Linha>
-      <Linha titulo="Tamanho" descricao="Quanto espaço a pílula ocupa na tela.">
-        <button
-          className="botao"
-          onClick={() => gravar({ OverlayScale: ciclar(cfg.OverlayScale, tamanhos()) })}
-        >
-          {rotulo(TAMANHOS, cfg.OverlayScale)}
-        </button>
+      <Linha
+        titulo="Tamanho"
+        desabilitada={pilulaDesligada}
+        descricao="Quanto espaço a pílula ocupa na tela."
+      >
+        <BotaoDeCiclo
+          opcoes={tamanhos()}
+          valor={cfg.OverlayScale}
+          rotulo={(v) => rotulo(TAMANHOS, v)}
+          aoMudar={(OverlayScale) => gravar({ OverlayScale })}
+        />
       </Linha>
-      <Linha titulo="Transparência" descricao="Para a pílula não competir com o HUD do jogo.">
-        <button
-          className="botao"
-          onClick={() => gravar({ OverlayOpacity: ciclar(cfg.OverlayOpacity, opacidades()) })}
-        >
-          {rotulo(OPACIDADES, cfg.OverlayOpacity)}
-        </button>
+      <Linha
+        titulo="Transparência"
+        desabilitada={pilulaDesligada}
+        descricao="Para a pílula não competir com o HUD do jogo."
+      >
+        <BotaoDeCiclo
+          opcoes={opacidades()}
+          valor={cfg.OverlayOpacity}
+          rotulo={(v) => rotulo(OPACIDADES, v)}
+          aoMudar={(OverlayOpacity) => gravar({ OverlayOpacity })}
+        />
       </Linha>
       <h2>Atalhos</h2>
       <Linha
@@ -380,7 +406,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         padrao={ATALHO_DA_PILULA}
         outra={cfg.OverlayMoveShortcut}
         nomeDaOutra="soltar a pílula"
-        desabilitado={!cfg.OverlayShortcutEnabled}
+        desabilitada={!cfg.OverlayShortcutEnabled}
         ativa={ativa}
         aoTrocar={(c) => gravar({ OverlayShortcut: c })}
       />
@@ -392,20 +418,23 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         padrao={ATALHO_DE_MOVER}
         outra={cfg.OverlayShortcut}
         nomeDaOutra="mostrar a pílula"
-        desabilitado={!cfg.OverlayShortcutEnabled}
+        desabilitada={!cfg.OverlayShortcutEnabled}
         ativa={ativa}
         aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
       />
       <h2>Versão</h2>
-      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
-      <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
+      <Linha
+        titulo="Procurar atualizações"
+        descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
+        classe="versao"
+      >
         <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
         </button>
       </Linha>
       <Linha
         titulo="Avisar sobre versões novas"
-        descricao="Consulta o repositório de tempos em tempos, sem baixar nada sozinho."
+        descricao="Consulta o repositório uma vez por dia, sem baixar nada sozinho."
       >
         <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
       </Linha>
@@ -450,23 +479,15 @@ function rotulo(degraus: [number, string][], valor: number): string {
   return degraus.find(([v]) => v === valor)?.[1] ?? `${Math.round(valor * 100)}%`;
 }
 
-function tituloDaVersao(passo: Passo): string {
-  switch (passo.tipo) {
-    case "atualizado":
-      return "Você está na versão mais recente";
-    case "falhou":
-      return passo.ao === "verificar" ? "Sem resposta do GitHub" : "Procurar atualizações";
-    default:
-      return "Procurar atualizações";
+function linhaDaVersao(atual: string, passo: Passo, ultima: number, veioDe: string | null): string {
+  if (passo.tipo === "procurando") return "Consultando o repositório…";
+  if (passo.tipo === "atualizado") return "Nada novo desde esta versão";
+  if (passo.tipo === "falhou" && passo.ao === "verificar") {
+    return `Não foi possível verificar: ${passo.motivo}`;
   }
-}
-function detalheDaVersao(atual: string, passo: Passo): string {
-  if (passo.tipo === "falhou" && passo.ao === "verificar") return passo.motivo;
-  if (passo.tipo === "procurando") return "Consultando o repositório...";
-  if (passo.tipo === "atualizado") return "Nada novo publicado desde esta versão.";
-
-  const onde = atual ? `Você está na ${atual}. ` : "";
-  return `${onde}O app verifica sozinho uma vez por dia, e você pode procurar quando quiser.`;
+  if (veioDe) return `Atualizado para a ${atual} · você estava na ${veioDe}`;
+  const verificado = ultima > 0 ? `verificado ${quando(ultima)}` : "ainda não verificado";
+  return `Você está na ${atual} · ${verificado}`;
 }
 
 function Novidade({
@@ -495,7 +516,7 @@ function Novidade({
             {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
           </div>
           <div className="rodape">
-            você está na <span className="mono">{nova.atual}</span>
+            Você está na <span className="mono">{nova.atual}</span>
           </div>
         </div>
         {!andando && (
@@ -725,7 +746,7 @@ function LinhaDeAtalho({
   padrao,
   outra,
   nomeDaOutra,
-  desabilitado,
+  desabilitada,
   ativa,
   aoTrocar,
 }: {
@@ -736,28 +757,23 @@ function LinhaDeAtalho({
   padrao: string;
   outra: string;
   nomeDaOutra: string;
-  desabilitado: boolean;
+  desabilitada: boolean;
   ativa: boolean;
   aoTrocar: (combinacao: string) => void;
 }) {
   const { texto, erro } = descricaoDoAtalho(base, recusa);
   return (
-    <Linha titulo={titulo} descricao={texto} erro={erro}>
+    <Linha titulo={titulo} descricao={texto} erro={erro} desabilitada={desabilitada}>
       {combinacao !== padrao && (
-        <button
-          className="botao miudo padrao-do-atalho"
-          disabled={desabilitado}
-          onClick={() => aoTrocar(padrao)}
-        >
+        <BotaoDaLinha className="botao miudo padrao-do-atalho" onClick={() => aoTrocar(padrao)}>
           Padrão
-        </button>
+        </BotaoDaLinha>
       )}
       <Captura
         combinacao={combinacao}
         outra={outra}
         nomeDaOutra={nomeDaOutra}
         recusada={erro}
-        desabilitado={desabilitado}
         ativa={ativa}
         aoTrocar={aoTrocar}
       />
@@ -771,7 +787,6 @@ function Captura({
   nomeDaOutra,
   recusada,
   aoTrocar,
-  desabilitado,
   ativa,
 }: {
   combinacao: string;
@@ -779,9 +794,11 @@ function Captura({
   nomeDaOutra: string;
   recusada: boolean;
   aoTrocar: (combinacao: string) => void;
-  desabilitado: boolean;
   ativa: boolean;
 }) {
+  const linha = useLinha();
+  const idDoValor = useId();
+  const nome = useNomeDoControle(idDoValor);
   const [ouvindo, setOuvindo] = useState(false);
   const [dica, setDica] = useState<string | null>(null);
   const botao = useRef<HTMLButtonElement>(null);
@@ -862,7 +879,9 @@ function Captura({
     <button
       ref={botao}
       className={classe}
-      disabled={desabilitado}
+      id={idDoValor}
+      disabled={linha?.desabilitada}
+      {...nome}
       onClick={() => setOuvindo(!ouvindo)}
     >
       {ouvindo ? (
@@ -890,3 +909,30 @@ function lerCombinacao(evento: KeyboardEvent): string | null {
   return partes.join("+");
 }
 
+interface Tela {
+  largura: number;
+  altura: number;
+  principal: boolean;
+}
+
+function BotaoDaLinha({
+  className,
+  onClick,
+  children,
+}: {
+  className: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  const linha = useLinha();
+  return (
+    <button
+      className={className}
+      disabled={linha?.desabilitada}
+      aria-describedby={linha?.descricao}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}

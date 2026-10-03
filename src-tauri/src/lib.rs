@@ -1,5 +1,6 @@
 mod atalho;
 mod atualizacao;
+mod avisos;
 mod bandeja;
 mod caminhos;
 mod configuracoes;
@@ -30,7 +31,6 @@ use std::time::{Duration, Instant};
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_notification::NotificationExt;
 
 use crate::configuracoes::{CloseAction, Limiares, Settings, Theme};
 use crate::historico::{Amostra, Sessao};
@@ -55,6 +55,7 @@ pub struct Compartilhado {
     geometria_da_principal: Mutex<Option<janelas::Geometria>>,
     painel_escondido_em: Mutex<Option<Instant>>,
     previa_da_pilula: Mutex<bool>,
+    veio_de: Mutex<Option<String>>,
     icone_do_painel: Mutex<Option<(f64, f64)>>,
     altura_do_painel: Mutex<f64>,
 }
@@ -65,6 +66,7 @@ pub(crate) enum Pedido {
     Renomear { chave: String, nome: String },
     Esquecer { chave: String },
     Encerrar(mpsc::Sender<()>),
+    VersaoConsultada { deu_certo: bool },
 }
 
 const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
@@ -143,6 +145,7 @@ pub fn executar() {
         geometria_da_principal: Mutex::new(janelas::Geometria::carregar()),
         painel_escondido_em: Mutex::new(None),
         previa_da_pilula: Mutex::new(false),
+        veio_de: Mutex::new(None),
         icone_do_painel: Mutex::new(None),
         altura_do_painel: Mutex::new(ALTURA_INICIAL_DO_PAINEL),
     });
@@ -155,7 +158,6 @@ pub fn executar() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             trazer_principal(app);
         }))
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(atalho::plugin())
@@ -178,7 +180,7 @@ pub fn executar() {
             icone_do_jogo,
             salvar_cartao,
             windows_no_claro,
-            marcar_atualizacao,
+            ultima_verificacao,
             versao_disponivel,
             procurar_atualizacao,
             instalar_atualizacao,
@@ -191,7 +193,7 @@ pub fn executar() {
             pausar_atalhos,
             previa_da_pilula,
             pilula_coberta,
-            quantidade_de_telas,
+            telas,
             salvar_diagnostico,
             ajustar_altura_do_painel,
             ajustar_tamanho_da_sobreposicao
@@ -223,7 +225,10 @@ pub fn executar() {
             }
 
             let pedido_explicito = std::env::args().any(|a| a == "--show");
-            let voltou_de_atualizacao = consumir_marca_de_atualizacao();
+            let marca = consumir_marca_de_atualizacao();
+            let voltou_de_atualizacao = marca.is_some();
+            *compartilhado.veio_de.lock().unwrap() =
+                marca.filter(|v| v.trim() != env!("CARGO_PKG_VERSION"));
 
             if std::env::args().any(|a| a == "--painel") {
                 compartilhado.abrir_ao_carregar.lock().unwrap().push(janelas::PAINEL.to_string());
@@ -245,7 +250,7 @@ pub fn executar() {
             abrir_mesmo_sem_aviso(&handle, compartilhado.clone());
 
             primeiro_plano::vigiar(envio_do_ciclo.clone());
-            iniciar_ciclo(handle, compartilhado.clone(), recebimento);
+            iniciar_ciclo(handle, compartilhado.clone(), recebimento, envio_do_ciclo.clone());
             Ok(())
         })
         .on_window_event(|janela, evento| {
@@ -310,6 +315,7 @@ fn iniciar_ciclo(
     app: AppHandle,
     compartilhado: Arc<Compartilhado>,
     pedidos: mpsc::Receiver<Pedido>,
+    envio: mpsc::Sender<Pedido>,
 ) {
     std::thread::spawn(move || {
         dispositivo::iniciar_apartamento();
@@ -318,7 +324,8 @@ fn iniciar_ciclo(
         let mut ultimo_icone = String::new();
         let mut ultima_dica = String::new();
         let mut orquestrador = orquestra::Orquestrador::novo();
-        let mut proxima_checagem = atualizacao::ultima_checagem() + atualizacao::JANELA_MS;
+        let mut proxima_checagem = (atualizacao::ultima_checagem() + atualizacao::JANELA_MS)
+            .max(tempo::agora() + atualizacao::CARENCIA_DA_SUBIDA_MS);
         let mut ultimo_material = sistema::material_disponivel();
 
         loop {
@@ -371,8 +378,8 @@ fn iniciar_ciclo(
             if tempo::agora() >= proxima_checagem {
                 proxima_checagem = tempo::agora() + atualizacao::JANELA_MS;
                 let cfg = compartilhado.config.lock().unwrap().clone();
-                if cfg.auto_check_updates {
-                    avisar_versao_nova(&app, cfg.beta_updates);
+                if cfg.auto_check_updates && cfg.first_run_done {
+                    avisar_versao_nova(&app, cfg.beta_updates, envio.clone());
                 }
             }
 
@@ -415,6 +422,14 @@ fn iniciar_ciclo(
                     Ok(Pedido::Esquecer { chave }) => {
                         monitor.esquecer(&chave);
                         break;
+                    }
+                    Ok(Pedido::VersaoConsultada { deu_certo }) => {
+                        let espera = if deu_certo {
+                            atualizacao::JANELA_MS
+                        } else {
+                            atualizacao::REPETE_SEM_REDE_MS
+                        };
+                        proxima_checagem = tempo::agora() + espera;
                     }
                     Ok(Pedido::LerAgora) => {
                         monitor.ler_agora();
@@ -660,12 +675,22 @@ fn atualizar_bandeja(
     }
 }
 
-fn avisar_versao_nova(app: &AppHandle, beta: bool) {
+fn avisar_versao_nova(app: &AppHandle, beta: bool, envio: mpsc::Sender<Pedido>) {
     let app = app.clone();
     std::thread::spawn(move || {
-        let atualizacao::Consulta::Nova(novidade, _) = atualizacao::procurar_bloqueando(&app, beta)
-        else {
-            return;
+        let consulta = atualizacao::procurar_bloqueando(&app, beta);
+        let deu_certo = !matches!(consulta, atualizacao::Consulta::Falhou(_));
+        let _ = envio.send(Pedido::VersaoConsultada { deu_certo });
+
+        let novidade = match consulta {
+            atualizacao::Consulta::Nova(novidade, _) => novidade,
+            atualizacao::Consulta::EmDia => {
+                let compartilhado = app.state::<Arc<Compartilhado>>();
+                *compartilhado.novidade.lock().unwrap() = None;
+                emitir_novidade(&app);
+                return;
+            }
+            atualizacao::Consulta::Falhou(_) => return,
         };
 
         let titulo = if novidade.beta {
@@ -673,16 +698,31 @@ fn avisar_versao_nova(app: &AppHandle, beta: bool) {
         } else {
             format!("Kontro {} disponível", novidade.versao)
         };
-        let _ = app
-            .notification()
-            .builder()
-            .title(titulo)
-            .body("Abra as configurações do Kontro para instalar.")
-            .show();
+        avisos::mostrar(
+            &app,
+            &titulo,
+            "Abra as configurações do Kontro para instalar.",
+            avisos::imagem_do_app(),
+        );
 
         let compartilhado = app.state::<Arc<Compartilhado>>();
         *compartilhado.novidade.lock().unwrap() = Some(novidade);
+        emitir_novidade(&app);
     });
+}
+
+fn versao_nova(compartilhado: &Compartilhado) -> Option<VersaoNova> {
+    compartilhado.novidade.lock().unwrap().clone().map(|n| VersaoNova {
+        versao: n.versao,
+        notas: n.notas,
+        beta: n.beta,
+        atual: env!("CARGO_PKG_VERSION").to_string(),
+    })
+}
+
+fn emitir_novidade(app: &AppHandle) {
+    let Some(compartilhado) = app.try_state::<Arc<Compartilhado>>() else { return };
+    let _ = app.emit("kontro://novidade", versao_nova(&compartilhado));
 }
 
 #[tauri::command]
@@ -746,8 +786,9 @@ fn salvar_configuracoes(
     app: AppHandle,
     compartilhado: tauri::State<Arc<Compartilhado>>,
     novas: Settings,
-) {
+) -> Salvo {
     let mut novas = novas;
+    let mut recusadas = Vec::new();
 
     {
         let anterior = compartilhado.config.lock().unwrap().start_with_windows;
@@ -755,6 +796,7 @@ fn salvar_configuracoes(
             && !inicio_automatico::definir(novas.start_with_windows)
         {
             novas.start_with_windows = inicio_automatico::ligado();
+            recusadas.push("StartWithWindows".to_string());
         }
     }
 
@@ -789,7 +831,14 @@ fn salvar_configuracoes(
 
     let _ = app.emit("kontro://config", &novas);
 
-    *compartilhado.config.lock().unwrap() = novas;
+    *compartilhado.config.lock().unwrap() = novas.clone();
+    Salvo { config: novas, recusadas }
+}
+
+#[derive(serde::Serialize)]
+struct Salvo {
+    config: Settings,
+    recusadas: Vec<String>,
 }
 
 pub(crate) fn soltar_sobreposicao(app: &AppHandle, solta: bool) {
@@ -872,7 +921,7 @@ fn ler_agora(envio: tauri::State<mpsc::Sender<Pedido>>) {
     let _ = envio.send(Pedido::LerAgora);
 }
 
-#[derive(serde::Serialize)]
+#[derive(Clone, serde::Serialize)]
 struct VersaoNova {
     versao: String,
     notas: Option<String>,
@@ -880,17 +929,14 @@ struct VersaoNova {
     atual: String,
 }
 
-fn consumir_marca_de_atualizacao() -> bool {
+fn consumir_marca_de_atualizacao() -> Option<String> {
     let marca = caminhos::arquivo("atualizando");
-    let existe = marca.exists();
-    if existe {
-        let _ = std::fs::remove_file(&marca);
-    }
-    existe
+    let versao = std::fs::read_to_string(&marca).ok()?;
+    let _ = std::fs::remove_file(&marca);
+    Some(versao)
 }
 
-#[tauri::command]
-fn marcar_atualizacao() {
+pub(crate) fn marcar_atualizacao() {
     caminhos::garantir_dir();
     let _ = std::fs::write(caminhos::arquivo("atualizando"), env!("CARGO_PKG_VERSION"));
 }
@@ -964,18 +1010,28 @@ fn windows_no_claro() -> bool {
 }
 
 #[tauri::command]
-fn versao_do_app() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+fn versao_do_app(compartilhado: tauri::State<Arc<Compartilhado>>) -> Versao {
+    Versao {
+        atual: env!("CARGO_PKG_VERSION").to_string(),
+        veio_de: compartilhado.veio_de.lock().unwrap().clone(),
+    }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Versao {
+    atual: String,
+    veio_de: Option<String>,
+}
+
+#[tauri::command]
+fn ultima_verificacao() -> i64 {
+    atualizacao::ultima_checagem()
 }
 
 #[tauri::command]
 fn versao_disponivel(compartilhado: tauri::State<Arc<Compartilhado>>) -> Option<VersaoNova> {
-    compartilhado.novidade.lock().unwrap().clone().map(|n| VersaoNova {
-        versao: n.versao,
-        notas: n.notas,
-        beta: n.beta,
-        atual: env!("CARGO_PKG_VERSION").to_string(),
-    })
+    versao_nova(&compartilhado)
 }
 
 #[derive(serde::Serialize)]
@@ -1000,6 +1056,7 @@ async fn procurar_atualizacao(
     Ok(match achado {
         atualizacao::Consulta::Nova(n, _) => {
             *compartilhado.novidade.lock().unwrap() = Some(n.clone());
+            emitir_novidade(&app);
             Busca {
                 estado: "nova",
                 versao: Some(n.versao),
@@ -1011,6 +1068,7 @@ async fn procurar_atualizacao(
         }
         atualizacao::Consulta::EmDia => {
             *compartilhado.novidade.lock().unwrap() = None;
+            emitir_novidade(&app);
             Busca { estado: "em-dia", versao: None, notas: None, beta: false, atual, motivo: None }
         }
         atualizacao::Consulta::Falhou(motivo) => Busca {
@@ -1034,12 +1092,13 @@ async fn instalar_atualizacao(
     match atualizacao::procurar(&app, beta).await {
         atualizacao::Consulta::Nova(novidade, pacote) => {
             *compartilhado.novidade.lock().unwrap() = Some(novidade);
-            marcar_atualizacao();
+            emitir_novidade(&app);
             atualizacao::instalar(&app, pacote).await?;
             Ok(true)
         }
         atualizacao::Consulta::EmDia => {
             *compartilhado.novidade.lock().unwrap() = None;
+            emitir_novidade(&app);
             Ok(false)
         }
         atualizacao::Consulta::Falhou(motivo) => Err(motivo),
@@ -1072,8 +1131,27 @@ fn salvar_diagnostico(compartilhado: tauri::State<Arc<Compartilhado>>) -> Result
 }
 
 #[tauri::command]
-fn quantidade_de_telas(app: AppHandle) -> usize {
-    app.available_monitors().map(|m| m.len()).unwrap_or(1)
+fn telas(app: AppHandle) -> Vec<Tela> {
+    let principal = app.primary_monitor().ok().flatten().map(|m| *m.position());
+    app.available_monitors()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| {
+            let tamanho = m.size().to_logical::<f64>(m.scale_factor());
+            Tela {
+                largura: tamanho.width.round() as u32,
+                altura: tamanho.height.round() as u32,
+                principal: Some(*m.position()) == principal,
+            }
+        })
+        .collect()
+}
+
+#[derive(serde::Serialize)]
+struct Tela {
+    largura: u32,
+    altura: u32,
+    principal: bool,
 }
 
 #[tauri::command]
