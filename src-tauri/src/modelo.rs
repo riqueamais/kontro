@@ -135,6 +135,7 @@ pub struct Bruto {
     pub quantos_conhecidos: usize,
     pub autonomia: Option<String>,
     pub autonomia_minutos: Option<i64>,
+    pub consumo_por_hora: Option<f64>,
     pub procurando: bool,
 }
 
@@ -168,6 +169,7 @@ pub struct EstadoDoControle {
 
     pub autonomia: Option<String>,
     pub autonomia_minutos: Option<i64>,
+    pub consumo_por_hora: Option<f64>,
 
     pub procurando: bool,
     pub titulo: String,
@@ -189,6 +191,7 @@ impl EstadoDoControle {
             quantos_conhecidos,
             autonomia,
             autonomia_minutos,
+            consumo_por_hora,
             procurando,
         } = bruto;
 
@@ -250,6 +253,7 @@ impl EstadoDoControle {
             girando,
             autonomia,
             autonomia_minutos,
+            consumo_por_hora,
             procurando,
             titulo,
         }
@@ -275,6 +279,7 @@ impl EstadoDoControle {
             && self.nivel == o.nivel
             && self.autonomia == o.autonomia
             && self.procurando == o.procurando
+            && self.consumo_por_hora == o.consumo_por_hora
     }
 }
 

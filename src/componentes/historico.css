@@ -4,17 +4,26 @@
   gap: var(--space-2);
 }
 
-.historico.vazio {
-  display: grid;
-  place-items: center;
-  min-height: 150px;
+.historico .vazio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4);
   text-align: center;
-  font-size: var(--fs-caption);
-  color: var(--text-tertiary);
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
 }
 
-.historico.compacto.vazio {
-  min-height: 64px;
+.historico .vazio .para-30 {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--realce);
+  font-size: inherit;
+}
+
+.historico .vazio .para-30:hover {
+  text-decoration: underline;
 }
 
 .historico .historico-topo {
@@ -102,12 +111,34 @@
 
 .historico .grafico .faixa-aviso {
   fill: var(--amber);
-  opacity: 0.06;
+  opacity: 0.1;
 }
 
 .historico .grafico .faixa-critica {
   fill: var(--red);
-  opacity: 0.07;
+  opacity: 0.12;
+}
+
+.historico .grafico .limiar {
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+  stroke-opacity: 0.35;
+}
+
+.historico .grafico .limiar.aviso {
+  stroke: var(--amber);
+}
+
+.historico .grafico .limiar.critico {
+  stroke: var(--red);
+}
+
+.historico .grafico .rotulo-y.aviso {
+  fill: var(--amber);
+}
+
+.historico .grafico .rotulo-y.critico {
+  fill: var(--red);
 }
 
 .historico .grafico .linha-projetada {

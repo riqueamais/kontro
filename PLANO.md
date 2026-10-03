@@ -10,9 +10,9 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T63 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos e
-de sistema de design e temas inteiros, e as quatro primeiras de textos e estados —, mais a
-T89, que a T32 tornou obrigatória.
+T67 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
+de sistema de design e temas e de textos e estados inteiros, e as três primeiras do Resumo —,
+mais a T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -44,7 +44,11 @@ acompanhou para o cartão não sair do lugar. Na T57 as transições de várias 
 ficaram em várias linhas, cada uma com a curva. Na T61 o ponto de leitura velha e o rodapé em duas
 fontes moram no `<Leitura>` da T55, que é o mesmo nos dois lugares, em vez de repetidos em
 `principal.css` e `painel.css`. Na T63 a duração da sessão no rodapé do gráfico sai da
-janela da sessão, a mesma conta da lista, e não do primeiro e do último ponto. Falta a parte que só um jogo responde — o `QUNS`
+janela da sessão, a mesma conta da lista, e não do primeiro e do último ponto. Na T67, quando
+dois rótulos do eixo cairiam a menos de 12px, a prioridade é aviso, crítico, 100, 50 e 0:
+com aviso em 30 e crítico em 20 os dois ficam a 11,8px no gráfico de 150, e só o "30" sai —
+a linha tracejada vermelha continua lá. Na T66 o bloco "por carga cheia" aparece também com o
+controle desligado, porque é medida da bateria e não da sessão; os que dependem de taxa somem. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
