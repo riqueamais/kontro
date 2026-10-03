@@ -196,7 +196,7 @@ impl EstadoDoControle {
         let texto_da_carga = match (precisao, percentual, nivel) {
             (Precisao::Exata, Some(p), _) => format!("{p}%"),
             (Precisao::Aproximada, _, Some(n)) => descrever_nivel(n).to_string(),
-            _ => "--".to_string(),
+            _ => String::new(),
         };
 
         let texto_da_ligacao = match via {

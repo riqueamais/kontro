@@ -150,5 +150,5 @@ function resumir(estado: Estado): string {
   if (estado.precisao === "Aproximada" && estado.nivel !== null) {
     return ["baixa", "baixa", "média", "cheia"][Math.min(Math.max(estado.nivel, 0), 3)];
   }
-  return estado.textoDaCarga;
+  return estado.textoDaCarga || "sem leitura";
 }

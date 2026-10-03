@@ -103,7 +103,7 @@ function Linha({
             ? controle.preenchimento !== null
               ? `desconectado · ${controle.textoDaCarga} na última leitura`
               : "desconectado"
-            : `${controle.textoDaCarga} · ${controle.textoDaLigacao}`}
+            : `${controle.textoDaCarga || "sem leitura"} · ${controle.textoDaLigacao}`}
         </div>
       </div>
       {removivel &&

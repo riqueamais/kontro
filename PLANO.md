@@ -10,8 +10,8 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T47 — o movimento da tela cheia inteiro, o de desempenho e fluidez inteiro e as seis
-primeiras de janelas, bandeja e atalhos —, mais a T89, que a T32 tornou obrigatória.
+T51 — os movimentos da tela cheia, de desempenho e fluidez e de janelas, bandeja e atalhos
+inteiros —, mais a T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -27,8 +27,11 @@ dizer isso. Sobra só antisserrilhado: no máximo 4 pixels por ícone diferem ma
 Na T45 cada recusa carrega também qual atalho foi recusado (`Mostrar` ou `Mover`), porque o
 campo volta ao anterior e a combinação recusada deixa de ser a que está na tela. Na T46
 `modelo::resumo_do_estado`, `EstadoDoControle::faixa` e `tempo::quando`, que são da T48,
-vieram antes, porque a primeira linha do menu é feita deles; a dica da bandeja continua a
-antiga até a T48. Falta a parte que só um jogo responde — o `QUNS`
+vieram antes, porque a primeira linha do menu é feita deles; a T48 só os usou na dica. Na
+T48 o "--" saiu de `texto_da_carga`, e a lista de controles e a pílula passaram a escrever
+"sem leitura" onde antes mostravam o traço. Na T49 o `janela.json` guarda a posição em pixel
+físico e o tamanho em lógico: posição lógica é ambígua entre monitores de escalas
+diferentes, e `monitor_from_point`, que decide se ela ainda vale, já trabalha em físico. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
