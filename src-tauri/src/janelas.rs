@@ -384,6 +384,7 @@ pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings, tela_cheia: bool
     let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
+#[derive(Clone, Serialize)]
 pub struct Pouso {
     pub x: f64,
     pub y: f64,

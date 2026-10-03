@@ -235,12 +235,10 @@ pub fn executar() {
                 compartilhado.abrir_ao_carregar.lock().unwrap().push(janelas::PAINEL.to_string());
             }
             let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
-            let abrir_direto = pedido_explicito
-                || voltou_de_atualizacao
-                || (!subiu_com_o_sistema && {
-                    let cfg = compartilhado.config.lock().unwrap();
-                    !cfg.start_minimized || !cfg.first_run_done
-                });
+            let abrir_direto = pedido_explicito || voltou_de_atualizacao || {
+                let cfg = compartilhado.config.lock().unwrap();
+                !cfg.first_run_done || (!subiu_com_o_sistema && !cfg.start_minimized)
+            };
             if abrir_direto {
                 compartilhado
                     .abrir_ao_carregar
@@ -265,6 +263,19 @@ pub fn executar() {
                 }
                 return;
             }
+            if janela.label() == janelas::SOBREPOSICAO {
+                if let tauri::WindowEvent::Moved(_) = evento {
+                    let solta = app
+                        .try_state::<Arc<Compartilhado>>()
+                        .is_some_and(|c| *c.sobreposicao_solta.lock().unwrap());
+                    if solta {
+                        if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
+                            let _ = app.emit("kontro://pouso", pouso);
+                        }
+                    }
+                }
+                return;
+            }
             if janela.label() != janelas::PRINCIPAL {
                 return;
             }
@@ -281,6 +292,7 @@ pub fn executar() {
                 }
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     guardar_geometria(app);
+                    soltar_sobreposicao(app, false);
                     if config().is_some_and(|c| c.close_action == CloseAction::Exit) {
                         app.exit(0);
                         return;

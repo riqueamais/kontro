@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
 
-import { useMovimentoReduzido } from "../movimento";
+import { movimentoReduzidoAgora, useMovimentoReduzido } from "../movimento";
 import "./anel.css";
 
 const CAIXA = 512;
@@ -43,15 +43,28 @@ interface Props {
   girando?: boolean;
   marcas?: Marcas | null;
   rotulo?: string;
+  desde?: number;
   children?: React.ReactNode;
 }
 
-export function Anel({ valor, cor, espessura, tamanho, girando, marcas, rotulo, children }: Props) {
+export function Anel({
+  valor,
+  cor,
+  espessura,
+  tamanho,
+  girando,
+  marcas,
+  rotulo,
+  desde,
+  children,
+}: Props) {
   const raio = (CAIXA - espessura) / 2;
   const luz = useId().replace(/:/g, "");
 
   const reduzido = useMovimentoReduzido();
-  const [suave, setSuave] = useState(valor ?? 0);
+  const [suave, setSuave] = useState(() =>
+    desde !== undefined && !movimentoReduzidoAgora() ? desde : (valor ?? 0),
+  );
   useEffect(() => {
     if (girando) return;
     const alvo = valor ?? 0;
