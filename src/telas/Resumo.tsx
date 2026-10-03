@@ -5,12 +5,12 @@ import { Anel } from "../componentes/Anel";
 import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
+import { Leitura } from "../componentes/Leitura";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Saude } from "../componentes/Saude";
 import type { Saude as DadosDeSaude } from "../componentes/Saude";
 import { Sessoes, rotuloDaSessao } from "../componentes/Sessoes";
 import { Amostra, Sessao, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
-import { detalhe, quandoLeu } from "../formato";
 
 interface DoControle {
   serie: Amostra[];
@@ -55,15 +55,9 @@ export function Resumo() {
           )}
         </Anel>
 
-        <div className="leitura">
-          <div className="dispositivo">
-            {estado.via === "Desligado" ? "Desconectado" : estado.nome}
-          </div>
-          <div className="detalhe">{detalhe(estado)}</div>
-          <div className="rodape">{quandoLeu(estado)}</div>
-        </div>
+        <Leitura estado={estado} />
 
-        <BotaoLerAgora estado={estado} className="ciclo" />
+        <BotaoLerAgora estado={estado} className="botao" />
       </section>
 
       <section className="cartao">

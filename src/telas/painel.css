@@ -76,28 +76,6 @@
   letter-spacing: -0.01em;
 }
 
-.painel .leitura {
-  min-width: 0;
-}
-.painel .dispositivo {
-  font-size: 15px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.painel .detalhe {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-.painel .rodape {
-  margin-top: 8px;
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--text-tertiary);
-}
-
 .painel .acoes {
   display: flex;
   justify-content: flex-end;
@@ -105,22 +83,4 @@
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--stroke);
-}
-.painel .acoes button {
-  padding: 7px 14px;
-  border-radius: var(--radius-field);
-  border: 1px solid var(--stroke-strong);
-  background: transparent;
-  color: var(--text-secondary);
-  transition: background var(--motion-fast), color var(--motion-fast);
-}
-.painel .acoes button:hover {
-  background: var(--surface-alt);
-  color: var(--text-primary);
-}
-.painel .acoes button[aria-busy="true"],
-.painel .acoes button[aria-busy="true"]:hover {
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: default;
 }

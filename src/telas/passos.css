@@ -30,7 +30,7 @@ body[data-janela="principal"] .passos .ponto.feito {
 
 body[data-janela="principal"] .passos .ponto.agora {
   width: 20px;
-  background: var(--accent-green);
+  background: var(--realce);
 }
 
 body[data-janela="principal"] .passos .folha {
@@ -173,7 +173,3 @@ body[data-janela="principal"] .passos .adiante {
   gap: var(--space-2);
 }
 
-body[data-janela="principal"] .passos .ciclo.fantasma {
-  border-color: transparent;
-  color: var(--text-tertiary);
-}

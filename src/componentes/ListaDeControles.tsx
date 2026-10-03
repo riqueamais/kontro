@@ -110,12 +110,12 @@ function Linha({
         (confirmando ? (
           <div className="confirmar">
             <button
-              className="ciclo perigo"
+              className="botao perigo miudo"
               onClick={() => void invoke("esquecer_controle", { chave: controle.chave })}
             >
               Esquecer
             </button>
-            <button className="ciclo" onClick={() => setConfirmando(false)}>
+            <button className="botao miudo" onClick={() => setConfirmando(false)}>
               Cancelar
             </button>
           </div>

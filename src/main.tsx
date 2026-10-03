@@ -4,6 +4,7 @@ import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import "./estilo/tokens.css";
 import "./estilo/base.css";
+import "./componentes/botao.css";
 
 const pedido = new URLSearchParams(window.location.search);
 document.body.dataset.janela = pedido.get("janela") ?? "principal";

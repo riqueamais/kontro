@@ -21,7 +21,7 @@
 
   --text-primary: #e8ecef;
   --text-secondary: #9aa4ad;
-  --text-tertiary: #6b757d;
+  --text-tertiary: #7c868f;
 
   --accent-green: #5fe083;
   --accent-teal: #35d7a8;
@@ -81,7 +81,7 @@ body[data-tema="ardosia"] {
 
   --text-primary: #e7edf4;
   --text-secondary: #9aa9b9;
-  --text-tertiary: #6d7d8e;
+  --text-tertiary: #7d8d9e;
 
   --realce: #4ea8ff;
   --gray: #8797a7;
@@ -98,9 +98,10 @@ body[data-tema="brasa"] {
 
   --text-primary: #f2ebe5;
   --text-secondary: #b5a79c;
-  --text-tertiary: #8a7c72;
+  --text-tertiary: #948578;
 
   --gray: #9a8c81;
+  --realce: #e0925a;
   --polegar: #4e3e35;
   --ring-track: rgba(255, 235, 220, 0.13);
 }
@@ -116,7 +117,7 @@ body[data-tema="dia"] {
 
   --text-primary: #0f151b;
   --text-secondary: #465260;
-  --text-tertiary: #67727f;
+  --text-tertiary: #5b6673;
 
   --accent-green: #10864a;
   --accent-teal: #0a7f68;
@@ -124,7 +125,7 @@ body[data-tema="dia"] {
   --red: #b8302b;
   --gray: #5f6b78;
 
-  --realce: #0a7f68;
+  --realce: #0a6e5b;
   --atencao: #b4235a;
   --polegar: #9aa6b4;
   --ring-track: rgba(15, 21, 27, 0.14);
@@ -148,7 +149,7 @@ body[data-tema="preto"][data-material="sim"] {
 body[data-janela="sobreposicao"] {
   --text-primary: #e8ecef;
   --text-secondary: #9aa4ad;
-  --text-tertiary: #6b757d;
+  --text-tertiary: #7c868f;
 
   --accent-green: #5fe083;
   --accent-teal: #35d7a8;
@@ -156,5 +157,6 @@ body[data-janela="sobreposicao"] {
   --red: #f2564e;
   --gray: #8d979f;
 
+  --realce: #35d7a8;
   --ring-track: rgba(255, 255, 255, 0.16);
 }
