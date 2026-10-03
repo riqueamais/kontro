@@ -10,8 +10,6 @@ use windows::Win32::System::Threading::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
 
-use crate::tela::Tela;
-
 const FORA: &[&str] = &[
     "kontro.exe",
     "explorer.exe",
@@ -28,21 +26,6 @@ const FORA: &[&str] = &[
 pub struct Jogo {
     pub caminho: PathBuf,
     pub nome: String,
-}
-
-pub fn em_foco() -> Option<(Jogo, Tela)> {
-    let agora = Tela::atual();
-    if !agora.conta_como_jogo() {
-        return None;
-    }
-    Some((de(&executavel_em_foco()?)?, agora))
-}
-
-pub fn de(caminho: &Path) -> Option<Jogo> {
-    if ignorado(caminho) {
-        return None;
-    }
-    Some(Jogo { nome: batizar(caminho), caminho: caminho.to_path_buf() })
 }
 
 pub fn ignorado(caminho: &Path) -> bool {
@@ -85,7 +68,7 @@ fn maiuscula_no_comeco(palavra: &str) -> String {
     }
 }
 
-pub(crate) fn executavel_em_foco() -> Option<PathBuf> {
+pub fn executavel_em_foco() -> Option<PathBuf> {
     let janela = unsafe { GetForegroundWindow() };
     if janela.is_invalid() {
         return None;

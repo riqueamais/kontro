@@ -73,10 +73,6 @@ impl Tela {
     }
 }
 
-pub fn em_tela_cheia() -> bool {
-    Tela::atual().conta_como_jogo()
-}
-
 fn consultar() -> Option<QUERY_USER_NOTIFICATION_STATE> {
     unsafe { SHQueryUserNotificationState().ok() }
 }

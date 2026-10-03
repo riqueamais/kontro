@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 
+import { useMovimentoReduzido } from "../movimento";
 import "./anel.css";
 
 const CAIXA = 512;
@@ -48,10 +49,15 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
   const raio = (CAIXA - espessura) / 2;
   const luz = useId().replace(/:/g, "");
 
+  const reduzido = useMovimentoReduzido();
   const [suave, setSuave] = useState(valor ?? 0);
   useEffect(() => {
     if (girando) return;
     const alvo = valor ?? 0;
+    if (reduzido) {
+      setSuave(alvo);
+      return;
+    }
     let quadro = 0;
     const inicio = performance.now();
     const partida = suave;
@@ -63,7 +69,7 @@ export function Anel({ valor, cor, espessura, tamanho, girando, marcas, children
     };
     quadro = requestAnimationFrame(passo);
     return () => cancelAnimationFrame(quadro);
-  }, [valor, girando]);
+  }, [valor, girando, reduzido]);
 
   const cheio = !girando && suave >= 99.9;
   const apagada = cor === "var(--gray)";

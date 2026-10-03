@@ -422,6 +422,15 @@ body[data-janela="principal"] .cartao.novidade .trilho.indefinido span {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  body[data-janela="principal"] .cartao.novidade .trilho.indefinido span {
+    animation: none;
+    transform: none;
+    width: 100%;
+    opacity: 0.4;
+  }
+}
+
 body[data-janela="principal"] .cartao.novidade .andamento .rodape {
   margin-top: var(--space-2);
 }

@@ -52,6 +52,9 @@ pub struct Compartilhado {
     pilula: OnceLock<isize>,
     coberta_por: Mutex<Option<String>>,
     abrir_ao_carregar: Mutex<Vec<String>>,
+    painel_escondido_em: Mutex<Option<Instant>>,
+    icone_do_painel: Mutex<Option<(f64, f64)>>,
+    altura_do_painel: Mutex<f64>,
 }
 
 pub(crate) enum Pedido {
@@ -65,6 +68,10 @@ pub(crate) enum Pedido {
 const INTERVALO_DO_CICLO: Duration = Duration::from_secs(2);
 
 const ESPERA_APOS_TROCAR_O_FOCO: Duration = Duration::from_millis(150);
+
+const ALTURA_INICIAL_DO_PAINEL: f64 = 360.0;
+
+const MESMO_GESTO_QUE_FECHOU: Duration = Duration::from_millis(300);
 
 pub fn executar() {
     let argumentos: Vec<String> = std::env::args().collect();
@@ -130,6 +137,9 @@ pub fn executar() {
         pilula: OnceLock::new(),
         coberta_por: Mutex::new(None),
         abrir_ao_carregar: Mutex::new(Vec::new()),
+        painel_escondido_em: Mutex::new(None),
+        icone_do_painel: Mutex::new(None),
+        altura_do_painel: Mutex::new(ALTURA_INICIAL_DO_PAINEL),
     });
 
     let (envio, recebimento) = mpsc::channel::<Pedido>();
@@ -230,10 +240,19 @@ pub fn executar() {
             Ok(())
         })
         .on_window_event(|janela, evento| {
+            let app = janela.app_handle();
+            if janela.label() == janelas::PAINEL {
+                if let tauri::WindowEvent::Focused(false) = evento {
+                    if let Some(c) = app.try_state::<Arc<Compartilhado>>() {
+                        *c.painel_escondido_em.lock().unwrap() = Some(Instant::now());
+                    }
+                    let _ = app.emit_to(janelas::PAINEL, "kontro://painel-fechar", ());
+                }
+                return;
+            }
             if janela.label() != janelas::PRINCIPAL {
                 return;
             }
-            let app = janela.app_handle();
             let config =
                 || app.try_state::<Arc<Compartilhado>>().map(|c| c.config.lock().unwrap().clone());
 
@@ -339,7 +358,7 @@ fn iniciar_ciclo(
                 let cfg = compartilhado.config.lock().unwrap().clone();
                 let mao = *compartilhado.sobreposicao_a_mao.lock().unwrap();
                 let solta = *compartilhado.sobreposicao_solta.lock().unwrap();
-                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta);
+                orquestrador.reavaliar(&app, &estado, &cfg, mao, solta, monitor.tela_cheia());
             }
 
             let prazo = Instant::now() + INTERVALO_DO_CICLO;
@@ -385,9 +404,12 @@ fn iniciar_ciclo(
 
 const ESPERA_MAXIMA_PELA_PAGINA: Duration = Duration::from_secs(5);
 
-fn abrir_painel(app: &AppHandle) {
+fn abrir_painel(app: &AppHandle, icone: Option<(f64, f64)>) {
     let Some(painel) = app.get_webview_window(janelas::PAINEL) else { return };
-    janelas::posicionar_painel(app);
+    if let Some(c) = app.try_state::<Arc<Compartilhado>>() {
+        *c.icone_do_painel.lock().unwrap() = icone;
+        janelas::assentar_painel(app, icone, *c.altura_do_painel.lock().unwrap());
+    }
     let _ = painel.show();
     let _ = painel.set_focus();
     let _ = app.emit("kontro://painel-abriu", ());
@@ -395,7 +417,7 @@ fn abrir_painel(app: &AppHandle) {
 
 fn abrir_pendente(app: &AppHandle, rotulo: &str) {
     if rotulo == janelas::PAINEL {
-        abrir_painel(app);
+        abrir_painel(app, None);
         return;
     }
     let Some(janela) = app.get_webview_window(rotulo) else { return };
@@ -476,15 +498,29 @@ fn montar_bandeja(app: &AppHandle) -> tauri::Result<()> {
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                rect,
                 ..
             } = evento
             {
                 let app = icone.app_handle();
+                let mesmo_gesto = app.try_state::<Arc<Compartilhado>>().is_some_and(|c| {
+                    c.painel_escondido_em
+                        .lock()
+                        .unwrap()
+                        .is_some_and(|quando| quando.elapsed() < MESMO_GESTO_QUE_FECHOU)
+                });
+                if mesmo_gesto {
+                    return;
+                }
                 if let Some(painel) = app.get_webview_window(janelas::PAINEL) {
                     if painel.is_visible().unwrap_or(false) {
                         let _ = painel.hide();
                     } else {
-                        abrir_painel(app);
+                        let canto = rect.position.to_physical::<f64>(1.0);
+                        let tamanho = rect.size.to_physical::<f64>(1.0);
+                        let centro =
+                            (canto.x + tamanho.width / 2.0, canto.y + tamanho.height / 2.0);
+                        abrir_painel(app, Some(centro));
                     }
                 }
             }
@@ -944,7 +980,11 @@ fn ajustar_altura_do_painel(app: AppHandle, altura: f64) {
     if !janela.is_visible().unwrap_or(false) {
         return;
     }
-    janelas::assentar_painel(&janela, altura.clamp(200.0, 900.0));
+    let Some(c) = app.try_state::<Arc<Compartilhado>>() else { return };
+    let altura = altura.clamp(200.0, 900.0);
+    *c.altura_do_painel.lock().unwrap() = altura;
+    let icone = *c.icone_do_painel.lock().unwrap();
+    janelas::assentar_painel(&app, icone, altura);
 }
 
 #[tauri::command]

@@ -10,10 +10,15 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T39 — o movimento da tela cheia inteiro e as doze primeiras de desempenho e fluidez —, mais a
-T89, que a T32 tornou obrigatória. Desvio na T38: o `botao.css` não foi criado, porque o
-botão não tem folha própria até a T55; o estado `aria-busy` mora no `principal.css` e no
-`painel.css`, junto das regras que ele sobrepõe. Falta a parte que só um jogo responde — o `QUNS`
+T43 — o movimento da tela cheia inteiro, o de desempenho e fluidez inteiro e as duas
+primeiras de janelas, bandeja e atalhos —, mais a T89, que a T32 tornou obrigatória.
+Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
+T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
+ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
+carimbo e manda `kontro://painel-fechar`, e a página faz a saída de 120 ms da T35 antes de
+esconder — esconder do Rust cortaria a animação. Na T43 o painel é assentado pela área do
+cliente, descontando a borda invisível de redimensionar que o Windows põe na janela com
+sombra: sem isso a margem de 12 px virava 3 px na lateral e 10 px embaixo. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
