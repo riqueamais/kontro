@@ -10,8 +10,9 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T51 — os movimentos da tela cheia, de desempenho e fluidez e de janelas, bandeja e atalhos
-inteiros —, mais a T89, que a T32 tornou obrigatória.
+T55 — os movimentos da tela cheia, de desempenho e fluidez e de janelas, bandeja e atalhos
+inteiros, e as quatro primeiras de sistema de design e temas —, mais a T89, que a T32 tornou
+obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -31,7 +32,10 @@ vieram antes, porque a primeira linha do menu é feita deles; a T48 só os usou 
 T48 o "--" saiu de `texto_da_carga`, e a lista de controles e a pílula passaram a escrever
 "sem leitura" onde antes mostravam o traço. Na T49 o `janela.json` guarda a posição em pixel
 físico e o tamanho em lógico: posição lógica é ambígua entre monitores de escalas
-diferentes, e `monitor_from_point`, que decide se ela ainda vale, já trabalha em físico. Falta a parte que só um jogo responde — o `QUNS`
+diferentes, e `monitor_from_point`, que decide se ela ainda vale, já trabalha em físico. Na
+T55 o botão passa a usar `--text-primary` no texto, como o do WinUI, em vez do
+`--text-secondary` de antes; e o cartão de versão nova também passou a usar `.leitura`, que
+é o mesmo bloco de nome e rodapé. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

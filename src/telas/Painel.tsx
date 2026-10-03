@@ -7,9 +7,9 @@ import { Anel } from "../componentes/Anel";
 import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
+import { Leitura } from "../componentes/Leitura";
 import { ListaDeControles } from "../componentes/ListaDeControles";
 import { Amostra, corDoAnel, useAoMudarOHistorico, useEstado, useLimiares } from "../estado";
-import { detalhe, quandoLeu } from "../formato";
 import "./painel.css";
 
 type Fase = "guardado" | "aberto" | "saindo";
@@ -162,13 +162,7 @@ export function Painel() {
           )}
         </Anel>
 
-        <div className="leitura">
-          <div className="dispositivo">
-            {estado.via === "Desligado" ? "Desconectado" : estado.nome}
-          </div>
-          <div className="detalhe">{detalhe(estado)}</div>
-          <div className="rodape">{quandoLeu(estado)}</div>
-        </div>
+        <Leitura estado={estado} />
       </div>
 
       <Historico serie={serie} compacto autonomiaMinutos={estado.autonomiaMinutos} />
@@ -176,10 +170,10 @@ export function Painel() {
       <ListaDeControles principal={estado.chave} />
 
       <div className="acoes">
-        <button onClick={() => invoke("abrir_aba", { aba: "config" })}>
+        <button className="botao" onClick={() => invoke("abrir_aba", { aba: "config" })}>
           Configurações
         </button>
-        <BotaoLerAgora estado={estado} />
+        <BotaoLerAgora estado={estado} className="botao" />
       </div>
     </div>
   );

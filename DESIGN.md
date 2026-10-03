@@ -38,12 +38,28 @@ Path do controle (use direto em `Geometry.Parse`):
 | StrokeStrong | `#2A333B` | bordas de controle focado |
 | TextPrimary | `#E8ECEF` | título, valor |
 | TextSecondary | `#9AA4AD` | descrição |
-| TextTertiary | `#6B757D` | rótulo, timestamp |
-| AccentGreen | `#5FE083` | carga saudável, ação primária |
+| TextTertiary | `#7C868F` | rótulo, timestamp |
+| AccentGreen | `#5FE083` | carga saudável — só carga; ação é `--realce` |
 | AccentTeal | `#35D7A8` | fim do gradiente do anel |
 | Amber | `#F2C14E` | bateria baixa |
 | Red | `#F2564E` | bateria crítica |
 | Gray | `#8D979F` | no cabo / sem leitura |
+
+O terciário é o texto menor da tela, então é ele que decide o contraste. A conta, por tema,
+contra os três chãos em que ele aparece (Ink nos rótulos de seção, Surface nos cartões,
+SurfaceAlt na linha escolhida e no hover):
+
+| tema | TextTertiary | sobre Ink | sobre Surface | sobre SurfaceAlt |
+| ---- | ------------ | --------- | ------------- | ---------------- |
+| Noite | `#7C868F` | 5,22 | 5,03 | 4,72 |
+| Preto | `#7C868F` | 5,66 | 5,37 | 4,81 |
+| Ardósia | `#7D8D9E` | 5,53 | 5,10 | 4,55 |
+| Brasa | `#948578` | 5,45 | 5,20 | 4,80 |
+| Dia | `#5B6673` | 5,16 | 5,84 | 4,79 |
+
+Cada um continua mais apagado que o TextSecondary do próprio tema. No Dia o realce é
+`#0A6E5B`: o Ink sobre ele, no hover do botão de destaque, dá 5,46:1. **Token novo de texto
+não entra sem a linha dele nesta tabela.**
 
 Gradiente do anel no ícone do app: `#5FE083` -> `#35D7A8`, diagonal (120,80) -> (400,440).
 Na bandeja **não** use gradiente: cor plana, porque em 16px o gradiente vira lama.
@@ -109,6 +125,12 @@ Raios: 8 (campo, botão), 12 (cartão), 16 (janela/flyout), pill (anel de status
 Elevação: apenas duas. Cartão = sem sombra, borda `Stroke`. Flyout = sombra
 `0 18 40 rgba(0,0,0,0.55)`, blur 32, opacidade 0.55.
 
+Controle tem preenchimento sutil; cartão não. O botão (`.botao`, em `botao.css`) é o do
+WinUI: fundo TextPrimary a 5% (8% no hover), borda TextPrimary a 12%, 32px de altura (28px
+no `.miudo`), raio 8. Só borda, sem fundo, ele some contra o cartão — `StrokeStrong` sobre
+Surface dá 1,45:1. A chave desligada tem contorno em TextTertiary, acima de 3:1 contra a
+linha em todos os temas.
+
 ## 6. Movimento
 
 120ms para hover e pressed, 180ms para troca de estado do anel, 240ms para abrir o
@@ -138,11 +160,11 @@ com o número da versão, última leitura da versão atual em Caption/Mono, bot�
 direita e, abaixo de um divisor, as notas da release desenhadas como o que são — rótulo
 de seção no mesmo estilo dos `<h2>` da página e uma lista de verdade, nunca a primeira
 linha do texto truncada dentro de uma descrição. Baixando, o botão dá lugar a um trilho
-de 3px em AccentGreen com a porcentagem em Caption/Mono embaixo.
+de 3px em `--realce` com a porcentagem em Caption/Mono embaixo.
 
 **Passo a passo (primeira abertura)** — ocupa a janela inteira, sem o trilho lateral.
 Coluna centrada de 520: pontos de progresso no topo (o de agora vira um traço de 20px
-em AccentGreen), palco de 136px com a ilustração, título em Title, corpo em Body com no
+em `--realce`), palco de 136px com a ilustração, título em Title, corpo em Body com no
 máximo 46 caracteres por linha, e o rodapé com *Pular* à esquerda e *Voltar/Avançar* à
 direita. As ilustrações são os próprios componentes do app — o anel de verdade, animando
 — e nunca imagem de tela. Um dos seis passos é ao vivo: solta a pílula na tela e espera

@@ -64,18 +64,18 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
         {ultimo ? (
           <span />
         ) : (
-          <button className="ciclo fantasma" onClick={terminar}>
+          <button className="botao fantasma" onClick={terminar}>
             Pular
           </button>
         )}
         <div className="adiante">
           {passo > 0 && (
-            <button className="ciclo" onClick={() => setPasso(passo - 1)}>
+            <button className="botao" onClick={() => setPasso(passo - 1)}>
               Voltar
             </button>
           )}
           <button
-            className="ciclo destaque"
+            className="botao destaque"
             onClick={() => (ultimo ? terminar() : setPasso(passo + 1))}
           >
             {ultimo ? "Começar" : "Avançar"}
@@ -188,7 +188,7 @@ function folha(passo: number, cfg: Config, solta: boolean) {
           )}
           {!solta && (
             <button
-              className="ciclo"
+              className="botao"
               onClick={() => void invoke("soltar_a_pilula", { solta: true })}
             >
               Soltar de novo
@@ -221,7 +221,7 @@ function folha(passo: number, cfg: Config, solta: boolean) {
           </p>
           <Linha titulo="Avisar em" descricao="A primeira vez que ele te chama.">
             <button
-              className="ciclo"
+              className="botao"
               onClick={() => {
                 const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
                 salvar(cfg, {
@@ -235,7 +235,7 @@ function folha(passo: number, cfg: Config, solta: boolean) {
           </Linha>
           <Linha titulo="Avisar de novo em" descricao="O segundo aviso, mais urgente.">
             <button
-              className="ciclo"
+              className="botao"
               onClick={() =>
                 salvar(cfg, {
                   CriticalThreshold: Math.min(

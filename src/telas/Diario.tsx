@@ -176,7 +176,7 @@ function Exportar({
   return (
     <div className="exportar">
       <button
-        className="ciclo destaque"
+        className="botao destaque"
         disabled={passo === "salvando"}
         onClick={() => void salvar()}
       >

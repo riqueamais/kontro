@@ -66,13 +66,19 @@ const OPACIDADES: [number, string][] = [
   [0.55, "55%"],
 ];
 
-const TEMAS: { id: Theme; rotulo: string }[] = [
-  { id: "Sistema", rotulo: "Do Windows" },
-  { id: "Noite", rotulo: "Noite" },
-  { id: "Preto", rotulo: "Preto" },
-  { id: "Ardosia", rotulo: "Ardósia" },
-  { id: "Brasa", rotulo: "Brasa" },
-  { id: "Dia", rotulo: "Dia" },
+const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: string }[] = [
+  {
+    id: "Sistema",
+    rotulo: "Do Windows",
+    chao: "linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%)",
+    realce: "#35d7a8",
+    texto: "#e8ecef",
+  },
+  { id: "Noite", rotulo: "Noite", chao: "#0b0e11", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Ardosia", rotulo: "Ardósia", chao: "#0d1219", realce: "#4ea8ff", texto: "#e7edf4" },
+  { id: "Brasa", rotulo: "Brasa", chao: "#100c0a", realce: "#e0925a", texto: "#f2ebe5" },
+  { id: "Dia", rotulo: "Dia", chao: "#eef1f5", realce: "#0a6e5b", texto: "#0f151b" },
 ];
 
 const MODOS: Record<OverlayMode, string> = {
@@ -234,7 +240,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       </Linha>
       <Linha titulo="Ao clicar no X" descricao="Fechar a janela pode só esconder o app.">
         <button
-          className="ciclo"
+          className="botao"
           onClick={() =>
             gravar({ CloseAction: ciclar(cfg.CloseAction, ["MinimizeToTray", "Exit"] as const) })
           }
@@ -243,23 +249,12 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         </button>
       </Linha>
       <h2>Aparência</h2>
-      <Linha titulo="Tema" descricao="O chão da janela. As cores de carga não mudam.">
-        <div className="temas">
-          {TEMAS.map((t) => (
-            <button
-              key={t.id}
-              className={`amostra-de-tema${cfg.Theme === t.id ? " escolhida" : ""}`}
-              data-tema={t.id.toLowerCase()}
-              title={t.rotulo}
-              aria-label={t.rotulo}
-              aria-pressed={cfg.Theme === t.id}
-              onClick={() => gravar({ Theme: t.id })}
-            >
-              <span className="chao" />
-              <span className="pingo" />
-            </button>
-          ))}
-        </div>
+      <Linha
+        titulo="Tema"
+        descricao={`${TEMAS.find((t) => t.id === cfg.Theme)?.rotulo ?? "Noite"} · o chão da janela. As cores de carga não mudam.`}
+        classe="tema"
+      >
+        <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
       </Linha>
 
       <h2>Avisos</h2>
@@ -274,7 +269,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         descricao="Carga a partir da qual o Kontro avisa que ela está baixa."
       >
         <button
-          className="ciclo"
+          className="botao"
           disabled={!cfg.NotificationsEnabled}
           onClick={() => {
             const aviso = ciclar(cfg.WarnThreshold, LIMIARES_DE_AVISO);
@@ -292,7 +287,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         descricao="O segundo aviso, mais urgente. É ele que também traz a pílula para a tela fora de jogo."
       >
         <button
-          className="ciclo"
+          className="botao"
           disabled={!cfg.NotificationsEnabled}
           onClick={() =>
             gravar({
@@ -318,7 +313,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       <h2>Sobreposição</h2>
       <Linha titulo="Quando aparecer" descricao="Fixa na tela por cima do que estiver aberto.">
         <button
-          className="ciclo"
+          className="botao"
           onClick={() =>
             gravar({
               OverlayMode: ciclar(cfg.OverlayMode, ["Desligada", "EmJogo", "Sempre"] as const),
@@ -344,7 +339,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       >
         <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} />
         <button
-          className={solta ? "ciclo destaque" : "ciclo"}
+          className={solta ? "botao destaque" : "botao"}
           onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
         >
           {solta ? "Prender" : "Soltar"}
@@ -355,7 +350,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         descricao="Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
       >
         <button
-          className="ciclo"
+          className="botao"
           onClick={() =>
             gravar({
               OverlayMonitor: cfg.OverlayMonitor + 1 >= telas ? -1 : cfg.OverlayMonitor + 1,
@@ -367,7 +362,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       </Linha>
       <Linha titulo="Tamanho" descricao="Quanto espaço a pílula ocupa na tela.">
         <button
-          className="ciclo"
+          className="botao"
           onClick={() => gravar({ OverlayScale: ciclar(cfg.OverlayScale, tamanhos()) })}
         >
           {rotulo(TAMANHOS, cfg.OverlayScale)}
@@ -375,7 +370,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       </Linha>
       <Linha titulo="Transparência" descricao="Para a pílula não competir com o HUD do jogo.">
         <button
-          className="ciclo"
+          className="botao"
           onClick={() => gravar({ OverlayOpacity: ciclar(cfg.OverlayOpacity, opacidades()) })}
         >
           {rotulo(OPACIDADES, cfg.OverlayOpacity)}
@@ -418,7 +413,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       <h2>Versão</h2>
       {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
       <Linha titulo={tituloDaVersao(passo)} descricao={detalheDaVersao(atual, passo)}>
-        <button className="ciclo" disabled={ocupado} onClick={() => void procurar()}>
+        <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
           {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
         </button>
       </Linha>
@@ -439,13 +434,13 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         titulo="Passo a passo"
         descricao="As seis telas que explicam o app, de novo do começo."
       >
-        <button className="ciclo" onClick={aoRever}>
+        <button className="botao" onClick={aoRever}>
           Rever
         </button>
       </Linha>
       <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)}>
         <button
-          className="ciclo"
+          className="botao"
           disabled={diagnostico === "gravando"}
           onClick={async () => {
             setDiagnostico("gravando");
@@ -510,14 +505,14 @@ function Novidade({
   return (
     <section className="cartao novidade">
       <div className="cabeca">
-        <div>
+        <div className="leitura">
           <div className="dispositivo">
             {nova.beta ? "Beta" : "Versão"} {nova.versao} disponível
           </div>
           <div className="rodape">você está na {nova.atual}</div>
         </div>
         {!andando && (
-          <button className="ciclo destaque" onClick={aoAtualizar}>
+          <button className="botao destaque" onClick={aoAtualizar}>
             Atualizar agora
           </button>
         )}
@@ -619,6 +614,60 @@ function textoDoDiagnostico(passo: "parado" | "gravando" | "pronto" | "falhou"):
   }
 }
 
+function SeletorDeTema({
+  escolhido,
+  aoEscolher,
+}: {
+  escolhido: Theme;
+  aoEscolher: (tema: Theme) => void;
+}) {
+  const amostras = useRef<Partial<Record<Theme, HTMLButtonElement | null>>>({});
+
+  const aoTeclar = (evento: React.KeyboardEvent) => {
+    const passo = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[evento.key];
+    if (!passo) return;
+    evento.preventDefault();
+    const i = TEMAS.findIndex((t) => t.id === escolhido);
+    const proximo = TEMAS[(i + passo + TEMAS.length) % TEMAS.length].id;
+    aoEscolher(proximo);
+    amostras.current[proximo]?.focus();
+  };
+
+  return (
+    <div className="temas" role="radiogroup" aria-label="Tema" onKeyDown={aoTeclar}>
+      {TEMAS.map((t) => {
+        const escolhida = escolhido === t.id;
+        return (
+          <button
+            key={t.id}
+            ref={(el) => {
+              amostras.current[t.id] = el;
+            }}
+            role="radio"
+            aria-checked={escolhida}
+            tabIndex={escolhida ? 0 : -1}
+            className={`amostra-de-tema${escolhida ? " escolhida" : ""}`}
+            style={
+              {
+                "--amostra-chao": t.chao,
+                "--amostra-cor": t.realce,
+                "--amostra-texto": t.texto,
+              } as React.CSSProperties
+            }
+            onClick={() => aoEscolher(t.id)}
+          >
+            <span className="caixa" aria-hidden="true">
+              <span className="pingo" />
+              <span className="traco" />
+            </span>
+            <span className="nome">{t.rotulo}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 const PRAZO_DA_DICA_MS = 2000;
 
 function descricaoDoAtalho(base: string, recusa: Recusa | undefined) {
@@ -655,7 +704,7 @@ function LinhaDeAtalho({
     <Linha titulo={titulo} descricao={texto} erro={erro}>
       {combinacao !== padrao && (
         <button
-          className="ciclo padrao-do-atalho"
+          className="botao miudo padrao-do-atalho"
           disabled={desabilitado}
           onClick={() => aoTrocar(padrao)}
         >
