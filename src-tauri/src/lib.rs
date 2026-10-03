@@ -192,6 +192,7 @@ pub fn executar() {
             atalhos_recusados,
             pausar_atalhos,
             previa_da_pilula,
+            mostrar_snap_layouts,
             pilula_coberta,
             telas,
             salvar_diagnostico,
@@ -234,12 +235,10 @@ pub fn executar() {
                 compartilhado.abrir_ao_carregar.lock().unwrap().push(janelas::PAINEL.to_string());
             }
             let subiu_com_o_sistema = std::env::args().any(|a| a == "--minimizado");
-            let abrir_direto = pedido_explicito
-                || voltou_de_atualizacao
-                || (!subiu_com_o_sistema && {
-                    let cfg = compartilhado.config.lock().unwrap();
-                    !cfg.start_minimized || !cfg.first_run_done
-                });
+            let abrir_direto = pedido_explicito || voltou_de_atualizacao || {
+                let cfg = compartilhado.config.lock().unwrap();
+                !cfg.first_run_done || (!subiu_com_o_sistema && !cfg.start_minimized)
+            };
             if abrir_direto {
                 compartilhado
                     .abrir_ao_carregar
@@ -264,6 +263,19 @@ pub fn executar() {
                 }
                 return;
             }
+            if janela.label() == janelas::SOBREPOSICAO {
+                if let tauri::WindowEvent::Moved(_) = evento {
+                    let solta = app
+                        .try_state::<Arc<Compartilhado>>()
+                        .is_some_and(|c| *c.sobreposicao_solta.lock().unwrap());
+                    if solta {
+                        if let Some(pouso) = janelas::onde_a_sobreposicao_parou(app) {
+                            let _ = app.emit("kontro://pouso", pouso);
+                        }
+                    }
+                }
+                return;
+            }
             if janela.label() != janelas::PRINCIPAL {
                 return;
             }
@@ -280,12 +292,14 @@ pub fn executar() {
                 }
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     guardar_geometria(app);
+                    soltar_sobreposicao(app, false);
                     if config().is_some_and(|c| c.close_action == CloseAction::Exit) {
                         app.exit(0);
                         return;
                     }
                     api.prevent_close();
                     let _ = janela.hide();
+                    avisar_que_fica_na_bandeja(app);
                 }
                 tauri::WindowEvent::ThemeChanged(_) => {
                     let _ = app.emit("kontro://tema-do-sistema", sistema::windows_no_claro());
@@ -473,6 +487,50 @@ fn abrir_pendente(app: &AppHandle, rotulo: &str) {
     }
     let Some(janela) = app.get_webview_window(rotulo) else { return };
     let _ = janela.show();
+}
+
+fn avisar_que_fica_na_bandeja(app: &AppHandle) {
+    let Some(c) = app.try_state::<Arc<Compartilhado>>() else { return };
+    let cfg = {
+        let mut atual = c.config.lock().unwrap();
+        if atual.tray_hint_shown {
+            return;
+        }
+        atual.tray_hint_shown = true;
+        atual.salvar();
+        atual.clone()
+    };
+    let _ = app.emit("kontro://config", &cfg);
+    avisos::mostrar(
+        app,
+        "O Kontro continua na bandeja",
+        "Clique no ícone para ver a bateria.",
+        avisos::imagem_do_app(),
+    );
+}
+
+#[tauri::command]
+fn mostrar_snap_layouts() {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, VIRTUAL_KEY,
+        VK_LWIN,
+    };
+
+    let tecla = |vk: VIRTUAL_KEY, soltar: bool| INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: vk,
+                dwFlags: if soltar { KEYEVENTF_KEYUP } else { Default::default() },
+                ..Default::default()
+            },
+        },
+    };
+    let z = VIRTUAL_KEY(u16::from(b'Z'));
+    let sequencia = [tecla(VK_LWIN, false), tecla(z, false), tecla(z, true), tecla(VK_LWIN, true)];
+    unsafe {
+        SendInput(&sequencia, std::mem::size_of::<INPUT>() as i32);
+    }
 }
 
 fn guardar_geometria(app: &AppHandle) {

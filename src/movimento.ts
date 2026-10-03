@@ -7,6 +7,10 @@ function assinar(aviso: () => void) {
   return () => consulta.removeEventListener("change", aviso);
 }
 
+export function movimentoReduzidoAgora(): boolean {
+  return consulta.matches;
+}
+
 export function useMovimentoReduzido(): boolean {
   return useSyncExternalStore(assinar, () => consulta.matches);
 }

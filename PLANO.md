@@ -9,11 +9,9 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
-**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T102 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos,
-de sistema de design e temas, de textos e estados, do Resumo, da pílula e aviso, de
-instalação, atualização e avisos do sistema, de Configurações e de acessibilidade e teclado
-inteiros (a T89 tinha saído junto da T32).
+**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129, e está entregue
+inteira** — os catorze movimentos, da tela cheia à primeira abertura (a T89 saiu junto da
+T32).
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -76,7 +74,18 @@ confirmação, as faixas do gráfico, o cadeado e a chave, que ganha alvo de 48�
 Na T97 o bloco de alto contraste cobre também os deslizantes da T90, que perdiam a trilha
 quando o Windows apaga o gradiente. Na T100 o foco só volta ao nome depois de Enter ou Esc:
 salvar no `blur`, quando a pessoa sai com Tab, não puxa o foco de volta. Na T101 o painel não
-tem mais o X (T59), e o Esc dele já fechava. Falta a parte que só um jogo responde — o `QUNS`
+tem mais o X (T59), e o Esc dele já fechava. Na T111 o Snap Layouts abre mandando Win+Z depois de 400 ms
+com o mouse no botão de maximizar, e não pelo `WM_NCHITTEST`: a área do cliente é coberta
+pelas janelas do WebView2, uma delas de outro processo (o do navegador), e a mensagem nunca
+chega à janela principal — medido listando as filhas. Na T113 o toast sai pelo `avisos.rs`
+da T86, porque o plugin de notificação já não existe. Na T114 a tela de Configurações não
+precisou passar a escutar `kontro://config`: ela já lê da fonte única desde a T36. Na T104,
+T107 e T109 os tamanhos de fonte seguem a escala da T56 (12 e não 11 ou 11,5) e os botões o
+`.botao` da T55. Na T106 o ícone virou `IconeDoJogo`, que a T118 pede, já na primeira vez. Na
+T116 o rodapé da grade mostra a leitura do dia em foco ou sob o mouse e, sem nenhum, a
+legenda de cores; a célula de hoje é a única tabulável. Na T125 o anel do passo 0 tem 112px,
+e não 120, para anel, legenda e espaço caberem nos 136px do palco da T127; e a folha dos
+passos alinha pelo topo, senão o título não fica na mesma altura nos seis passos. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

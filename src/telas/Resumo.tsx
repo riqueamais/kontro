@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
 import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
@@ -34,6 +34,7 @@ export function Resumo() {
   const limiares = useLimiares();
   const [{ serie, sessoes, saude }, setDoControle] = useState<DoControle>(VAZIO);
   const [sessao, setSessao] = useState<Sessao | null>(null);
+  const cartaoDoGrafico = useRef<HTMLElement>(null);
 
   useAoMudarOHistorico(() => {
     invoke<DoControle>("resumo_do_controle").then(setDoControle).catch(() => {});
@@ -83,7 +84,7 @@ export function Resumo() {
         </div>
       </section>
 
-      <section className="cartao">
+      <section className="cartao" ref={cartaoDoGrafico}>
         <Historico
           serie={serie}
           trocadaEm={saude?.trocadaEm}
@@ -96,10 +97,19 @@ export function Resumo() {
           aoSairDaJanela={() => setSessao(null)}
         />
         <Saude saude={saude} />
+      </section>
+
+      <section className="cartao">
         <Sessoes
           sessoes={sessoes}
           escolhida={sessao?.inicio}
-          aoEscolher={(s) => setSessao((atual) => (atual?.inicio === s.inicio ? null : s))}
+          aoEscolher={(s) => {
+            const abrindo = sessao?.inicio !== s.inicio;
+            setSessao(abrindo ? s : null);
+            if (abrindo) {
+              cartaoDoGrafico.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+          }}
         />
       </section>
 

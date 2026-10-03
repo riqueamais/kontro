@@ -73,3 +73,13 @@
 .painel:focus {
   outline: none;
 }
+
+.painel .rapidos {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.painel .rapidos .chip {
+  font-size: var(--fs-caption);
+}

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useEffect, useRef, useState } from "react";
 
 import { LIMIARES_CRITICOS, LIMIARES_DE_AVISO, salvar } from "../ajustes";
@@ -6,8 +7,19 @@ import { Anel } from "../componentes/Anel";
 import { BotaoDeCiclo } from "../componentes/BotaoDeCiclo";
 import { Chave, Linha, MiniTela } from "../componentes/Controles";
 import { Glifo } from "../componentes/Glifo";
+import { Marca } from "../componentes/Marca";
 import { Teclas } from "../componentes/Teclas";
-import { Config, Recusa, useAtalhosRecusados, useConfig, usePilulaSolta } from "../estado";
+import {
+  Config,
+  Estado,
+  Recusa,
+  corDoAnel,
+  useAtalhosRecusados,
+  useConfig,
+  useEstado,
+  usePilulaSolta,
+} from "../estado";
+import { quandoLeu } from "../formato";
 import "./passos.css";
 
 const TOTAL = 6;
@@ -23,7 +35,20 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
   const cfg = useConfig();
   const solta = usePilulaSolta();
   const recusados = useAtalhosRecusados();
+  const estado = useEstado();
   const [passo, setPasso] = useState(0);
+  const [pouso, setPouso] = useState<Pouso | null>(null);
+
+  useEffect(() => {
+    const parar = listen<Pouso>("kontro://pouso", ({ payload }) => setPouso(payload));
+    return () => {
+      void parar.then((f) => f());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!solta) setPouso(null);
+  }, [solta]);
   const avancar = useRef<HTMLButtonElement>(null);
   const pular = useRef<HTMLButtonElement>(null);
 
@@ -77,7 +102,9 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
         </span>
       </div>
 
-      <div className="folha">{folha(passo, cfg, solta, recusados)}</div>
+      <div className="folha" key={passo}>
+        {folha(passo, { cfg, solta, recusados, estado, pouso })}
+      </div>
 
       <div className="rodape">
         <button
@@ -85,7 +112,7 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
           className={`botao fantasma${ultimo ? " oculto" : ""}`}
           tabIndex={ultimo ? -1 : undefined}
           aria-hidden={ultimo || undefined}
-          onClick={terminar}
+          onClick={() => setPasso(TOTAL - 1)}
         >
           Pular
         </button>
@@ -106,20 +133,47 @@ export function Passos({ aoTerminar }: { aoTerminar: () => void }) {
   );
 }
 
-function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) {
+interface Pouso {
+  x: number;
+  y: number;
+}
+
+interface Contexto {
+  cfg: Config;
+  solta: boolean;
+  recusados: Recusa[];
+  estado: Estado | null;
+  pouso: Pouso | null;
+}
+
+function folha(passo: number, { cfg, solta, recusados, estado, pouso }: Contexto) {
+  const limiares = { critico: cfg.CriticalThreshold, aviso: cfg.WarnThreshold };
+  const aoVivo =
+    !!estado &&
+    estado.via !== "Desligado" &&
+    !estado.leituraAntiga &&
+    estado.preenchimento !== null;
+  const anel = {
+    valor: aoVivo ? estado.preenchimento : 72,
+    cor: aoVivo ? corDoAnel(estado, limiares) : "var(--accent-green)",
+  };
+
   switch (passo) {
     case 0:
       return (
         <>
-          <div className="palco">
-            <Anel valor={72} cor="var(--accent-green)" espessura={54} tamanho={120}>
-              <Glifo tamanho={46} cor="var(--text-primary)" />
+          <div className="palco coluna">
+            <Anel valor={anel.valor} cor={anel.cor} espessura={54} tamanho={112} desde={0}>
+              <Glifo tamanho={42} cor="var(--text-primary)" />
             </Anel>
+            <span className="legenda">
+              {aoVivo ? `${estado.nome} · ${estado.textoDaCarga}` : "exemplo"}
+            </span>
           </div>
           <h1>A bateria do controle, na bandeja</h1>
           <p>
             O Kontro lê a carga direto do controle e mantém o número na bandeja do Windows. Seis
-            telas e você sabe tudo o que ele faz.
+            telas e você sabe tudo o que ele faz. Ele fica na bandeja — o último passo mostra onde.
           </p>
         </>
       );
@@ -137,19 +191,17 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
               </div>
             ))}
             <div className="amostra apagada">
-              <div className="riscado">
-                <Anel valor={null} cor="var(--gray)" espessura={70} tamanho={54}>
-                  <Glifo tamanho={22} cor="var(--gray)" />
-                </Anel>
+              <span className="riscado">
+                <Glifo tamanho={22} cor="var(--gray)" />
                 <svg className="risco" viewBox="0 0 54 54" aria-hidden="true">
                   <path
-                    d="M14 40 L40 14"
+                    d="M12.7 41.3 L41.3 12.7"
                     stroke="var(--gray)"
-                    strokeWidth="3.4"
+                    strokeWidth="4.9"
                     strokeLinecap="round"
                   />
                 </svg>
-              </div>
+              </span>
               <span className="legenda">desligado</span>
             </div>
           </div>
@@ -158,10 +210,6 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
             O anel mostra quanto sobrou e troca de cor nos limiares que você escolher. Sem controle
             ligado, ele vira um controle riscado — nada de número velho fingindo ser de agora.
           </p>
-          <div className="recado">
-            O Windows 11 esconde ícones novos atrás da setinha <b>^</b> da bandeja. Arraste o Kontro
-            para fora dela uma vez e ele fica fixo.
-          </div>
         </>
       );
 
@@ -174,8 +222,8 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
                 <Glifo tamanho={17} cor="var(--text-primary)" />
               </Anel>
               <div className="dizeres">
-                <span className="valor">no cabo</span>
-                <span className="carimbo">lido ontem às 23:53</span>
+                <span className="valor">No cabo</span>
+                <span className="carimbo">{carimbo(estado)}</span>
               </div>
             </div>
           </div>
@@ -192,7 +240,12 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
       return (
         <>
           <div className="palco">
-            <MiniTela x={cfg.OverlayX} y={cfg.OverlayY} solta={solta} escala={3} />
+            <MiniTela
+              x={pouso?.x ?? cfg.OverlayX}
+              y={pouso?.y ?? cfg.OverlayY}
+              solta={solta}
+              escala={3}
+            />
           </div>
           <h1>A pílula em jogo</h1>
           {solta ? (
@@ -204,6 +257,12 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
             <p>
               É onde a carga aparece por cima do jogo. Está presa no ponto do desenho acima.{" "}
               <ComoSoltar cfg={cfg} recusados={recusados} />
+            </p>
+          )}
+          {solta && estado?.via === "Desligado" && (
+            <p>
+              Sem controle ligado ela fica cinza, sem número; ligue um e a carga aparece nela na
+              hora.
             </p>
           )}
           {!solta && (
@@ -220,19 +279,17 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
     case 4:
       return (
         <>
-          <div className="palco fileira">
-            <div className="amostra">
-              <Anel valor={cfg.WarnThreshold} cor="var(--amber)" espessura={70} tamanho={54}>
-                <Glifo tamanho={22} cor="var(--text-primary)" />
-              </Anel>
-              <span className="legenda">avisa</span>
-            </div>
-            <div className="amostra">
-              <Anel valor={cfg.CriticalThreshold} cor="var(--red)" espessura={70} tamanho={54}>
-                <Glifo tamanho={22} cor="var(--text-primary)" />
-              </Anel>
-              <span className="legenda">insiste</span>
-            </div>
+          <div className="palco">
+            <Anel
+              valor={anel.valor}
+              cor={anel.cor}
+              espessura={54}
+              tamanho={120}
+              marcas={limiares}
+              desde={0}
+            >
+              <Glifo tamanho={46} cor="var(--text-primary)" />
+            </Anel>
           </div>
           <h1>Quando ele te avisa</h1>
           <p>
@@ -267,9 +324,12 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
       return (
         <>
           <div className="palco">
-            <Anel valor={100} cor="var(--accent-green)" espessura={54} tamanho={120}>
-              <Glifo tamanho={46} cor="var(--text-primary)" />
-            </Anel>
+            <div className="mini-barra" aria-hidden="true">
+              <kbd className="tecla">^</kbd>
+              <span className="mini-barra-marca">
+                <Marca tamanho={16} />
+              </span>
+            </div>
           </div>
           <h1>Pronto</h1>
           <p>
@@ -277,6 +337,10 @@ function folha(passo: number, cfg: Config, solta: boolean, recusados: Recusa[]) 
             abre o menu. Configurações traz esta janela de volta, já na aba certa, onde mora tudo o
             que você viu aqui e o resto.
           </p>
+          <div className="recado">
+            O Windows 11 esconde ícones novos atrás da setinha <b>^</b> da bandeja. Arraste o Kontro
+            para fora dela uma vez e ele fica fixo.
+          </div>
           <Linha
             titulo="Iniciar com o Windows"
             descricao="Sobe junto com o sistema e já começa a monitorar."
@@ -315,4 +379,10 @@ function ComoSoltar({ cfg, recusados }: { cfg: Config; recusados: Recusa[] }) {
       esconde e traz de volta, sem sair do jogo.
     </>
   );
+}
+
+function carimbo(estado: Estado | null): string {
+  if (!estado) return "sem leitura ainda";
+  const { texto, hora } = quandoLeu(estado);
+  return hora ? `${texto} ${hora}` : texto || "sem leitura ainda";
 }
