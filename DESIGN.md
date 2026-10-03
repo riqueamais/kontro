@@ -122,7 +122,7 @@ app que o usuário desliga.
 Ancorado ao canto da bandeja com 12px de folga. Conteúdo, de cima para baixo:
 anel 96px com a porcentagem em Display no centro · nome do controle em Subtitle ·
 estimativa de tempo restante em Body · última leitura em Caption/Mono ·
-linha divisória · dois botões ghost: "Configurações" e "Atualizar".
+linha divisória · dois botões ghost: "Configurações" e "Ler agora".
 
 Sem número quando estiver no cabo: mostre "No cabo" em Subtitle e a última leitura
 com horário em Caption. Nunca invente percentual.

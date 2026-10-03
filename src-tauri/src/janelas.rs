@@ -5,7 +5,7 @@ use tauri::{
 };
 use windows::Win32::Foundation::HWND;
 
-use crate::configuracoes::Settings;
+use crate::configuracoes::{Settings, Theme};
 use crate::sistema;
 use crate::tela;
 
@@ -33,12 +33,17 @@ const TINTA_DO_DIA: Color = Color(238, 241, 245, 255);
 
 pub struct Nascimento {
     tema: &'static str,
+    tem_material: bool,
     material: bool,
 }
 
 impl Nascimento {
     pub fn de(cfg: &Settings) -> Self {
-        Nascimento { tema: cfg.tema_efetivo(), material: sistema::material_disponivel() }
+        Nascimento {
+            tema: cfg.tema_efetivo(),
+            tem_material: sistema::tem_material(),
+            material: sistema::material_disponivel(),
+        }
     }
 
     fn endereco(&self, janela: &str) -> WebviewUrl {
@@ -74,10 +79,11 @@ fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<We
         .visible(false)
         .center();
 
-    if nascimento.material {
-        construtor = construtor
-            .transparent(true)
-            .effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+    if nascimento.tem_material {
+        construtor = construtor.transparent(true);
+        if nascimento.material {
+            construtor = construtor.effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+        }
     } else {
         construtor = construtor.background_color(nascimento.tinta());
     }
@@ -89,13 +95,37 @@ fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<We
     Ok(janela)
 }
 
-pub fn vestir_material(app: &AppHandle, claro: bool) {
-    if !sistema::material_disponivel() {
+pub fn vestir_material(app: &AppHandle, cfg: &Settings) {
+    let claro = cfg.tema_claro();
+    let tema = match cfg.theme {
+        Theme::Sistema => None,
+        _ if claro => Some(tauri::Theme::Light),
+        _ => Some(tauri::Theme::Dark),
+    };
+    for rotulo in [PRINCIPAL, PAINEL, SOBREPOSICAO, AVISO] {
+        if let Some(janela) = app.get_webview_window(rotulo) {
+            let _ = janela.set_theme(tema);
+        }
+    }
+
+    if !sistema::tem_material() {
         return;
     }
-    let Some(janela) = app.get_webview_window(PRINCIPAL) else { return };
-    let efeito = if claro { Effect::MicaLight } else { Effect::MicaDark };
-    let _ = janela.set_effects(EffectsBuilder::new().effect(efeito).build());
+    let ligado = sistema::transparencia_ligada();
+
+    if let Some(janela) = app.get_webview_window(PRINCIPAL) {
+        let efeito = match (ligado, cfg.theme) {
+            (false, _) | (true, Theme::Preto) => None,
+            (true, _) if claro => Some(Effect::MicaLight),
+            (true, _) => Some(Effect::MicaDark),
+        };
+        let _ = janela.set_effects(efeito.map(|e| EffectsBuilder::new().effect(e).build()));
+    }
+
+    if let Some(janela) = app.get_webview_window(PAINEL) {
+        let efeito = ligado.then(|| EffectsBuilder::new().effect(Effect::Acrylic).build());
+        let _ = janela.set_effects(efeito);
+    }
 }
 
 fn vestir_icone(janela: &WebviewWindow) {

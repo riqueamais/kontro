@@ -10,8 +10,10 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T35 — o movimento da tela cheia inteiro e as oito primeiras de desempenho e fluidez —, mais a
-T89, que a T32 tornou obrigatória. Falta a parte que só um jogo responde — o `QUNS`
+T39 — o movimento da tela cheia inteiro e as doze primeiras de desempenho e fluidez —, mais a
+T89, que a T32 tornou obrigatória. Desvio na T38: o `botao.css` não foi criado, porque o
+botão não tem folha própria até a T55; o estado `aria-busy` mora no `principal.css` e no
+`painel.css`, junto das regras que ele sobrepõe. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por

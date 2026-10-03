@@ -10,6 +10,7 @@ import {
   OverlayMode,
   Theme,
   useAtalhosRecusados,
+  useConfig,
   usePilulaCoberta,
   usePilulaSolta,
 } from "../estado";
@@ -102,7 +103,8 @@ type Passo =
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
 export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
-  const [cfg, setCfg] = useState<Config | null>(null);
+  const doRust = useConfig();
+  const [cfg, setCfg] = useState<Config | null>(doRust);
   const [nova, setNova] = useState<VersaoNova | null>(null);
   const [passo, setPasso] = useState<Passo>({ tipo: "parado" });
   const [telas, setTelas] = useState(1);
@@ -115,23 +117,11 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   const recusados = useAtalhosRecusados();
 
   useEffect(() => {
-    let vivo = true;
+    if (doRust) setCfg(doRust);
+  }, [doRust]);
 
-    invoke<Config>("configuracoes")
-      .then((c) => {
-        if (vivo) setCfg(c);
-      })
-      .catch(() => {});
+  useEffect(() => {
     invoke<string>("versao_do_app").then(setAtual).catch(() => {});
-
-    const parar = listen<Config>("kontro://config", ({ payload }) => {
-      if (vivo) setCfg(payload);
-    });
-
-    return () => {
-      vivo = false;
-      void parar.then((f) => f());
-    };
   }, []);
 
   useEffect(() => {

@@ -122,8 +122,13 @@ body[data-janela="principal"] .pagina {
 body[data-janela="principal"] .pagina > .folha {
   min-height: 0;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
   padding: var(--space-5) var(--space-5) var(--space-6);
   animation: kontro-entrar var(--motion-base) var(--curva);
+}
+body[data-janela="principal"] .pagina > .folha:hover {
+  scrollbar-color: var(--polegar) transparent;
 }
 
 @keyframes kontro-entrar {
@@ -295,6 +300,12 @@ body[data-janela="principal"] .ciclo:disabled {
   opacity: 0.6;
   cursor: default;
 }
+body[data-janela="principal"] .ciclo[aria-busy="true"],
+body[data-janela="principal"] .ciclo[aria-busy="true"]:hover {
+  opacity: 1;
+  background: transparent;
+  color: var(--text-secondary);
+}
 
 body[data-janela="principal"] .linha .controle {
   display: flex;
@@ -421,6 +432,11 @@ body[data-janela="principal"] .cartao.novidade .notas {
   padding-top: var(--space-3);
   border-top: 1px solid var(--stroke);
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
+}
+body[data-janela="principal"] .cartao.novidade .notas:hover {
+  scrollbar-color: var(--polegar) transparent;
 }
 
 body[data-janela="principal"] .cartao.novidade .notas h3 {

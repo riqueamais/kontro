@@ -11,6 +11,8 @@
 }
 
 :root {
+  color-scheme: dark;
+
   --ink: #0b0e11;
   --surface: #0f1318;
   --surface-alt: #151a20;
@@ -103,6 +105,8 @@ body[data-tema="brasa"] {
 }
 
 body[data-tema="dia"] {
+  color-scheme: light;
+
   --ink: #eef1f5;
   --surface: #ffffff;
   --surface-alt: #e4e9f0;
@@ -131,6 +135,12 @@ body[data-material="sim"] {
   --fundo-painel: color-mix(in srgb, var(--ink) 86%, transparent);
   --contorno-painel: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --sombra-painel: none;
+}
+
+body[data-tema="preto"][data-material="sim"] {
+  --fundo-janela: var(--ink);
+  --fundo-barra: var(--ink);
+  --fundo-trilho: var(--surface);
 }
 
 body[data-janela="sobreposicao"] {

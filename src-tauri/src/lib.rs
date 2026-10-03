@@ -32,7 +32,7 @@ use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
 
-use crate::configuracoes::{CloseAction, Limiares, Settings};
+use crate::configuracoes::{CloseAction, Limiares, Settings, Theme};
 use crate::historico::{Amostra, Sessao};
 use crate::modelo::EstadoDoControle;
 
@@ -191,7 +191,10 @@ pub fn executar() {
             {
                 let _ = compartilhado.pilula.set(pilula.0 as isize);
             }
-            janelas::vestir_material(&handle, compartilhado.config.lock().unwrap().tema_claro());
+            {
+                let cfg = compartilhado.config.lock().unwrap().clone();
+                janelas::vestir_material(&handle, &cfg);
+            }
             montar_bandeja(&handle)?;
 
             {
@@ -227,24 +230,30 @@ pub fn executar() {
             Ok(())
         })
         .on_window_event(|janela, evento| {
-            let tauri::WindowEvent::CloseRequested { api, .. } = evento else { return };
             if janela.label() != janelas::PRINCIPAL {
                 return;
             }
+            let app = janela.app_handle();
+            let config =
+                || app.try_state::<Arc<Compartilhado>>().map(|c| c.config.lock().unwrap().clone());
 
-            let encerrar = janela
-                .app_handle()
-                .try_state::<Arc<Compartilhado>>()
-                .map(|c| c.config.lock().unwrap().close_action == CloseAction::Exit)
-                .unwrap_or(false);
-
-            if encerrar {
-                janela.app_handle().exit(0);
-                return;
+            match evento {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    if config().is_some_and(|c| c.close_action == CloseAction::Exit) {
+                        app.exit(0);
+                        return;
+                    }
+                    api.prevent_close();
+                    let _ = janela.hide();
+                }
+                tauri::WindowEvent::ThemeChanged(_) => {
+                    let _ = app.emit("kontro://tema-do-sistema", sistema::windows_no_claro());
+                    if let Some(cfg) = config().filter(|c| c.theme == Theme::Sistema) {
+                        janelas::vestir_material(app, &cfg);
+                    }
+                }
+                _ => {}
             }
-
-            api.prevent_close();
-            let _ = janela.hide();
         })
         .build(tauri::generate_context!())
         .expect("nao foi possivel iniciar o Kontro");
@@ -272,6 +281,7 @@ fn iniciar_ciclo(
         let mut ultimo_icone = String::new();
         let mut orquestrador = orquestra::Orquestrador::novo();
         let mut proxima_checagem = atualizacao::ultima_checagem() + atualizacao::JANELA_MS;
+        let mut ultimo_material = sistema::material_disponivel();
 
         loop {
             if let Some(panorama) = monitor.ciclo() {
@@ -306,6 +316,14 @@ fn iniciar_ciclo(
                 let _ = app.emit("kontro://historico", ());
                 let limiares = compartilhado.config.lock().unwrap().limiares();
                 atualizar_bandeja(&app, &principal, limiares, &mut ultimo_icone);
+            }
+
+            let material = sistema::material_disponivel();
+            if material != ultimo_material {
+                ultimo_material = material;
+                let cfg = compartilhado.config.lock().unwrap().clone();
+                janelas::vestir_material(&app, &cfg);
+                let _ = app.emit("kontro://material", material);
             }
 
             if tempo::agora() >= proxima_checagem {
@@ -613,7 +631,7 @@ fn salvar_configuracoes(
     {
         let anterior = compartilhado.config.lock().unwrap().theme;
         if novas.theme != anterior {
-            janelas::vestir_material(&app, novas.tema_claro());
+            janelas::vestir_material(&app, &novas);
         }
     }
 
