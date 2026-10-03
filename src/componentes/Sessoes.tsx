@@ -1,9 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Sessao } from "../estado";
 import { duracao, quando, taxa as porHoraEmTexto } from "../formato";
-import { Glifo } from "./Glifo";
+import { IconeDoJogo } from "./IconeDoJogo";
 import "./sessoes.css";
 
 const QUANTAS_DE_CADA_VEZ = 5;
@@ -49,7 +48,7 @@ export function Sessoes({
             aria-pressed={aberta}
             onClick={() => aoEscolher?.(s)}
           >
-            <Icone jogo={s.jogo} />
+            <IconeDoJogo jogo={s.jogo} />
 
             <span className="sessao-texto">
               <span className="sessao-titulo">{s.jogo ?? quando(s.inicio)}</span>
@@ -73,47 +72,6 @@ export function Sessoes({
         </button>
       )}
     </div>
-  );
-}
-
-function Icone({ jogo }: { jogo: string | null }) {
-  const [uri, setUri] = useState<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    if (!jogo) {
-      setUri(null);
-      return;
-    }
-    let vivo = true;
-    setUri(undefined);
-    invoke<string | null>("icone_do_jogo", { nome: jogo })
-      .then((achado) => {
-        if (vivo) setUri(achado);
-      })
-      .catch(() => {
-        if (vivo) setUri(null);
-      });
-    return () => {
-      vivo = false;
-    };
-  }, [jogo]);
-
-  if (!jogo) {
-    return (
-      <span className="sessao-icone sem-jogo">
-        <Glifo tamanho={20} cor="var(--text-tertiary)" />
-      </span>
-    );
-  }
-
-  return (
-    <span className="sessao-icone">
-      {uri ? (
-        <img src={uri} alt="" width={32} height={32} />
-      ) : uri === null ? (
-        <span className="sessao-inicial">{jogo.trim().charAt(0).toUpperCase()}</span>
-      ) : null}
-    </span>
   );
 }
 

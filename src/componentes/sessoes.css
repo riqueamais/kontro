@@ -34,35 +34,6 @@
   font-size: var(--fs-caption);
 }
 
-.sessoes .sessao-icone {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-field);
-  background: var(--surface-alt);
-  overflow: hidden;
-}
-
-.sessoes .sessao-icone.sem-jogo {
-  background: transparent;
-  opacity: 0.6;
-}
-
-.sessoes .sessao-icone img {
-  display: block;
-  width: 32px;
-  height: 32px;
-}
-
-.sessoes .sessao-inicial {
-  font-family: var(--font-display);
-  font-size: var(--fs-body);
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
 .sessoes .sessao-texto {
   flex: 1;
   min-width: 0;
