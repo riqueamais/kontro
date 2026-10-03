@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Anel } from "../componentes/Anel";
+import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
@@ -142,7 +143,7 @@ export function Painel() {
         <button onClick={() => invoke("mostrar_janela", { rotulo: "principal" })}>
           Configurações
         </button>
-        <button onClick={() => invoke("ler_agora")}>Atualizar</button>
+        <BotaoLerAgora estado={estado} />
       </div>
     </div>
   );

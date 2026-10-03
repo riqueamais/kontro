@@ -7,8 +7,12 @@ const VERSAO: &str = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion";
 
 const PRIMEIRO_BUILD_COM_MATERIAL: u32 = 22000;
 
+pub fn tem_material() -> bool {
+    build() >= PRIMEIRO_BUILD_COM_MATERIAL
+}
+
 pub fn material_disponivel() -> bool {
-    build() >= PRIMEIRO_BUILD_COM_MATERIAL && transparencia_ligada()
+    tem_material() && transparencia_ligada()
 }
 
 pub fn windows_no_claro() -> bool {

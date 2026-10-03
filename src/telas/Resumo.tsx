@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
 
 import { Anel } from "../componentes/Anel";
+import { BotaoLerAgora } from "../componentes/BotaoLerAgora";
 import { Glifo } from "../componentes/Glifo";
 import { Historico } from "../componentes/Historico";
 import { ListaDeControles } from "../componentes/ListaDeControles";
@@ -62,9 +63,7 @@ export function Resumo() {
           <div className="rodape">{quandoLeu(estado)}</div>
         </div>
 
-        <button className="ciclo" onClick={() => invoke("ler_agora")}>
-          Atualizar
-        </button>
+        <BotaoLerAgora estado={estado} className="ciclo" />
       </section>
 
       <section className="cartao">

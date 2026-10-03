@@ -49,6 +49,11 @@ body[data-janela="principal"] .passos .folha {
   background: var(--surface);
   text-align: center;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
+}
+body[data-janela="principal"] .passos .folha:hover {
+  scrollbar-color: var(--polegar) transparent;
 }
 
 body[data-janela="principal"] .passos .palco {

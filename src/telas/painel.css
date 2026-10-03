@@ -113,3 +113,9 @@
   background: var(--surface-alt);
   color: var(--text-primary);
 }
+.painel .acoes button[aria-busy="true"],
+.painel .acoes button[aria-busy="true"]:hover {
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: default;
+}
