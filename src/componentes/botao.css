@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 32px;
+  min-height: var(--altura-controle);
   padding: 0 var(--space-3);
   border-radius: var(--radius-field);
   border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
@@ -10,16 +10,15 @@
   color: var(--text-primary);
   white-space: nowrap;
   transition:
-    background var(--motion-fast),
-    border-color var(--motion-fast),
-    color var(--motion-fast);
+    background var(--motion-fast) var(--curva),
+    border-color var(--motion-fast) var(--curva),
+    color var(--motion-fast) var(--curva);
 }
 .botao:hover {
   background: color-mix(in srgb, var(--text-primary) 8%, transparent);
 }
 .botao:disabled {
   opacity: 0.6;
-  cursor: default;
 }
 .botao:disabled:hover {
   background: color-mix(in srgb, var(--text-primary) 5%, transparent);
@@ -62,4 +61,13 @@
 .botao.miudo {
   min-height: 28px;
   padding: 0 var(--space-2);
+}
+
+.botao:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
+}
+.botao.destaque:active:not(:disabled),
+.botao.perigo:active:not(:disabled) {
+  filter: brightness(0.9);
 }

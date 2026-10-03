@@ -22,7 +22,7 @@ body[data-janela="principal"] .marca {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 12.5px;
+  font-size: var(--fs-caption);
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text-secondary);
@@ -42,7 +42,9 @@ body[data-janela="principal"] .botao-janela {
   border-radius: 0;
   background: transparent;
   color: var(--text-secondary);
-  transition: background var(--motion-fast), color var(--motion-fast);
+  transition:
+    background var(--motion-fast) var(--curva),
+    color var(--motion-fast) var(--curva);
 }
 
 body[data-janela="principal"] .botao-janela:hover {
@@ -66,7 +68,7 @@ body[data-janela="principal"] .corpo > .trilho {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   padding: var(--space-3) var(--space-2);
   background: var(--fundo-trilho);
   border-right: 1px solid var(--stroke);
@@ -78,7 +80,7 @@ body[data-janela="principal"] .trilho > .indicador {
   left: var(--space-2);
   width: 3px;
   height: 16px;
-  border-radius: 2px;
+  border-radius: var(--radius-trilho);
   background: var(--realce);
   transition: transform var(--motion-base) var(--curva);
   pointer-events: none;
@@ -88,14 +90,16 @@ body[data-janela="principal"] .aba {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 9px var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0;
   border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 13.5px;
+  font-size: var(--fs-body);
   text-align: left;
-  transition: background var(--motion-fast), color var(--motion-fast);
+  transition:
+    background var(--motion-fast) var(--curva),
+    color var(--motion-fast) var(--curva);
 }
 
 body[data-janela="principal"] .aba:hover {
@@ -104,7 +108,8 @@ body[data-janela="principal"] .aba:hover {
 }
 
 body[data-janela="principal"] .aba:active {
-  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
 }
 
 body[data-janela="principal"] .aba.ativa {
@@ -140,15 +145,16 @@ body[data-janela="principal"] .pagina > .folha:hover {
 
 body[data-janela="principal"] .titulo-da-pagina {
   font-family: var(--font-display);
-  font-size: 21px;
+  font-size: var(--fs-title);
   font-weight: 600;
   margin: 0 0 var(--space-4);
 }
 
-body[data-janela="principal"] .pagina h2 {
-  font-size: 11px;
+body[data-janela="principal"] .pagina > .folha > h2 {
+  font-family: var(--font-text);
+  font-size: var(--fs-caption);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--rastreio-rotulo);
   text-transform: uppercase;
   color: var(--text-tertiary);
   margin: var(--space-5) 0 var(--space-2);
@@ -189,12 +195,13 @@ body[data-janela="principal"] .cartao.estado > * {
 
 body[data-janela="principal"] .cartao .numero {
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: var(--fs-title);
   font-weight: 600;
 }
 
 body[data-janela="principal"] .cartao .numero.grande {
-  font-size: 26px;
+  font-size: var(--fs-display);
+  letter-spacing: -0.02em;
 }
 
 body[data-janela="principal"] .linha {
@@ -211,27 +218,29 @@ body[data-janela="principal"] .linha {
 body[data-janela="principal"] .coberta {
   margin: 0 0 var(--space-2);
   padding: var(--space-2) var(--space-4);
-  font-size: 13px;
+  font-size: var(--fs-body);
   color: var(--text-secondary);
 }
 body[data-janela="principal"] .linha .titulo {
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 500;
 }
 body[data-janela="principal"] .linha .descricao {
-  margin-top: 2px;
-  font-size: 12.5px;
+  margin-top: var(--space-1);
+  font-size: var(--fs-caption);
   color: var(--text-tertiary);
 }
 body[data-janela="principal"] .chave {
   width: 40px;
   height: 22px;
-  border-radius: 11px;
+  border-radius: 999px;
   border: 1px solid var(--text-tertiary);
   background: var(--surface-alt);
   padding: 0;
   position: relative;
-  transition: background var(--motion-base), border-color var(--motion-base);
+  transition:
+    background var(--motion-base) var(--curva),
+    border-color var(--motion-base) var(--curva);
 }
 body[data-janela="principal"] .chave.ligada {
   background: var(--realce);
@@ -243,9 +252,12 @@ body[data-janela="principal"] .chave .bolinha {
   left: 2px;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--text-secondary);
-  transition: transform var(--motion-base) var(--curva), background var(--motion-base);
+  transition:
+    transform var(--motion-base) var(--curva),
+    width var(--motion-fast) var(--curva),
+    background var(--motion-base) var(--curva);
 }
 body[data-janela="principal"] .chave.ligada .bolinha {
   transform: translateX(18px);
@@ -263,9 +275,9 @@ body[data-janela="principal"] .mini-tela {
   width: 48px;
   height: 28px;
   border: 1px solid var(--stroke-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: var(--ink);
-  transition: border-color var(--motion-fast);
+  transition: border-color var(--motion-fast) var(--curva);
 }
 body[data-janela="principal"] .mini-tela.solta {
   border-color: var(--realce);
@@ -274,12 +286,12 @@ body[data-janela="principal"] .mini-tela .mini-pilula {
   position: absolute;
   width: 10px;
   height: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-trilho);
   background: var(--text-tertiary);
   transition:
     left var(--motion-base) var(--curva),
     top var(--motion-base) var(--curva),
-    background var(--motion-fast);
+    background var(--motion-fast) var(--curva);
 }
 body[data-janela="principal"] .mini-tela.solta .mini-pilula {
   background: var(--realce);
@@ -288,20 +300,21 @@ body[data-janela="principal"] .mini-tela.solta .mini-pilula {
 body[data-janela="principal"] .captura {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  padding: 4px 8px;
+  gap: var(--space-1);
+  min-height: var(--altura-controle);
+  padding: 0 var(--space-1);
   border: 1px solid var(--stroke-strong);
   border-radius: var(--radius-field);
   background: transparent;
-  transition: background var(--motion-fast), border-color var(--motion-fast);
+  transition:
+    background var(--motion-fast) var(--curva),
+    border-color var(--motion-fast) var(--curva);
 }
 body[data-janela="principal"] .captura:hover:not(:disabled) {
   background: var(--surface-alt);
 }
 body[data-janela="principal"] .captura:disabled {
   opacity: 0.6;
-  cursor: default;
 }
 body[data-janela="principal"] .captura.ouvindo {
   border-style: dashed;
@@ -312,26 +325,26 @@ body[data-janela="principal"] .captura.recusada {
 }
 body[data-janela="principal"] .padrao-do-atalho {
   margin-right: var(--space-2);
-  font-size: 12px;
+  font-size: var(--fs-caption);
 }
 body[data-janela="principal"] .linha.erro .descricao {
   color: var(--atencao);
 }
 body[data-janela="principal"] .captura .pedindo {
   padding: 0 4px;
-  font-size: 12px;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--realce);
 }
 body[data-janela="principal"] .tecla {
   min-width: 22px;
-  padding: 2px 6px;
+  padding: var(--space-1);
   border: 1px solid var(--stroke-strong);
   border-bottom-width: 2px;
-  border-radius: 5px;
+  border-radius: var(--radius-control);
   background: var(--surface-alt);
   font-family: var(--font-text);
-  font-size: 11.5px;
+  font-size: var(--fs-caption);
   font-weight: 600;
   line-height: 14px;
   color: var(--text-primary);
@@ -350,7 +363,7 @@ body[data-janela="principal"] .cartao.novidade .andamento {
 
 body[data-janela="principal"] .cartao.novidade .trilho {
   height: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-trilho);
   background: var(--stroke);
   overflow: hidden;
 }
@@ -358,7 +371,7 @@ body[data-janela="principal"] .cartao.novidade .trilho {
 body[data-janela="principal"] .cartao.novidade .trilho span {
   display: block;
   height: 100%;
-  border-radius: 2px;
+  border-radius: var(--radius-trilho);
   background: var(--realce);
   transition: width var(--motion-slow) var(--curva);
 }
@@ -390,7 +403,7 @@ body[data-janela="principal"] .cartao.novidade .trilho.indefinido span {
 body[data-janela="principal"] .cartao.novidade .andamento .rodape {
   margin-top: var(--space-2);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--fs-mono);
   color: var(--text-tertiary);
 }
 
@@ -409,9 +422,10 @@ body[data-janela="principal"] .cartao.novidade .notas:hover {
 
 body[data-janela="principal"] .cartao.novidade .notas h3 {
   margin: var(--space-3) 0 var(--space-2);
-  font-size: 11px;
+  font-family: var(--font-text);
+  font-size: var(--fs-caption);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--rastreio-rotulo);
   text-transform: uppercase;
   color: var(--text-tertiary);
 }
@@ -427,7 +441,7 @@ body[data-janela="principal"] .cartao.novidade .notas ul {
 
 body[data-janela="principal"] .cartao.novidade .notas li {
   margin-bottom: var(--space-2);
-  font-size: 13px;
+  font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -463,7 +477,9 @@ body[data-janela="principal"] .amostra-de-tema .caixa {
   border: 1px solid var(--stroke-strong);
   border-radius: var(--radius-field);
   background: var(--amostra-chao);
-  transition: border-color var(--motion-fast), transform var(--motion-fast) var(--curva);
+  transition:
+    border-color var(--motion-fast) var(--curva),
+    transform var(--motion-fast) var(--curva);
 }
 
 body[data-janela="principal"] .amostra-de-tema:hover .caixa {
@@ -491,15 +507,43 @@ body[data-janela="principal"] .amostra-de-tema .traco {
   bottom: 10px;
   width: 14px;
   height: 2px;
-  border-radius: 1px;
+  border-radius: var(--radius-trilho);
   background: var(--amostra-texto);
 }
 
 body[data-janela="principal"] .amostra-de-tema .nome {
-  font-size: 12px;
+  font-size: var(--fs-caption);
   color: var(--text-tertiary);
 }
 
 body[data-janela="principal"] .amostra-de-tema.escolhida .nome {
   color: var(--text-primary);
+}
+
+body[data-janela="principal"] .captura:active:not(:disabled),
+body[data-janela="principal"] .chave:active {
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
+}
+body[data-janela="principal"] .chave:active.ligada {
+  background: color-mix(in srgb, var(--realce) 85%, var(--ink));
+}
+body[data-janela="principal"] .amostra-de-tema:active .caixa {
+  transform: none;
+  filter: brightness(0.9);
+}
+body[data-janela="principal"] .amostra-de-tema:active .nome {
+  color: var(--text-secondary);
+}
+body[data-janela="principal"] .chave:hover .bolinha {
+  transform: scale(1.12);
+}
+body[data-janela="principal"] .chave.ligada:hover .bolinha {
+  transform: translateX(18px) scale(1.12);
+}
+body[data-janela="principal"] .chave:active .bolinha {
+  width: 20px;
+}
+body[data-janela="principal"] .chave.ligada:active .bolinha {
+  transform: translateX(14px);
 }

@@ -15,7 +15,7 @@ pub const LARGURA_DO_PAINEL: f64 = 328.0;
 
 const MARGEM_DO_PAINEL: f64 = 12.0;
 
-const SANGRIA_SUPERIOR_DO_AVISO: f64 = 28.0;
+const SANGRIA_SUPERIOR_DO_AVISO: f64 = 24.0;
 
 pub const PRINCIPAL: &str = "principal";
 pub const PAINEL: &str = "painel";
@@ -504,8 +504,8 @@ fn lugar_do_painel(
     altura: f64,
 ) -> Retangulo {
     let largura = LARGURA_DO_PAINEL * escala;
-    let altura = altura * escala;
     let margem = MARGEM_DO_PAINEL * escala;
+    let altura = (altura * escala).min(area.altura - 2.0 * margem);
 
     let limitar_x = |x: f64| x.min(area.direita() - largura - margem).max(area.x + margem);
     let limitar_y = |y: f64| y.min(area.baixo() - altura - margem).max(area.y + margem);
@@ -636,6 +636,15 @@ mod testes {
         let lugar = lugar_do_painel(TELA, direita, 1.0, Some((1888.0, 400.0)), 360.0);
         assert_eq!(lugar.direita(), 1856.0 - MARGEM_DO_PAINEL);
         assert_eq!(lugar.y, 400.0 - 180.0);
+    }
+
+    #[test]
+    fn o_painel_alto_cabe_na_area_util() {
+        let tela = Retangulo { x: 0.0, y: 0.0, largura: 1366.0, altura: 768.0 };
+        let area = Retangulo { altura: 720.0, ..tela };
+        let lugar = lugar_do_painel(tela, area, 1.0, None, 900.0);
+        assert_eq!(lugar.altura, 720.0 - 2.0 * MARGEM_DO_PAINEL);
+        assert_eq!(lugar.y, MARGEM_DO_PAINEL);
     }
 
     #[test]

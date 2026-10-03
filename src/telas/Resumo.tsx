@@ -43,7 +43,7 @@ export function Resumo() {
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
-          espessura={38}
+          espessura={30}
           tamanho={96}
           girando={estado.girando}
           marcas={estado.temNumero ? limiares : null}

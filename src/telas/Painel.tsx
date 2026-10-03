@@ -132,17 +132,6 @@ export function Painel() {
         if (e.target === e.currentTarget && e.animationName === "kontro-descer") guardar();
       }}
     >
-      <button className="fechar" aria-label="Fechar" title="Fechar (Esc)" onClick={fechar}>
-        <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-          <path
-            d="M1 1 L9 9 M9 1 L1 9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button>
-
       <div
         className="topo"
         style={{ "--cor-do-estado": corDoAnel(estado, limiares) } as React.CSSProperties}
@@ -150,7 +139,7 @@ export function Painel() {
         <Anel
           valor={estado.preenchimento}
           cor={corDoAnel(estado, limiares)}
-          espessura={38}
+          espessura={30}
           tamanho={96}
           girando={estado.girando}
           marcas={estado.temNumero ? limiares : null}

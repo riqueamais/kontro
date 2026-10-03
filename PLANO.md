@@ -10,9 +10,8 @@ descrevem estado medido — quando não há medida, não há efeito.
 ## Situação
 
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T55 — os movimentos da tela cheia, de desempenho e fluidez e de janelas, bandeja e atalhos
-inteiros, e as quatro primeiras de sistema de design e temas —, mais a T89, que a T32 tornou
-obrigatória.
+T59 — os movimentos da tela cheia, de desempenho e fluidez, de janelas, bandeja e atalhos e
+de sistema de design e temas inteiros —, mais a T89, que a T32 tornou obrigatória.
 Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
 T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
 ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
@@ -35,7 +34,13 @@ físico e o tamanho em lógico: posição lógica é ambígua entre monitores de
 diferentes, e `monitor_from_point`, que decide se ela ainda vale, já trabalha em físico. Na
 T55 o botão passa a usar `--text-primary` no texto, como o do WinUI, em vez do
 `--text-secondary` de antes; e o cartão de versão nova também passou a usar `.leitura`, que
-é o mesmo bloco de nome e rodapé. Falta a parte que só um jogo responde — o `QUNS`
+é o mesmo bloco de nome e rodapé. Na T56 a porcentagem em Display (34px) só coube no anel de 96 com o
+rastreio de -0,02em que o §4 já previa: sem ele "100%" encostava no traço. Na T58 ficaram
+fora da escala, de propósito, a pílula (`sobreposicao.css`) e a réplica dela no passo a
+passo, que têm medida própria conferida na tela cheia, e o `diario.css`, que a tarefa do
+calendário refaz; o topo do aviso foi de 28 para 24px, e `SANGRIA_SUPERIOR_DO_AVISO`
+acompanhou para o cartão não sair do lugar. Na T57 as transições de várias propriedades
+ficaram em várias linhas, cada uma com a curva. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
