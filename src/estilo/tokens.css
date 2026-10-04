@@ -1,4 +1,18 @@
+@property --cor-do-anel {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8d979f;
+}
+
+@property --cor-do-estado {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #8d979f;
+}
+
 :root {
+  color-scheme: dark;
+
   --ink: #0b0e11;
   --surface: #0f1318;
   --surface-alt: #151a20;
@@ -7,7 +21,7 @@
 
   --text-primary: #e8ecef;
   --text-secondary: #9aa4ad;
-  --text-tertiary: #6b757d;
+  --text-tertiary: #7c868f;
 
   --accent-green: #5fe083;
   --accent-teal: #35d7a8;
@@ -16,6 +30,8 @@
   --gray: #8d979f;
 
   --realce: var(--accent-teal);
+  --fechar-janela: #c42b1c;
+  --atencao: #ff8fa3;
   --ring-track: rgba(255, 255, 255, 0.13);
   --polegar: #3a444d;
 
@@ -24,11 +40,20 @@
   --fundo-trilho: var(--surface);
   --fundo-painel: var(--ink);
   --contorno-painel: var(--stroke);
-  --sombra-painel: 0 18px 32px rgba(0, 0, 0, 0.45);
+  --sombra-aviso: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --sombra-flutuante: 0 2px 8px rgba(0, 0, 0, 0.6);
 
   --font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
   --font-mono: Consolas, ui-monospace, monospace;
+
+  --fs-display: 34px;
+  --fs-title: 22px;
+  --fs-subtitle: 16px;
+  --fs-body: 14px;
+  --fs-caption: 12px;
+  --fs-mono: 12px;
+  --rastreio-rotulo: 0.12em;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -37,9 +62,14 @@
   --space-5: 24px;
   --space-6: 32px;
 
+  --altura-controle: 32px;
+
+  --radius-trilho: 2px;
+  --radius-control: 4px;
   --radius-field: 8px;
   --radius-card: 12px;
   --radius-window: 16px;
+  --radius-sistema: 8px;
 
   --motion-fast: 120ms;
   --motion-base: 180ms;
@@ -66,7 +96,7 @@ body[data-tema="ardosia"] {
 
   --text-primary: #e7edf4;
   --text-secondary: #9aa9b9;
-  --text-tertiary: #6d7d8e;
+  --text-tertiary: #7d8d9e;
 
   --realce: #4ea8ff;
   --gray: #8797a7;
@@ -83,14 +113,17 @@ body[data-tema="brasa"] {
 
   --text-primary: #f2ebe5;
   --text-secondary: #b5a79c;
-  --text-tertiary: #8a7c72;
+  --text-tertiary: #948578;
 
   --gray: #9a8c81;
+  --realce: #e0925a;
   --polegar: #4e3e35;
   --ring-track: rgba(255, 235, 220, 0.13);
 }
 
 body[data-tema="dia"] {
+  color-scheme: light;
+
   --ink: #eef1f5;
   --surface: #ffffff;
   --surface-alt: #e4e9f0;
@@ -99,7 +132,7 @@ body[data-tema="dia"] {
 
   --text-primary: #0f151b;
   --text-secondary: #465260;
-  --text-tertiary: #67727f;
+  --text-tertiary: #5b6673;
 
   --accent-green: #10864a;
   --accent-teal: #0a7f68;
@@ -107,7 +140,8 @@ body[data-tema="dia"] {
   --red: #b8302b;
   --gray: #5f6b78;
 
-  --realce: #0a7f68;
+  --realce: #0a6e5b;
+  --atencao: #b4235a;
   --polegar: #9aa6b4;
   --ring-track: rgba(15, 21, 27, 0.14);
 }
@@ -118,13 +152,18 @@ body[data-material="sim"] {
   --fundo-trilho: transparent;
   --fundo-painel: color-mix(in srgb, var(--ink) 86%, transparent);
   --contorno-painel: color-mix(in srgb, var(--text-primary) 8%, transparent);
-  --sombra-painel: none;
+}
+
+body[data-tema="preto"][data-material="sim"] {
+  --fundo-janela: var(--ink);
+  --fundo-barra: var(--ink);
+  --fundo-trilho: var(--surface);
 }
 
 body[data-janela="sobreposicao"] {
   --text-primary: #e8ecef;
   --text-secondary: #9aa4ad;
-  --text-tertiary: #6b757d;
+  --text-tertiary: #7c868f;
 
   --accent-green: #5fe083;
   --accent-teal: #35d7a8;
@@ -132,5 +171,13 @@ body[data-janela="sobreposicao"] {
   --red: #f2564e;
   --gray: #8d979f;
 
+  --realce: #35d7a8;
   --ring-track: rgba(255, 255, 255, 0.16);
+}
+
+@media (forced-colors: active) {
+  :root,
+  body[data-janela="sobreposicao"] {
+    --ring-track: color-mix(in srgb, CanvasText 30%, transparent);
+  }
 }

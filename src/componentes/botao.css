@@ -1,0 +1,85 @@
+.botao {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--altura-controle);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-field);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-primary);
+  white-space: nowrap;
+  transition:
+    background var(--motion-fast) var(--curva),
+    border-color var(--motion-fast) var(--curva),
+    color var(--motion-fast) var(--curva);
+}
+.botao:hover {
+  background: color-mix(in srgb, var(--text-primary) 8%, transparent);
+}
+.botao:disabled {
+  opacity: 0.6;
+}
+.botao:disabled:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+}
+.botao[aria-busy="true"],
+.botao[aria-busy="true"]:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-secondary);
+}
+
+.botao.destaque {
+  border-color: var(--realce);
+  color: var(--realce);
+}
+.botao.destaque:hover {
+  background: var(--realce);
+  color: var(--ink);
+}
+
+.botao.primario {
+  background: var(--realce);
+  border-color: var(--realce);
+  color: var(--ink);
+  font-weight: 600;
+}
+.botao.primario:hover {
+  background: color-mix(in srgb, var(--realce) 88%, #fff);
+}
+
+.botao.perigo {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--ink);
+  font-weight: 600;
+}
+.botao.perigo:hover {
+  background: color-mix(in srgb, var(--red) 88%, #fff);
+}
+
+.botao.fantasma {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+}
+.botao.fantasma:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
+  color: var(--text-secondary);
+}
+
+.botao.miudo {
+  min-height: 28px;
+  padding: 0 var(--space-2);
+}
+
+.botao:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text-primary) 4%, transparent);
+  color: var(--text-secondary);
+}
+.botao.destaque:active:not(:disabled),
+.botao.primario:active:not(:disabled),
+.botao.perigo:active:not(:disabled) {
+  filter: brightness(0.9);
+}

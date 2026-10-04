@@ -16,10 +16,13 @@ export function ListaDeControles({
   const controles = useControles();
   const limiares = useLimiares();
   const [editando, setEditando] = useState<string | null>(null);
+  const titulo = useRef<HTMLDivElement>(null);
   if (controles.length < (sempre ? 1 : 2)) return null;
   return (
     <div className={`lista${sempre ? " solta" : ""}`}>
-      <div className="lista-titulo">Seus controles</div>
+      <div className="lista-titulo" ref={titulo} tabIndex={-1}>
+        Seus controles
+      </div>
       {controles.map((c) => (
         <Linha
           key={c.chave}
@@ -30,6 +33,7 @@ export function ListaDeControles({
           editando={editando === c.chave}
           aoEditar={() => setEditando(c.chave)}
           aoSair={() => setEditando(null)}
+          aoEsquecer={() => titulo.current?.focus()}
         />
       ))}
     </div>
@@ -43,6 +47,7 @@ function Linha({
   editando,
   aoEditar,
   aoSair,
+  aoEsquecer,
 }: {
   controle: Estado;
   limiares: Limiares;
@@ -51,21 +56,33 @@ function Linha({
   editando: boolean;
   aoEditar: () => void;
   aoSair: () => void;
+  aoEsquecer: () => void;
 }) {
   const campo = useRef<HTMLInputElement>(null);
+  const nome = useRef<HTMLButtonElement>(null);
+  const esquecer = useRef<HTMLButtonElement>(null);
+  const sair = (voltarOFoco = true) => {
+    aoSair();
+    if (voltarOFoco) requestAnimationFrame(() => nome.current?.focus());
+  };
   const [confirmando, setConfirmando] = useState(false);
+  const confirmar = useRef<HTMLButtonElement>(null);
+  const cancelar = (voltarOFoco = true) => {
+    setConfirmando(false);
+    if (voltarOFoco) requestAnimationFrame(() => esquecer.current?.focus());
+  };
   useEffect(() => {
     if (editando) {
       campo.current?.focus();
       campo.current?.select();
     }
   }, [editando]);
-  const salvar = () => {
+  const salvar = (voltarOFoco = true) => {
     const nome = campo.current?.value ?? "";
     if (nome !== controle.nome) {
       void invoke("renomear_controle", { chave: controle.chave, nome });
     }
-    aoSair();
+    sair(voltarOFoco);
   };
   const removivel = podeEsquecer && controle.via === "Desligado";
   return (
@@ -87,51 +104,90 @@ function Linha({
             defaultValue={controle.nome}
             maxLength={40}
             placeholder="Nome do controle"
-            onBlur={salvar}
+            aria-label="Nome do controle"
+            onBlur={() => salvar(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter") salvar();
-              if (e.key === "Escape") aoSair();
+              if (e.key === "Escape") sair();
             }}
           />
         ) : (
-          <button className="item-nome" title="Renomear" onClick={aoEditar}>
-            {controle.nome}
-          </button>
+          <span className="item-cabeca">
+            <button
+              ref={nome}
+              className="item-nome"
+              aria-label={`Renomear ${controle.nome}`}
+              onClick={aoEditar}
+            >
+              <span className="item-nome-texto">{controle.nome}</span>
+              <svg className="lapis" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                <path
+                  d="M8.2 1.8 10.2 3.8 4 10H2V8Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+            {principal && <span className="item-selo">na bandeja</span>}
+          </span>
         )}
         <div className="item-estado">
-          {controle.via === "Desligado"
-            ? controle.preenchimento !== null
-              ? `desconectado · ${controle.textoDaCarga} na última leitura`
-              : "desconectado"
-            : `${controle.textoDaCarga} · ${controle.textoDaLigacao}`}
+          {confirmando
+            ? "Some da lista e leva o histórico e as sessões junto."
+            : controle.via === "Desligado"
+              ? controle.preenchimento !== null
+                ? `desconectado · ${controle.textoDaCarga} na última leitura`
+                : "desconectado"
+              : controle.conectadoSemCarga
+                ? controle.textoDaLigacao
+                : `${controle.textoDaCarga} · ${controle.textoDaLigacao}`}
         </div>
       </div>
       {removivel &&
         (confirmando ? (
-          <div className="confirmar">
+          <div
+            className="confirmar"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") cancelar();
+            }}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) cancelar(false);
+            }}
+          >
             <button
-              className="ciclo perigo"
-              onClick={() => void invoke("esquecer_controle", { chave: controle.chave })}
+              ref={confirmar}
+              className="botao perigo miudo"
+              onClick={() => {
+                aoEsquecer();
+                void invoke("esquecer_controle", { chave: controle.chave });
+              }}
             >
               Esquecer
             </button>
-            <button className="ciclo" onClick={() => setConfirmando(false)}>
+            <button className="botao miudo" onClick={() => cancelar()}>
               Cancelar
             </button>
           </div>
         ) : (
           <button
+            ref={esquecer}
             className="esquecer"
-            title="Esquecer este controle"
             aria-label="Esquecer este controle"
-            onClick={() => setConfirmando(true)}
+            onClick={() => {
+              setConfirmando(true);
+              requestAnimationFrame(() => confirmar.current?.focus());
+            }}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
               <path
-                d="M1.5 1.5 L10.5 10.5 M10.5 1.5 L1.5 10.5"
+                d="M2 3.2h8M4.6 3.2V2h2.8v1.2M3.2 3.2l.5 6.8h4.6l.5-6.8"
+                fill="none"
                 stroke="currentColor"
-                strokeWidth="1.4"
+                strokeWidth="1.2"
                 strokeLinecap="round"
+                strokeLinejoin="round"
               />
             </svg>
           </button>

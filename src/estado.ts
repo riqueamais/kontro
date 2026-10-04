@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { Config } from "./config.gerada";
 
@@ -29,12 +29,28 @@ export interface Estado {
   girando: boolean;
   autonomia: string | null;
   autonomiaMinutos: number | null;
+  consumoPorHora: number | null;
+  procurando: boolean;
+  titulo: string;
 }
 
 export interface Amostra {
   t: number;
   p: number;
   via: Via | null;
+}
+
+export interface Recusa {
+  atalho: "Mostrar" | "Mover";
+  combinacao: string;
+  motivo: "Invalida" | "EmUso";
+}
+
+export interface VersaoNova {
+  versao: string;
+  notas: string | null;
+  beta: boolean;
+  atual: string;
 }
 
 export interface Sessao {
@@ -45,50 +61,84 @@ export interface Sessao {
   jogo: string | null;
 }
 
+interface Fonte<T> {
+  assinar: (aviso: () => void) => () => void;
+  ler: () => T;
+}
+
+function criarFonte<T>(comando: string | null, evento: string, inicial: T): Fonte<T> {
+  let atual = inicial;
+  let ligada = false;
+  let chegouPeloEvento = false;
+  const assinantes = new Set<() => void>();
+
+  const trocar = (valor: T) => {
+    atual = valor;
+    assinantes.forEach((aviso) => aviso());
+  };
+
+  const ligar = () => {
+    if (ligada) return;
+    ligada = true;
+    listen<T>(evento, (e) => {
+      chegouPeloEvento = true;
+      trocar(e.payload);
+    });
+    if (comando) {
+      invoke<T>(comando).then((valor) => {
+        if (!chegouPeloEvento) trocar(valor);
+      });
+    }
+  };
+
+  return {
+    assinar(aviso) {
+      ligar();
+      assinantes.add(aviso);
+      return () => {
+        assinantes.delete(aviso);
+      };
+    },
+    ler: () => atual,
+  };
+}
+
+function doEndereco(nome: string): string | null {
+  return new URLSearchParams(window.location.search).get(nome);
+}
+
+function useFonte<T>(fonte: Fonte<T>): T {
+  return useSyncExternalStore(fonte.assinar, fonte.ler);
+}
+
+const fonteDoEstado = criarFonte<Estado | null>("estado_atual", "kontro://estado", null);
+const fonteDosControles = criarFonte<Estado[]>("controles", "kontro://controles", []);
+const fonteDaConfig = criarFonte<Config | null>("configuracoes", "kontro://config", null);
+const fonteDaPilulaSolta = criarFonte<boolean>("pilula_solta", "kontro://solta", false);
+const fonteDaPilulaCoberta = criarFonte<string | null>("pilula_coberta", "kontro://coberta", null);
+const fonteDosAtalhosRecusados = criarFonte<Recusa[]>("atalhos_recusados", "kontro://atalhos", []);
+const fonteDaNovidade = criarFonte<VersaoNova | null>(
+  "versao_disponivel",
+  "kontro://novidade",
+  null,
+);
+const fonteDoTemaDoSistema = criarFonte<boolean>(
+  "windows_no_claro",
+  "kontro://tema-do-sistema",
+  doEndereco("tema") === "dia",
+);
+const fonteDoMaterial = criarFonte<boolean>(
+  null,
+  "kontro://material",
+  doEndereco("material") === "sim",
+);
+
 export function useEstado(): Estado | null {
-  const [estado, setEstado] = useState<Estado | null>(null);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<Estado>("estado_atual").then((e) => {
-      if (vivo) setEstado(e);
-    });
-
-    const parar = listen<Estado>("kontro://estado", (evento) => {
-      if (vivo) setEstado(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return estado;
+  return useFonte(fonteDoEstado);
 }
 
 export function useControles(): Estado[] {
-  const [controles, setControles] = useState<Estado[]>([]);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<Estado[]>("controles").then((c) => {
-      if (vivo) setControles(c);
-    });
-
-    const parar = listen<Estado[]>("kontro://controles", (evento) => {
-      if (vivo) setControles(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return controles;
+  return useFonte(fonteDosControles);
 }
 
 export interface Limiares {
@@ -107,60 +157,41 @@ export function corDoAnel(estado: Estado, limiares: Limiares = LIMIARES_PADRAO):
   return "var(--accent-green)";
 }
 
+export function faixaDaCarga(estado: Estado, limiares: Limiares = LIMIARES_PADRAO): string {
+  if (estado.girando) return "no cabo";
+  if (estado.via === "Desligado") return "desligado";
+  if (estado.preenchimento === null) return "sem leitura";
+  if (estado.preenchimento < limiares.critico) return "carga crítica";
+  if (estado.preenchimento < limiares.aviso) return "carga baixa";
+  return "com folga";
+}
+
 export function useTema(): string {
   const cfg = useConfig();
-  const deNascenca = document.body.dataset.tema ?? "noite";
-  const [doSistema, setDoSistema] = useState(deNascenca === "dia" ? "dia" : "noite");
+  const claro = useFonte(fonteDoTemaDoSistema);
 
-  useEffect(() => {
-    let vivo = true;
-    const perguntar = () => {
-      invoke<boolean>("windows_no_claro")
-        .then((claro) => {
-          if (vivo) setDoSistema(claro ? "dia" : "noite");
-        })
-        .catch(() => {});
-    };
+  if (!cfg) return document.body.dataset.tema ?? "noite";
+  if (cfg.Theme !== "Sistema") return cfg.Theme.toLowerCase();
+  return claro ? "dia" : "noite";
+}
 
-    perguntar();
-    const relogio = setInterval(perguntar, 30_000);
-    return () => {
-      vivo = false;
-      clearInterval(relogio);
-    };
-  }, []);
-
-  if (!cfg) return deNascenca;
-  return cfg.Theme === "Sistema" ? doSistema : cfg.Theme.toLowerCase();
+export function useMaterial(): boolean {
+  return useFonte(fonteDoMaterial);
 }
 
 export function useLimiares(): Limiares {
   const cfg = useConfig();
-  if (!cfg) return LIMIARES_PADRAO;
-  return { critico: cfg.CriticalThreshold, aviso: cfg.WarnThreshold };
+  const critico = cfg?.CriticalThreshold ?? LIMIARES_PADRAO.critico;
+  const aviso = cfg?.WarnThreshold ?? LIMIARES_PADRAO.aviso;
+  return useMemo(() => ({ critico, aviso }), [critico, aviso]);
+}
+
+export function useNovidade(): VersaoNova | null {
+  return useFonte(fonteDaNovidade);
 }
 
 export function usePilulaSolta(): boolean {
-  const [solta, setSolta] = useState(false);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<boolean>("pilula_solta").then((s) => {
-      if (vivo) setSolta(s);
-    });
-
-    const parar = listen<boolean>("kontro://solta", (evento) => {
-      if (vivo) setSolta(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return solta;
+  return useFonte(fonteDaPilulaSolta);
 }
 
 export function useAoMudarOHistorico(buscar: () => void, dependencias: unknown[]) {
@@ -174,74 +205,17 @@ export function useAoMudarOHistorico(buscar: () => void, dependencias: unknown[]
 }
 
 export function usePilulaCoberta(): string | null {
-  const [coberta, setCoberta] = useState<string | null>(null);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<string | null>("pilula_coberta").then((c) => {
-      if (vivo) setCoberta(c);
-    });
-
-    const parar = listen<string | null>("kontro://coberta", (evento) => {
-      if (vivo) setCoberta(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return coberta;
+  return useFonte(fonteDaPilulaCoberta);
 }
 
-export function useAtalhosRecusados(): string[] {
-  const [recusados, setRecusados] = useState<string[]>([]);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<string[]>("atalhos_recusados").then((r) => {
-      if (vivo) setRecusados(r);
-    });
-
-    const parar = listen<string[]>("kontro://atalhos", (evento) => {
-      if (vivo) setRecusados(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return recusados;
+export function useAtalhosRecusados(): Recusa[] {
+  return useFonte(fonteDosAtalhosRecusados);
 }
 
 export function qualJanela(): string {
-  return new URLSearchParams(window.location.search).get("janela") ?? "principal";
+  return doEndereco("janela") ?? "principal";
 }
 
 export function useConfig(): Config | null {
-  const [cfg, setCfg] = useState<Config | null>(null);
-
-  useEffect(() => {
-    let vivo = true;
-
-    invoke<Config>("configuracoes").then((c) => {
-      if (vivo) setCfg(c);
-    });
-
-    const parar = listen<Config>("kontro://config", (evento) => {
-      if (vivo) setCfg(evento.payload);
-    });
-
-    return () => {
-      vivo = false;
-      parar.then((f) => f());
-    };
-  }, []);
-
-  return cfg;
+  return useFonte(fonteDaConfig);
 }

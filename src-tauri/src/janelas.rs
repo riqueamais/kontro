@@ -1,20 +1,21 @@
+use serde::{Deserialize, Serialize};
 use tauri::window::{Color, Effect, EffectsBuilder, Monitor};
 use tauri::{
-    AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
+    AppHandle, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow,
     WebviewWindowBuilder,
 };
 use windows::Win32::Foundation::HWND;
 
-use crate::configuracoes::Settings;
+use crate::caminhos;
+use crate::configuracoes::{Settings, Theme};
 use crate::sistema;
 use crate::tela;
 
 pub const LARGURA_DO_PAINEL: f64 = 328.0;
 
-const MARGEM_LATERAL_DO_PAINEL: f64 = 12.0;
-const MARGEM_INFERIOR_DO_PAINEL: f64 = 8.0;
+const MARGEM_DO_PAINEL: f64 = 12.0;
 
-const SANGRIA_SUPERIOR_DO_AVISO: f64 = 28.0;
+const SANGRIA_SUPERIOR_DO_AVISO: f64 = 24.0;
 
 pub const PRINCIPAL: &str = "principal";
 pub const PAINEL: &str = "painel";
@@ -27,18 +28,25 @@ const ALTURA_DA_SOBREPOSICAO: f64 = 72.0;
 const FOLGA_DO_ENCAIXE: f64 = 28.0;
 
 const MARGEM_DO_AVISO: f64 = 24.0;
+const LARGURA_DO_AVISO: f64 = 384.0;
+const ALTURA_DO_AVISO: f64 = 180.0;
 
 const TINTA_DA_NOITE: Color = Color(11, 14, 17, 255);
 const TINTA_DO_DIA: Color = Color(238, 241, 245, 255);
 
 pub struct Nascimento {
     tema: &'static str,
+    tem_material: bool,
     material: bool,
 }
 
 impl Nascimento {
     pub fn de(cfg: &Settings) -> Self {
-        Nascimento { tema: cfg.tema_efetivo(), material: sistema::material_disponivel() }
+        Nascimento {
+            tema: cfg.tema_efetivo(),
+            tem_material: sistema::tem_material(),
+            material: sistema::material_disponivel(),
+        }
     }
 
     fn endereco(&self, janela: &str) -> WebviewUrl {
@@ -57,8 +65,55 @@ impl Nascimento {
     }
 }
 
-pub fn criar_todas(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<()> {
-    criar_principal(app, nascimento)?;
+const LARGURA_DA_PRINCIPAL: f64 = 840.0;
+const ALTURA_DA_PRINCIPAL: f64 = 600.0;
+const LARGURA_MINIMA_DA_PRINCIPAL: f64 = 720.0;
+const ALTURA_MINIMA_DA_PRINCIPAL: f64 = 520.0;
+const FOLGA_PARA_ACHAR_O_MONITOR: f64 = 24.0;
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Geometria {
+    pub x: f64,
+    pub y: f64,
+    pub largura: f64,
+    pub altura: f64,
+}
+
+impl Geometria {
+    pub fn carregar() -> Option<Self> {
+        serde_json::from_str(&caminhos::ler("janela.json")?).ok()
+    }
+
+    pub fn salvar(&self) {
+        caminhos::garantir_dir();
+        if let Ok(texto) = serde_json::to_string_pretty(self) {
+            let _ = std::fs::write(caminhos::arquivo("janela.json"), texto);
+        }
+    }
+
+    pub fn medir(janela: &WebviewWindow) -> Option<Self> {
+        if janela.is_minimized().unwrap_or(false) {
+            return None;
+        }
+        let escala = janela.scale_factor().ok()?;
+        let posicao = janela.outer_position().ok()?;
+        let tamanho = janela.inner_size().ok()?.to_logical::<f64>(escala);
+        Some(Geometria {
+            x: posicao.x as f64,
+            y: posicao.y as f64,
+            largura: tamanho.width,
+            altura: tamanho.height,
+        })
+    }
+}
+
+pub fn criar_todas(
+    app: &AppHandle,
+    nascimento: &Nascimento,
+    geometria: Option<Geometria>,
+) -> tauri::Result<()> {
+    let principal = criar_principal(app, nascimento)?;
+    assentar_principal(app, &principal, geometria);
     criar_painel(app, nascimento)?;
     criar_sobreposicao(app, nascimento)?;
     criar_aviso(app, nascimento)?;
@@ -68,16 +123,16 @@ pub fn criar_todas(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<()
 fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
     let mut construtor = WebviewWindowBuilder::new(app, PRINCIPAL, nascimento.endereco(PRINCIPAL))
         .title("Kontro")
-        .inner_size(840.0, 600.0)
-        .min_inner_size(720.0, 520.0)
+        .inner_size(LARGURA_DA_PRINCIPAL, ALTURA_DA_PRINCIPAL)
+        .min_inner_size(LARGURA_MINIMA_DA_PRINCIPAL, ALTURA_MINIMA_DA_PRINCIPAL)
         .decorations(false)
-        .visible(false)
-        .center();
+        .visible(false);
 
-    if nascimento.material {
-        construtor = construtor
-            .transparent(true)
-            .effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+    if nascimento.tem_material {
+        construtor = construtor.transparent(true);
+        if nascimento.material {
+            construtor = construtor.effects(EffectsBuilder::new().effect(Effect::MicaDark).build());
+        }
     } else {
         construtor = construtor.background_color(nascimento.tinta());
     }
@@ -89,13 +144,65 @@ fn criar_principal(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<We
     Ok(janela)
 }
 
-pub fn vestir_material(app: &AppHandle, claro: bool) {
-    if !sistema::material_disponivel() {
+fn assentar_principal(app: &AppHandle, janela: &WebviewWindow, geometria: Option<Geometria>) {
+    let salva = geometria.filter(|g| {
+        app.monitor_from_point(g.x + FOLGA_PARA_ACHAR_O_MONITOR, g.y + FOLGA_PARA_ACHAR_O_MONITOR)
+            .ok()
+            .flatten()
+            .is_some()
+    });
+
+    if let Some(g) = salva {
+        let _ = janela.set_position(PhysicalPosition::new(g.x.round() as i32, g.y.round() as i32));
+        let _ = janela.set_size(LogicalSize::new(
+            g.largura.max(LARGURA_MINIMA_DA_PRINCIPAL),
+            g.altura.max(ALTURA_MINIMA_DA_PRINCIPAL),
+        ));
         return;
     }
-    let Some(janela) = app.get_webview_window(PRINCIPAL) else { return };
-    let efeito = if claro { Effect::MicaLight } else { Effect::MicaDark };
-    let _ = janela.set_effects(EffectsBuilder::new().effect(efeito).build());
+
+    let monitor = monitor_do_cursor(app).or_else(|| janela.primary_monitor().ok().flatten());
+    let Some(monitor) = monitor else { return };
+    let escala = monitor.scale_factor();
+    let area = monitor.work_area();
+    let largura = LARGURA_DA_PRINCIPAL * escala;
+    let altura = ALTURA_DA_PRINCIPAL * escala;
+    let x = area.position.x as f64 + (area.size.width as f64 - largura) / 2.0;
+    let y = area.position.y as f64 + (area.size.height as f64 - altura) / 2.0;
+    let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
+}
+
+pub fn vestir_material(app: &AppHandle, cfg: &Settings) {
+    let claro = cfg.tema_claro();
+    let tema = match cfg.theme {
+        Theme::Sistema => None,
+        _ if claro => Some(tauri::Theme::Light),
+        _ => Some(tauri::Theme::Dark),
+    };
+    for rotulo in [PRINCIPAL, PAINEL, SOBREPOSICAO, AVISO] {
+        if let Some(janela) = app.get_webview_window(rotulo) {
+            let _ = janela.set_theme(tema);
+        }
+    }
+
+    if !sistema::tem_material() {
+        return;
+    }
+    let ligado = sistema::transparencia_ligada();
+
+    if let Some(janela) = app.get_webview_window(PRINCIPAL) {
+        let efeito = match (ligado, cfg.theme) {
+            (false, _) | (true, Theme::Preto) => None,
+            (true, _) if claro => Some(Effect::MicaLight),
+            (true, _) => Some(Effect::MicaDark),
+        };
+        let _ = janela.set_effects(efeito.map(|e| EffectsBuilder::new().effect(e).build()));
+    }
+
+    if let Some(janela) = app.get_webview_window(PAINEL) {
+        let efeito = ligado.then(|| EffectsBuilder::new().effect(Effect::Acrylic).build());
+        let _ = janela.set_effects(efeito);
+    }
 }
 
 fn vestir_icone(janela: &WebviewWindow) {
@@ -212,7 +319,7 @@ fn criar_sobreposicao(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result
 fn criar_aviso(app: &AppHandle, nascimento: &Nascimento) -> tauri::Result<WebviewWindow> {
     let janela = WebviewWindowBuilder::new(app, AVISO, nascimento.endereco(AVISO))
         .title("Kontro")
-        .inner_size(384.0, 180.0)
+        .inner_size(LARGURA_DO_AVISO, ALTURA_DO_AVISO)
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -244,7 +351,7 @@ pub fn redimensionar_sobreposicao(
     let _ = janela.set_size(LogicalSize::new(largura, altura));
 
     if !solta {
-        posicionar_sobreposicao(app, cfg);
+        posicionar_sobreposicao(app, cfg, tela::Tela::atual().conta_como_jogo());
         return;
     }
 
@@ -261,16 +368,23 @@ pub fn redimensionar_sobreposicao(
     ));
 }
 
-pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings) {
+pub fn posicionar_sobreposicao(app: &AppHandle, cfg: &Settings, tela_cheia: bool) {
     let Some(janela) = app.get_webview_window(SOBREPOSICAO) else { return };
     let Some(monitor) = monitor_da_sobreposicao(app, cfg) else { return };
-    let Some(palco) = palco(&monitor, &janela) else { return };
+    let Some(palco) = palco(&monitor, &janela, tela_cheia) else { return };
 
     let x = palco.esquerda + palco.livre_x * cfg.overlay_x;
     let y = palco.topo + palco.livre_y * cfg.overlay_y;
+    if let Ok(atual) = janela.outer_position() {
+        let tolerancia = 0.5 * janela.scale_factor().unwrap_or(1.0);
+        if (atual.x as f64 - x).abs() <= tolerancia && (atual.y as f64 - y).abs() <= tolerancia {
+            return;
+        }
+    }
     let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
+#[derive(Clone, Serialize)]
 pub struct Pouso {
     pub x: f64,
     pub y: f64,
@@ -280,7 +394,7 @@ pub struct Pouso {
 pub fn onde_a_sobreposicao_parou(app: &AppHandle) -> Option<Pouso> {
     let janela = app.get_webview_window(SOBREPOSICAO)?;
     let monitor = janela.current_monitor().ok().flatten()?;
-    let palco = palco(&monitor, &janela)?;
+    let palco = palco(&monitor, &janela, tela::Tela::atual().conta_como_jogo())?;
 
     let posicao = janela.outer_position().ok()?;
 
@@ -299,13 +413,17 @@ struct Palco {
     folga: f64,
 }
 
-fn palco(monitor: &Monitor, janela: &WebviewWindow) -> Option<Palco> {
+fn palco(monitor: &Monitor, janela: &WebviewWindow, tela_cheia: bool) -> Option<Palco> {
     let escala_do_monitor = monitor.scale_factor();
     let escala_da_janela = janela.scale_factor().unwrap_or(escala_do_monitor);
     let conversao = escala_do_monitor / escala_da_janela;
 
-    let posicao = monitor.position();
-    let tamanho = monitor.size();
+    let area = monitor.work_area();
+    let (posicao, tamanho) = if tela_cheia {
+        (monitor.position(), monitor.size())
+    } else {
+        (&area.position, &area.size)
+    };
     let janela = janela.outer_size().ok()?;
 
     Some(Palco {
@@ -348,42 +466,125 @@ fn indice_do_monitor(app: &AppHandle, alvo: &Monitor) -> Option<i32> {
     i32::try_from(onde).ok()
 }
 
-pub fn posicionar_aviso(app: &AppHandle) {
+pub fn posicionar_aviso(app: &AppHandle, cfg: &Settings) {
     let Some(janela) = app.get_webview_window(AVISO) else { return };
-    let monitor =
-        janela.current_monitor().ok().flatten().or_else(|| janela.primary_monitor().ok().flatten());
-    let Some(monitor) = monitor else { return };
+    let Some(monitor) = monitor_da_sobreposicao(app, cfg) else { return };
 
     let escala = monitor.scale_factor();
-    let posicao = monitor.position().to_logical::<f64>(escala);
-    let tamanho = monitor.size().to_logical::<f64>(escala);
-    let Ok(tam_janela) = janela.outer_size() else { return };
-    let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
+    let area = monitor.work_area();
+    let largura = LARGURA_DO_AVISO * escala;
 
-    let x = posicao.x + (tamanho.width - tam_janela.width) / 2.0;
-    let y = posicao.y + MARGEM_DO_AVISO - SANGRIA_SUPERIOR_DO_AVISO;
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+    let x = area.position.x as f64 + (area.size.width as f64 - largura) / 2.0;
+    let y = area.position.y as f64 + (MARGEM_DO_AVISO - SANGRIA_SUPERIOR_DO_AVISO) * escala;
+    let _ = janela.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 }
 
-pub fn posicionar_painel(app: &AppHandle) {
-    let Some(janela) = app.get_webview_window(PAINEL) else { return };
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Retangulo {
+    x: f64,
+    y: f64,
+    largura: f64,
+    altura: f64,
+}
 
-    let monitor = monitor_do_cursor(app)
+impl Retangulo {
+    fn direita(&self) -> f64 {
+        self.x + self.largura
+    }
+
+    fn baixo(&self) -> f64 {
+        self.y + self.altura
+    }
+}
+
+fn lugar_do_painel(
+    tela: Retangulo,
+    area: Retangulo,
+    escala: f64,
+    icone: Option<(f64, f64)>,
+    altura: f64,
+) -> Retangulo {
+    let largura = LARGURA_DO_PAINEL * escala;
+    let margem = MARGEM_DO_PAINEL * escala;
+    let altura = (altura * escala).min(area.altura - 2.0 * margem);
+
+    let limitar_x = |x: f64| x.min(area.direita() - largura - margem).max(area.x + margem);
+    let limitar_y = |y: f64| y.min(area.baixo() - altura - margem).max(area.y + margem);
+    let junto_em_x = || limitar_x(icone.map_or(f64::MAX, |(x, _)| x - largura / 2.0));
+    let junto_em_y = || limitar_y(icone.map_or(f64::MAX, |(_, y)| y - altura / 2.0));
+
+    let (x, y) = if area.y > tela.y {
+        (junto_em_x(), area.y + margem)
+    } else if area.x > tela.x {
+        (area.x + margem, junto_em_y())
+    } else if area.largura < tela.largura {
+        (area.direita() - largura - margem, junto_em_y())
+    } else {
+        (junto_em_x(), area.baixo() - altura - margem)
+    };
+
+    Retangulo { x, y, largura, altura }
+}
+
+pub fn assentar_painel(app: &AppHandle, icone: Option<(f64, f64)>, altura: f64) {
+    use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
+
+    let Some(janela) = app.get_webview_window(PAINEL) else { return };
+    let monitor = icone
+        .and_then(|(x, y)| app.monitor_from_point(x, y).ok().flatten())
+        .or_else(|| monitor_do_cursor(app))
         .or_else(|| janela.current_monitor().ok().flatten())
         .or_else(|| janela.primary_monitor().ok().flatten());
     let Some(monitor) = monitor else { return };
+    let Some(alvo) = hwnd_de(&janela) else { return };
+    let (Ok(fora), Ok(dentro)) = (janela.outer_size(), janela.inner_size()) else { return };
 
-    let escala = monitor.scale_factor();
-    let Ok(tam_janela) = janela.outer_size() else { return };
-    let tam_janela: LogicalSize<f64> = tam_janela.to_logical(escala);
+    let tela = Retangulo {
+        x: monitor.position().x as f64,
+        y: monitor.position().y as f64,
+        largura: monitor.size().width as f64,
+        altura: monitor.size().height as f64,
+    };
+    let util = monitor.work_area();
+    let area = Retangulo {
+        x: util.position.x as f64,
+        y: util.position.y as f64,
+        largura: util.size.width as f64,
+        altura: util.size.height as f64,
+    };
+    let lugar = lugar_do_painel(tela, area, monitor.scale_factor(), icone, altura);
 
-    let area = monitor.work_area();
-    let canto = area.position.to_logical::<f64>(escala);
-    let util = area.size.to_logical::<f64>(escala);
+    let moldura_x = fora.width as i32 - dentro.width as i32;
+    let moldura_y = fora.height as i32 - dentro.height as i32;
+    let (recuo_x, recuo_y) = recuo_do_cliente(alvo);
 
-    let x = canto.x + util.width - tam_janela.width - MARGEM_LATERAL_DO_PAINEL;
-    let y = canto.y + util.height - tam_janela.height - MARGEM_INFERIOR_DO_PAINEL;
-    let _ = janela.set_position(LogicalPosition::new(x, y));
+    unsafe {
+        let _ = SetWindowPos(
+            alvo,
+            None,
+            lugar.x.round() as i32 - recuo_x,
+            lugar.y.round() as i32 - recuo_y,
+            lugar.largura.round() as i32 + moldura_x,
+            lugar.altura.round() as i32 + moldura_y,
+            SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
+fn recuo_do_cliente(alvo: HWND) -> (i32, i32) {
+    use windows::Win32::Foundation::{POINT, RECT};
+    use windows::Win32::Graphics::Gdi::ClientToScreen;
+    use windows::Win32::UI::WindowsAndMessaging::GetWindowRect;
+
+    let mut janela = RECT::default();
+    let mut origem = POINT::default();
+    unsafe {
+        if GetWindowRect(alvo, &mut janela).is_err() || !ClientToScreen(alvo, &mut origem).as_bool()
+        {
+            return (0, 0);
+        }
+    }
+    (origem.x - janela.left, origem.y - janela.top)
 }
 
 fn monitor_em_foco(app: &AppHandle) -> Option<Monitor> {
@@ -399,6 +600,63 @@ fn monitor_do_cursor(app: &AppHandle) -> Option<Monitor> {
 #[cfg(test)]
 mod testes {
     use super::*;
+
+    const TELA: Retangulo = Retangulo { x: 0.0, y: 0.0, largura: 1920.0, altura: 1080.0 };
+
+    #[test]
+    fn com_a_barra_embaixo_o_painel_centra_sobre_o_icone() {
+        let area = Retangulo { altura: 1032.0, ..TELA };
+        let lugar = lugar_do_painel(TELA, area, 1.0, Some((1500.0, 1056.0)), 360.0);
+        assert_eq!(lugar.x, 1500.0 - LARGURA_DO_PAINEL / 2.0);
+        assert_eq!(lugar.baixo(), 1032.0 - MARGEM_DO_PAINEL);
+    }
+
+    #[test]
+    fn o_icone_no_canto_nao_empurra_o_painel_para_fora() {
+        let area = Retangulo { altura: 1032.0, ..TELA };
+        let lugar = lugar_do_painel(TELA, area, 1.0, Some((1910.0, 1056.0)), 360.0);
+        assert_eq!(lugar.direita(), 1920.0 - MARGEM_DO_PAINEL);
+    }
+
+    #[test]
+    fn com_a_barra_no_topo_o_painel_encosta_nela() {
+        let area = Retangulo { y: 48.0, altura: 1032.0, ..TELA };
+        let lugar = lugar_do_painel(TELA, area, 1.0, Some((1500.0, 24.0)), 360.0);
+        assert_eq!(lugar.y, 48.0 + MARGEM_DO_PAINEL);
+        assert_eq!(lugar.x, 1500.0 - LARGURA_DO_PAINEL / 2.0);
+    }
+
+    #[test]
+    fn com_a_barra_nas_laterais_o_painel_fica_do_lado_do_icone() {
+        let esquerda = Retangulo { x: 64.0, largura: 1856.0, ..TELA };
+        let lugar = lugar_do_painel(TELA, esquerda, 1.0, Some((32.0, 900.0)), 360.0);
+        assert_eq!(lugar.x, 64.0 + MARGEM_DO_PAINEL);
+        assert_eq!(lugar.baixo(), 1080.0 - MARGEM_DO_PAINEL);
+
+        let direita = Retangulo { largura: 1856.0, ..TELA };
+        let lugar = lugar_do_painel(TELA, direita, 1.0, Some((1888.0, 400.0)), 360.0);
+        assert_eq!(lugar.direita(), 1856.0 - MARGEM_DO_PAINEL);
+        assert_eq!(lugar.y, 400.0 - 180.0);
+    }
+
+    #[test]
+    fn o_painel_alto_cabe_na_area_util() {
+        let tela = Retangulo { x: 0.0, y: 0.0, largura: 1366.0, altura: 768.0 };
+        let area = Retangulo { altura: 720.0, ..tela };
+        let lugar = lugar_do_painel(tela, area, 1.0, None, 900.0);
+        assert_eq!(lugar.altura, 720.0 - 2.0 * MARGEM_DO_PAINEL);
+        assert_eq!(lugar.y, MARGEM_DO_PAINEL);
+    }
+
+    #[test]
+    fn a_escala_vem_do_monitor_de_destino() {
+        let tela = Retangulo { x: 1920.0, y: 0.0, largura: 3840.0, altura: 2160.0 };
+        let area = Retangulo { altura: 2088.0, ..tela };
+        let lugar = lugar_do_painel(tela, area, 1.5, None, 360.0);
+        assert_eq!(lugar.largura, LARGURA_DO_PAINEL * 1.5);
+        assert_eq!(lugar.direita(), 1920.0 + 3840.0 - MARGEM_DO_PAINEL * 1.5);
+        assert_eq!(lugar.baixo(), 2088.0 - MARGEM_DO_PAINEL * 1.5);
+    }
 
     #[test]
     fn largar_quase_no_canto_vale_como_canto() {

@@ -8,6 +8,11 @@ on:
     branches:
       - main
       - develop
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "assets/banner.html"
+      - "LICENSE"
   workflow_dispatch:
 
 permissions:
@@ -15,32 +20,23 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref_name }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref_name == 'develop' }}
 
 jobs:
-  build:
+  decidir:
     # Disparada a mao em outra branch, a build cairia no canal beta e trocaria a beta
     # de todo mundo por uma branch de trabalho.
     if: github.ref_name == 'main' || github.ref_name == 'develop'
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
+    outputs:
+      pular: ${{ steps.ver.outputs.pular }}
+      canal: ${{ steps.ver.outputs.canal }}
+      version: ${{ steps.ver.outputs.version }}
+      tag: ${{ steps.ver.outputs.tag }}
+      anterior: ${{ steps.ver.outputs.anterior }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # As tags anteriores e a anotacao da tag desta versao, quando existir,
-          # so aparecem com o historico completo.
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
 
       - name: Decidir canal e versao
         id: ver
@@ -108,11 +104,44 @@ jobs:
           "anterior=$anterior" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           Write-Host "canal: $canal  versao: $versao  tag: $tag  desde: $anterior"
 
+  verificar:
+    needs: decidir
+    if: needs.decidir.outputs.pular == 'false'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/verificar.yml
+
+  empacotar:
+    needs: [decidir, verificar]
+    runs-on: windows-latest
+    env:
+      VERSAO: ${{ needs.decidir.outputs.version }}
+      CANAL: ${{ needs.decidir.outputs.canal }}
+      TAG: ${{ needs.decidir.outputs.tag }}
+      ANTERIOR: ${{ needs.decidir.outputs.anterior }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # As tags anteriores e a anotacao da tag desta versao, quando existir,
+          # so aparecem com o historico completo.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+
       - name: Carimbar a versao no projeto
-        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: |
-          $v = "${{ steps.ver.outputs.version }}"
+          $v = $env:VERSAO
 
           # Trocar so a linha da versao. Um round-trip por ConvertFrom-Json/ConvertTo-Json
           # reescreve o arquivo inteiro, e leitura sem encoding declarado decodifica UTF-8
@@ -146,10 +175,9 @@ jobs:
           Set-Content src-tauri/Cargo.toml $cargo -Encoding utf8 -NoNewline
 
       - name: Conferir o carimbo
-        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: |
-          $v = "${{ steps.ver.outputs.version }}"
+          $v = $env:VERSAO
 
           $noCargo = (Select-String -Path src-tauri/Cargo.toml -Pattern '^version = "(.+)"' |
             Select-Object -First 1).Matches.Groups[1].Value
@@ -172,11 +200,9 @@ jobs:
           }
 
       - name: Instalar dependencias do front
-        if: steps.ver.outputs.pular == 'false'
         run: npm ci
 
       - name: Empacotar
-        if: steps.ver.outputs.pular == 'false'
         env:
           # Assinar e o que permite ao app confiar no pacote que ele mesmo baixa. Sem
           # isto o updater recusa a atualizacao, e com razao.
@@ -185,16 +211,21 @@ jobs:
         run: npx tauri build
 
       - name: Listar o que saiu
-        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: Get-ChildItem src-tauri/target/release/bundle -Recurse -File | Select-Object Name, Length | Format-Table -AutoSize
 
+      - name: Guardar o instalador como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: kontro-${{ needs.decidir.outputs.version }}
+          path: src-tauri/target/release/bundle/
+          retention-days: 7
+
       - name: Escrever as notas
-        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         run: |
-          $canal = "${{ steps.ver.outputs.canal }}"
-          $tag = "${{ steps.ver.outputs.tag }}"
+          $canal = $env:CANAL
+          $tag = $env:TAG
 
           # Na estavel, uma tag anotada empurrada a mao continua valendo como nota
           # escrita para quem usa o app. Sem ela, e no canal beta, a nota e a lista
@@ -208,7 +239,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($notas)) {
             # "Desde a ultima estavel" e desde a ultima release publicada, nao desde a
             # ultima tag: uma tag anotada empurrada antes do merge ainda nao saiu.
-            $anterior = "${{ steps.ver.outputs.anterior }}"
+            $anterior = $env:ANTERIOR
             $faixa = if ($anterior) { "$anterior..HEAD" } else { "HEAD" }
             $assuntos = git log $faixa --no-merges --format='%s' |
               Where-Object { $_ -and $_ -notmatch '^Versao \d' }
@@ -226,7 +257,6 @@ jobs:
           Get-Content notas.md
 
       - name: Publicar a release
-        if: steps.ver.outputs.pular == 'false'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -234,9 +264,9 @@ jobs:
           # Cada passo roda num shell proprio: variavel definida la atras nao chega
           # aqui. Foi assim que o manifesto saiu com a versao nula e o app recusou a
           # atualizacao dizendo "invalid type: null".
-          $v = "${{ steps.ver.outputs.version }}"
-          $canal = "${{ steps.ver.outputs.canal }}"
-          $tag = "${{ steps.ver.outputs.tag }}"
+          $v = $env:VERSAO
+          $canal = $env:CANAL
+          $tag = $env:TAG
           $manifestoNome = if ($canal -eq "estavel") { "latest.json" } else { "beta.json" }
 
           $arquivos = (Get-ChildItem src-tauri/target/release/bundle -Recurse -File -Include *.exe, *.msi, *.sig).FullName
@@ -275,23 +305,36 @@ jobs:
               --title "Kontro $tag" `
               --notes-file notas.md
           } else {
-            # A tag `beta` anda junto com a develop. Apagar a release e a tag antes
-            # de recriar garante que so o instalador desta build fica anexado. O push
-            # que apaga a tag cobre a release apagada a mao pela pagina, que deixa a
-            # tag para tras: com ela de pe o `--target` seria ignorado, e a beta nova
-            # sairia apontando para o commit velho.
-            gh release delete $tag --cleanup-tag --yes 2>$null
-            git push origin ":refs/tags/$tag" 2>$null
-            gh release create $tag $arquivos `
-              --target "${{ github.sha }}" `
-              --prerelease `
-              --title "Kontro $v" `
-              --notes-file notas.md
-          }
+            # A tag `beta` anda junto com a develop e a release e atualizada por cima,
+            # nunca apagada: um push novo na develop cancela este run a qualquer
+            # momento, e apagar antes de recriar deixava o canal sem beta.json se o
+            # corte caisse no meio. Instalador novo sobe primeiro, manifesto depois, e
+            # o velho so sai no fim: em qualquer ponto de corte o beta.json aponta
+            # para um instalador que existe.
+            $antigos = @(gh release view $tag --json assets --jq '.assets[].name' 2>$null)
+            if ($LASTEXITCODE -ne 0) {
+              git push origin ":refs/tags/$tag" 2>$null
+              gh release create $tag $arquivos `
+                --target "${{ github.sha }}" `
+                --prerelease `
+                --title "Kontro $v" `
+                --notes-file notas.md
+              exit $LASTEXITCODE
+            }
 
-      - name: Guardar o instalador como artefato
-        if: steps.ver.outputs.pular == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: kontro-${{ steps.ver.outputs.version }}
-          path: src-tauri/target/release/bundle/
+            $manifesto = (Resolve-Path $manifestoNome).Path
+            $pacote = @($arquivos | Where-Object { $_ -ne $manifesto })
+            gh release upload $tag $pacote --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+            gh release upload $tag $manifesto --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            git push --force origin "${{ github.sha }}:refs/tags/$tag"
+            gh release edit $tag --prerelease --title "Kontro $v" --notes-file notas.md
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+
+            $novos = @($arquivos | ForEach-Object { Split-Path $_ -Leaf })
+            foreach ($nome in $antigos | Where-Object { $novos -notcontains $_ }) {
+              gh release delete-asset $tag $nome --yes
+            }
+          }

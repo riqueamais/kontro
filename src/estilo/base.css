@@ -11,8 +11,7 @@ body {
   background: transparent;
   color: var(--text-primary);
   font-family: var(--font-text);
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
+  font-size: var(--fs-body);
   overflow: hidden;
   user-select: none;
   cursor: default;
@@ -23,40 +22,16 @@ body[data-janela="principal"] {
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--stroke-strong) transparent;
-}
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--stroke-strong);
-
-  border: 3px solid transparent;
-  border-radius: 999px;
-  background-clip: content-box;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--polegar);
-  background-clip: content-box;
-}
-::-webkit-scrollbar-corner {
-  background: transparent;
 }
 button {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
-  cursor: pointer;
 }
 
 :focus-visible {
   outline: 2px solid var(--realce);
   outline-offset: 2px;
-  border-radius: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
   *,

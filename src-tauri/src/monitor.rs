@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 
 use crate::conhecidos::Conhecidos;
@@ -9,6 +10,7 @@ use crate::dispositivo::{gaming, hid, pnp, xinput};
 use crate::historico::History;
 use crate::jogo;
 use crate::modelo::{Bruto, EstadoDoControle, Leitura, Precisao, Via};
+use crate::tela::Tela;
 use crate::tempo;
 
 const INTERVALO_SEM_BLUETOOTH_MS: i64 = 20_000;
@@ -84,6 +86,9 @@ pub struct Monitor {
     ultima_gravacao: i64,
 
     ultimos: Vec<EstadoDoControle>,
+
+    nomes: HashMap<PathBuf, String>,
+    tela: Tela,
 }
 
 impl Monitor {
@@ -129,11 +134,28 @@ impl Monitor {
             tentativa_de_vinculo: 0,
             ultima_gravacao: agora,
             ultimos: Vec::new(),
+            nomes: HashMap::new(),
+            tela: Tela::Livre,
         }
+    }
+
+    pub fn tela_cheia(&self) -> bool {
+        self.tela.conta_como_jogo()
+    }
+
+    fn jogo_em_foco(&mut self) -> Option<jogo::Jogo> {
+        let caminho = jogo::executavel_em_foco()?;
+        if jogo::ignorado(&caminho) {
+            return None;
+        }
+        let nome =
+            self.nomes.entry(caminho.clone()).or_insert_with(|| jogo::batizar(&caminho)).clone();
+        Some(jogo::Jogo { caminho, nome })
     }
 
     pub fn ciclo(&mut self) -> Option<Panorama> {
         let agora = tempo::agora();
+        self.tela = Tela::atual();
 
         self.talvez_descobrir(agora);
 
@@ -179,10 +201,10 @@ impl Monitor {
             self.em_observacao = None;
         }
 
-        if estados.iter().any(|e| e.via != Via::Desligado) {
-            if let Some((jogo, tela)) = jogo::em_foco() {
+        if self.tela_cheia() && estados.iter().any(|e| e.via != Via::Desligado) {
+            if let Some(jogo) = self.jogo_em_foco() {
                 self.historico.anotar_jogo(agora, &jogo);
-                self.historico.anotar_tela(tela.bruto());
+                self.historico.anotar_tela(self.tela.bruto());
             }
         }
 
@@ -457,6 +479,11 @@ impl Monitor {
             quantos_conhecidos: self.conhecidos.quantidade(),
             autonomia: self.autonomia(&chave, &registro, modo),
             autonomia_minutos: self.autonomia_minutos(&chave, &registro, modo),
+            consumo_por_hora: match modo {
+                Via::Desligado | Via::Cabo => None,
+                _ => self.historico.consumo_por_hora(&chave),
+            },
+            procurando: false,
         })
     }
 

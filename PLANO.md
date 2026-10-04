@@ -9,8 +9,83 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
-**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129.** Entregues: T23 a
-T31 — o movimento da tela cheia inteiro e as quatro primeiras de desempenho e fluidez. Falta a parte que só um jogo responde — o `QUNS`
+**A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129, e está entregue
+inteira** — os catorze movimentos, da tela cheia à primeira abertura (a T89 saiu junto da
+T32).
+Desvios: na T38 o `botao.css` não foi criado, porque o botão não tem folha própria até a
+T55; o estado `aria-busy` mora no `principal.css` e no `painel.css`, junto das regras que
+ele sobrepõe. Na T42 o Rust não esconde o painel direto: ao perder o foco ele grava o
+carimbo e manda `kontro://painel-fechar`, e a página faz a saída de 120 ms da T35 antes de
+esconder — esconder do Rust cortaria a animação. Na T43 o painel é assentado pela área do
+cliente, descontando a borda invisível de redimensionar que o Windows põe na janela com
+sombra: sem isso a margem de 12 px virava 3 px na lateral e 10 px embaixo. Na T44 o
+ícone da bandeja foi conferido pixel a pixel contra os PNGs de referência do pacote de
+assets (`tray/dark` e `tray/light`, 16 a 32 px, sete estados): além de tirar o disco, o
+desligado passou a 45% de opacidade, o cabo virou anel cinza a 90% sem trilha, e o controle
+da bandeja ficou cheio — os PNGs não vazam os sticks, e o §3 do DESIGN.md foi corrigido para
+dizer isso. Sobra só antisserrilhado: no máximo 4 pixels por ícone diferem mais que 32/255.
+Na T45 cada recusa carrega também qual atalho foi recusado (`Mostrar` ou `Mover`), porque o
+campo volta ao anterior e a combinação recusada deixa de ser a que está na tela. Na T46
+`modelo::resumo_do_estado`, `EstadoDoControle::faixa` e `tempo::quando`, que são da T48,
+vieram antes, porque a primeira linha do menu é feita deles; a T48 só os usou na dica. Na
+T48 o "--" saiu de `texto_da_carga`, e a lista de controles e a pílula passaram a escrever
+"sem leitura" onde antes mostravam o traço. Na T49 o `janela.json` guarda a posição em pixel
+físico e o tamanho em lógico: posição lógica é ambígua entre monitores de escalas
+diferentes, e `monitor_from_point`, que decide se ela ainda vale, já trabalha em físico. Na
+T55 o botão passa a usar `--text-primary` no texto, como o do WinUI, em vez do
+`--text-secondary` de antes; e o cartão de versão nova também passou a usar `.leitura`, que
+é o mesmo bloco de nome e rodapé. Na T56 a porcentagem em Display (34px) só coube no anel de 96 com o
+rastreio de -0,02em que o §4 já previa: sem ele "100%" encostava no traço. Na T58 ficaram
+fora da escala, de propósito, a pílula (`sobreposicao.css`) e a réplica dela no passo a
+passo, que têm medida própria conferida na tela cheia, e o `diario.css`, que a tarefa do
+calendário refaz; o topo do aviso foi de 28 para 24px, e `SANGRIA_SUPERIOR_DO_AVISO`
+acompanhou para o cartão não sair do lugar. Na T57 as transições de várias propriedades
+ficaram em várias linhas, cada uma com a curva. Na T61 o ponto de leitura velha e o rodapé em duas
+fontes moram no `<Leitura>` da T55, que é o mesmo nos dois lugares, em vez de repetidos em
+`principal.css` e `painel.css`. Na T63 a duração da sessão no rodapé do gráfico sai da
+janela da sessão, a mesma conta da lista, e não do primeiro e do último ponto. Na T67, quando
+dois rótulos do eixo cairiam a menos de 12px, a prioridade é aviso, crítico, 100, 50 e 0:
+com aviso em 30 e crítico em 20 os dois ficam a 11,8px no gráfico de 150, e só o "30" sai —
+a linha tracejada vermelha continua lá. Na T66 o bloco "por carga cheia" aparece também com o
+controle desligado, porque é medida da bateria e não da sessão; os que dependem de taxa somem. Na T68 o
+relógio de minuto e o rótulo "zera amanhã às 02:30" já existiam desde a T33 e a T63; o
+Resumo já recarregava a cada `kontro://historico`, e `via`/`lidoEm` entraram nas dependências
+mesmo assim. Na T70 o nome editável vai onde o nome aparece: no título com o controle
+ligado e na segunda linha com ele desligado, onde o título é "Desconectado"; e "Esquecer" é
+um `.botao.fantasma` abaixo de "Ler agora", já que o `.ciclo` não existe desde a T55. Na T76
+a prévia da pílula segue a prop `ativa` das Configurações, e não a montagem: desde a T32 as
+três páginas ficam montadas. Na T75 a raiz da pílula nasce com a classe `guardada`
+(opacidade 0) até a primeira entrada, e ao montar ela pergunta se a janela já está visível,
+porque na partida o ciclo pode mostrar a pílula antes de a página escutar o evento. Na T78 o
+dígito do acompanhante usa `calc(var(--fs-caption) * 0.75)`, os 9px pedidos, sem número em
+pixel fora do `tokens.css`. Na T80, uma falha da atualização deixa a linha "Procurar
+atualizações" com o título de sempre, porque a falha agora mora no cartão. Na T83 a
+chegada de uma versão nova não muda o título da linha de versão, como a T83 pedia: a T84
+fixa o título, então "Atualizado para a X · você estava na Y" é a linha de estado embaixo
+dele. Na T86 o corpo do toast vai no `text1`: com só o `text2` o modelo do Windows deixaria
+a linha do meio vazia; e o anel do toast segue o tema da barra, para o glifo não sumir num
+toast claro. Na T88 a tagline mora só na coluna do instalador: no cabeçalho de 150px ela não
+cabe em 12px, e ali ficam a marca e "Kontro" sobre o branco do diálogo. Na T91 os ciclos que
+sobraram (Tamanho e Transparência, até a T93, e os do passo 4) viraram `BotaoDeCiclo`, que
+anda para os dois lados; os botões de ação levam só a descrição da linha. Na T98 o X do
+painel e o `.ciclo` já não existiam (T59 e T55): ficaram o X de esquecer, os botões da
+confirmação, as faixas do gráfico, o cadeado e a chave, que ganha alvo de 48×34 por
+`::before` sem mudar o desenho; a mini-tela que vira botão na T102 ganha o mesmo recurso.
+Na T97 o bloco de alto contraste cobre também os deslizantes da T90, que perdiam a trilha
+quando o Windows apaga o gradiente. Na T100 o foco só volta ao nome depois de Enter ou Esc:
+salvar no `blur`, quando a pessoa sai com Tab, não puxa o foco de volta. Na T101 o painel não
+tem mais o X (T59), e o Esc dele já fechava. Na T111 o Snap Layouts abre mandando Win+Z depois de 400 ms
+com o mouse no botão de maximizar, e não pelo `WM_NCHITTEST`: a área do cliente é coberta
+pelas janelas do WebView2, uma delas de outro processo (o do navegador), e a mensagem nunca
+chega à janela principal — medido listando as filhas. Na T113 o toast sai pelo `avisos.rs`
+da T86, porque o plugin de notificação já não existe. Na T114 a tela de Configurações não
+precisou passar a escutar `kontro://config`: ela já lê da fonte única desde a T36. Na T104,
+T107 e T109 os tamanhos de fonte seguem a escala da T56 (12 e não 11 ou 11,5) e os botões o
+`.botao` da T55. Na T106 o ícone virou `IconeDoJogo`, que a T118 pede, já na primeira vez. Na
+T116 o rodapé da grade mostra a leitura do dia em foco ou sob o mouse e, sem nenhum, a
+legenda de cores; a célula de hoje é a única tabulável. Na T125 o anel do passo 0 tem 112px,
+e não 120, para anel, legenda e espaço caberem nos 136px do palco da T127; e a folha dos
+passos alinha pelo topo, senão o título não fica na mesma altura nos seis passos. Falta a parte que só um jogo responde — o `QUNS`
 num DX12 com otimizações, num DX11 com "Desativar otimizações de tela inteira" marcado e
 num sem borda, tirados do diagnóstico e anotados no `TAREFAS.md`. É esse dado que libera a
 frase de "tela cheia exclusiva" em Configurações, que a T26 deixou de fora de propósito: por
@@ -650,6 +725,8 @@ As três páginas ficam montadas, cada uma num `<section className="folha" role=
 
 **Pronto quando:** ir ao Diário e voltar mantém "30 dias", a sessão escolhida e a posição de rolagem; a troca não mostra frame vazio; o conteúdo entra em fade de 180 ms e o traço da aba desliza entre os itens; Tab entra no trilho uma vez e as setas trocam de página; o Narrador diz "aba, 2 de 3, selecionada"; hover, ativa e pressionada são três tons distintos.
 
+**Entregue com a T89 junto.** Com as páginas montadas o tempo todo, a cópia da config que Configurações guarda envelheceria pela vida inteira da janela, e não só enquanto a aba está aberta: soltar a pílula no Resumo e ligar qualquer chave dias depois a devolveria ao lugar antigo. O que o remontar renovava de graça — a versão nova achada em segundo plano e o número de telas — passa a ser perguntado ao entrar na aba, e o Diário refaz a grade de dias ao entrar. O trilho é `div role="tablist"`, não `nav`: o ARIA em HTML não aceita outro papel em `nav`. E o gravador de atalho passa a parar ao sair da aba: sem desmontar, ele seguia engolindo teclas no Resumo e gravava Ctrl+Tab como atalho global.
+
 ## T33. O gráfico desenha em pixel e para de recalcular
 
 **Onde:** `src/componentes/Historico.tsx`, `src/componentes/historico.css`.
@@ -670,6 +747,8 @@ Quando a carga cruza um limiar, ou o limiar muda nas Configurações, o arco mud
 
 **Pronto quando:** com o controle em ~35%, subir o limiar de carga baixa de 20% para 40% faz arco, halo, fundo do cartão e, na pílula, contorno passarem de verde a âmbar num fade contínuo de 180 ms, sem salto; no Resumo o halo tem ~12px a 35%; na captura da pílula o brilho não ultrapassa o contorno arredondado, no aviso não ultrapassa a borda do cartão, e na lista não passa da borda da linha.
 
+**Entregue com dois ajustes.** O diagnóstico do halo supunha o `drop-shadow` em px de tela, e num filho de `<svg>` ele não é: o Chromium mede o filtro no espaço do `viewBox`. Medido: os 18 do código antigo davam ~3,4 px de desfoque no anel de 96, e o `calc(var(--anel-tamanho) * 0.125)` daria ~2 px. O que entrega a conta da tarefa é 12,5% da caixa de 512, `--raio-do-halo` de 64 unidades, que sai idêntico, pixel a pixel, a um `drop-shadow` de `tamanho × 0,125` px em HTML — 12 px em 96, 3,75 em 30 — sem o anel precisar saber o próprio tamanho. E `box-shadow` só interpola entre listas com o mesmo `inset` em cada posição: a normal, a crítica e a solta da pílula passaram a ter quatro sombras alinhadas, senão o contorno vermelho continuaria aparecendo seco.
+
 ## T35. O flyout desliza a cada abertura, cresce sem pular e descansa quando está escondido
 
 **Onde:** `src/telas/Painel.tsx`, `src/telas/painel.css`, `src-tauri/src/lib.rs` (setup do `--painel`, clique na bandeja, `ajustar_altura_do_painel`).
@@ -679,6 +758,8 @@ O DESIGN §6 pede 240 ms para abrir o flyout, e a entrada `kontro-subir` só aco
 Os dois pontos que mostram o painel no `lib.rs`, o clique na bandeja e o `janela_pronta` do `--painel`, viram `abrir_painel(app)`: `posicionar_painel`, `show()`, `set_focus()` e `app.emit("kontro://painel-abriu", ())`. `Painel.tsx` guarda `aberto` (verdadeiro no evento, falso ao fechar) e `aberturas` (incrementado no evento) e usa `key={aberturas}` no `.painel`, o mesmo padrão de `kontro://pilula-apareceu` na `Sobreposicao`; o `Anel` nasce em `valor`, então remontar não refaz o preenchimento do zero. `kontro-subir` passa a `from { opacity: 0; transform: translateY(8px) }` em `var(--motion-slow) var(--curva)`, o deslize de baixo para cima dos flyouts do Windows 11. Saída: `fechar()` põe `.saindo`, `@keyframes kontro-descer` em `var(--motion-fast)` até `opacity: 0; transform: translateY(8px)`, e esconde a janela no `animationend`. Buscar a série e medir só acontecem com `aberto`; ao abrir ele busca e mede uma vez; a chamada direta a `medir()` sai e o `ResizeObserver`, que dispara ao observar, faz o resto. No Rust, `ajustar_altura_do_painel` retorna cedo se `!janela.is_visible()` e, em vez de `set_size` + `set_position`, calcula x e y para a altura nova e aplica posição e tamanho numa chamada só de `SetWindowPos` (via `janela.hwnd()`, como `arredondar_cantos` já faz, com `SWP_NOZORDER | SWP_NOACTIVATE`).
 
 **Pronto quando:** a terceira abertura do flyout tem o mesmo deslize de 240 ms da primeira, e fechar pelo Esc tem os 120 ms de saída; quando a lista aparece, a borda de baixo do painel não se mexe e a de cima cresce num frame só; com o painel fechado, o processo do WebView2 dele não mostra picos de CPU a cada leitura no Gerenciador de Tarefas.
+
+**Entregue sem o `key={aberturas}`.** Remontar o painel a cada abertura remontava junto a lista de controles, que nasce vazia até o `invoke` voltar: medido, toda abertura mandava duas alturas, 275 e 422, e a borda de cima pulava duas vezes — o contrário do critério. A troca de classe já recomeça a animação, porque `animation-name` sai de `none` (guardado) ou de `kontro-descer` para `kontro-subir`; o painel só remonta no caso raro de o Rust ter escondido a janela sem a página saber. E o `SetWindowPos` recebe o tamanho da janela, não o do conteúdo: o painel nasce com `shadow(true)`, que põe borda invisível em volta, e sem somar essa moldura o WebView encolheria uns 16 × 9 px a cada medida. O X, que o `.topo` cobria desde a T2, ganhou `z-index`.
 
 ## T36. Uma fonte por dado, não uma por hook
 
