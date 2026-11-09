@@ -9,6 +9,9 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
+O workflow de release prepara o instalador em paralelo à verificação. Só publica
+depois que os dois jobs passam.
+
 **Redesign da interface do Kontro.**
 
 1. Aplicar a paleta de grafite, papel e cobre às abas e ações principais e reservar as cores de
