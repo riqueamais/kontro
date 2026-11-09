@@ -152,6 +152,11 @@ body[data-janela="principal"] .mapa .celula.n4 {
   opacity: 1;
 }
 
+body[data-janela="principal"] .mapa .celula[aria-pressed="true"] {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 1px;
+}
+
 body[data-janela="principal"] .mapa .celula.hoje {
   box-shadow:
     0 0 0 1px var(--surface),
@@ -163,7 +168,7 @@ body[data-janela="principal"] .mapa-rodape {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  min-height: 20px;
+  min-height: 42px;
   margin-top: var(--space-3);
 }
 

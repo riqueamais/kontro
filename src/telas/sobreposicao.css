@@ -44,8 +44,8 @@
   border-radius: 21px;
   background: linear-gradient(
     160deg,
-    rgb(33 45 44 / calc(0.94 * var(--alfa, 1))),
-    rgb(17 24 24 / calc(0.94 * var(--alfa, 1))) 60%
+    rgb(28 34 41 / calc(0.94 * var(--alfa, 1))),
+    rgb(10 13 16 / calc(0.94 * var(--alfa, 1))) 60%
   );
   box-shadow:
     var(--sombra-flutuante),

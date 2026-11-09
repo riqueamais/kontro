@@ -8,11 +8,11 @@ body[data-janela="principal"] .app {
 
 body[data-janela="principal"] .barra {
   flex: 0 0 auto;
-  height: 44px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: clamp(20px, 4vw, 48px);
+  padding-left: var(--space-4);
   background: var(--fundo-barra);
   border-bottom: 1px solid var(--stroke);
   user-select: none;
@@ -78,26 +78,27 @@ body[data-janela="principal"] .botao-janela.fechar:hover {
 body[data-janela="principal"] .corpo {
   flex: 1;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: 152px minmax(0, 1fr);
   min-height: 0;
 }
 
 body[data-janela="principal"] .corpo > .trilho {
   display: flex;
   gap: var(--space-2);
-  padding: 0 clamp(20px, 4vw, 48px);
+  flex-direction: column;
+  padding: var(--space-3) var(--space-2);
   background: var(--fundo-trilho);
-  border-bottom: 1px solid var(--stroke);
+  border-right: 1px solid var(--stroke);
 }
 
 body[data-janela="principal"] .aba {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
-  min-height: 46px;
-  padding: 0 var(--space-4);
-  border: 0;
-  border-bottom: 2px solid transparent;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-body);
@@ -119,7 +120,7 @@ body[data-janela="principal"] .aba:active {
 
 body[data-janela="principal"] .aba.ativa {
   background: var(--marca-suave);
-  border-bottom-color: var(--marca);
+  border-color: color-mix(in srgb, var(--marca) 60%, var(--stroke));
   color: var(--marca-texto);
   font-weight: 600;
 }
@@ -136,7 +137,7 @@ body[data-janela="principal"] .pagina > .folha {
   overflow-y: auto;
   scrollbar-gutter: stable;
   scrollbar-color: var(--polegar) transparent;
-  padding: var(--space-5) max(clamp(20px, 4vw, 48px), calc((100% - 1080px) / 2)) var(--space-6);
+  padding: var(--space-5) max(clamp(20px, 3vw, 24px), calc((100% - 1040px) / 2)) var(--space-6);
   animation: kontro-entrar var(--motion-base) var(--curva);
 }
 @keyframes kontro-entrar {
@@ -147,12 +148,12 @@ body[data-janela="principal"] .pagina > .folha {
 }
 
 body[data-janela="principal"] .cabeca-da-pagina {
-  margin-bottom: var(--space-5);
+  margin-bottom: var(--space-4);
 }
 
 body[data-janela="principal"] .titulo-da-pagina {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.035em;
@@ -169,26 +170,52 @@ body[data-janela="principal"] .indice-dos-ajustes {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-  padding: var(--space-3);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius-card);
-  background: var(--surface);
+  margin-bottom: var(--space-4);
 }
 
 body[data-janela="principal"] .indice-dos-ajustes .botao {
   font-size: var(--fs-caption);
 }
 
-body[data-janela="principal"] .pagina > .folha > h2 {
-  font-size: var(--fs-subtitle);
-  font-weight: 650;
-  margin: var(--space-5) 0 var(--space-3);
-  scroll-margin-top: var(--space-4);
+body[data-janela="principal"] .indice-dos-ajustes [aria-pressed="true"] {
+  color: var(--marca-texto);
+  background: var(--marca-suave);
+  border-color: var(--marca);
 }
 
-body[data-janela="principal"] .pagina > .folha > h2:focus {
-  outline: none;
-  color: var(--marca-texto);
+body[data-janela="principal"] .grupo-de-ajustes {
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+}
+
+body[data-janela="principal"] .grupo-de-ajustes > h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--fs-subtitle);
+}
+
+body[data-janela="principal"] .grupo-de-ajustes > h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--fs-body);
+}
+
+body[data-janela="principal"] .grupo-de-ajustes > .linha {
+  padding: var(--space-3) 0;
+  margin: 0;
+  border: 0;
+  border-bottom: 1px solid var(--stroke);
+  border-radius: 0;
+  background: transparent;
+}
+
+body[data-janela="principal"] .grupo-de-ajustes > .linha:last-child {
+  border-bottom: 0;
+}
+
+body[data-janela="principal"] .grupo-de-ajustes > .novidade {
+  margin: var(--space-3) 0;
+  background: var(--ink);
 }
 
 body[data-janela="principal"] .cartao {
@@ -204,8 +231,7 @@ body[data-janela="principal"] .cartao.estado {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-  padding: var(--space-5);
-  border-left: 3px solid var(--cor-do-estado);
+  padding: var(--space-4);
   overflow: hidden;
   transition: --cor-do-estado var(--motion-base) var(--curva);
 }
