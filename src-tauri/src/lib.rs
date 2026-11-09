@@ -617,7 +617,7 @@ fn montar_bandeja(
     let ler = MenuItem::with_id(app, "ler", "&Ler a bateria agora", true, None::<&str>)?;
     let pilula =
         CheckMenuItem::with_id(app, "pilula", "Mostrar a &pílula", true, false, None::<&str>)?;
-    let sair = MenuItem::with_id(app, "sair", "&Sair", true, None::<&str>)?;
+    let sair = MenuItem::with_id(app, "sair", "&Sair do Kontro", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[
@@ -625,6 +625,7 @@ fn montar_bandeja(
             &PredefinedMenuItem::separator(app)?,
             &abrir,
             &configurar,
+            &PredefinedMenuItem::separator(app)?,
             &ler,
             &pilula,
             &PredefinedMenuItem::separator(app)?,

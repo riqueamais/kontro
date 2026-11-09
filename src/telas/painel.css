@@ -2,7 +2,6 @@
   position: relative;
   max-height: 100vh;
   overflow-y: auto;
-  padding: var(--space-4);
   background: var(--fundo-painel);
   border: 1px solid var(--contorno-painel);
   border-radius: var(--radius-sistema);
@@ -27,43 +26,59 @@
     transform: translateY(8px);
   }
 }
+.painel .conteudo {
+  padding: var(--space-4);
+}
+
+.painel .cabeca-do-painel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.painel .identidade {
+  --marca-anel: var(--marca-texto);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  color: var(--marca-texto);
+}
+
+.painel .cabeca-do-painel .fechar {
+  padding-inline: var(--space-2);
+}
+
 .painel .topo {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+  background: var(--ink);
+  border-left: 3px solid var(--cor-do-estado);
+  overflow: hidden;
   transition: --cor-do-estado var(--motion-base) var(--curva);
 }
 
-.painel .topo::before {
-  content: "";
-  position: absolute;
-  inset: -8px -12px;
-  border-radius: var(--radius-card);
-  background: radial-gradient(
-    110px 110px at 56px 50%,
-    color-mix(in srgb, var(--cor-do-estado) 14%, transparent),
-    transparent 70%
-  );
-  pointer-events: none;
-}
-
-.painel .topo > * {
-  position: relative;
-}
 .painel .topo.antiga .numero {
   color: var(--text-secondary);
 }
 .painel .numero {
   font-family: var(--font-display);
   font-size: var(--fs-display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 
 .painel .acoes {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-2);
   margin-top: var(--space-3);
   padding-top: var(--space-3);
@@ -75,11 +90,48 @@
 }
 
 .painel .rapidos {
-  display: flex;
+  display: grid;
   gap: var(--space-2);
   margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-field);
+  background: var(--ink);
 }
 
-.painel .rapidos .chip {
+.painel .rapidos .modos {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.painel .rapidos .botao {
+  flex: 1;
+  padding-inline: var(--space-2);
   font-size: var(--fs-caption);
+  background: var(--surface);
+}
+
+.painel .rapidos .botao[aria-pressed="true"] {
+  background: var(--marca-suave);
+  color: var(--marca-texto);
+  border-color: var(--marca);
+}
+
+.painel .rapidos .erro {
+  font-size: var(--fs-caption);
+  color: var(--atencao);
+}
+
+.painel .leitura .dispositivo {
+  display: -webkit-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.painel .leitura .rodape {
+  flex-wrap: wrap;
+  white-space: normal;
+  gap: var(--space-1);
 }

@@ -8,7 +8,7 @@ import { Marca } from "./Marca";
 const ESPERA_DO_SNAP_MS = 400;
 
 export function BarraDeTitulo() {
-  const janela = getCurrentWindow();
+  const [janela] = useState(getCurrentWindow);
   const cfg = useConfig();
   const [maximizada, setMaximizada] = useState(false);
   const snap = useRef<number | undefined>(undefined);
@@ -35,7 +35,7 @@ export function BarraDeTitulo() {
   return (
     <header className="barra" data-tauri-drag-region="deep">
       <div className="marca">
-        <Marca tamanho={16} />
+        <span className="selo"><Marca tamanho={22} /></span>
         <span>Kontro</span>
       </div>
       <div className="botoes-da-janela">
