@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref_name }}
@@ -112,20 +112,14 @@ jobs:
     uses: ./.github/workflows/verificar.yml
 
   empacotar:
-    needs: [decidir, verificar]
+    needs: decidir
+    if: needs.decidir.outputs.pular == 'false'
     runs-on: windows-latest
     env:
       VERSAO: ${{ needs.decidir.outputs.version }}
-      CANAL: ${{ needs.decidir.outputs.canal }}
-      TAG: ${{ needs.decidir.outputs.tag }}
-      ANTERIOR: ${{ needs.decidir.outputs.anterior }}
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          # As tags anteriores e a anotacao da tag desta versao, quando existir,
-          # so aparecem com o historico completo.
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -219,7 +213,30 @@ jobs:
         with:
           name: kontro-${{ needs.decidir.outputs.version }}
           path: src-tauri/target/release/bundle/
+          if-no-files-found: error
           retention-days: 7
+
+  publicar:
+    needs: [decidir, verificar, empacotar]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      VERSAO: ${{ needs.decidir.outputs.version }}
+      CANAL: ${{ needs.decidir.outputs.canal }}
+      TAG: ${{ needs.decidir.outputs.tag }}
+      ANTERIOR: ${{ needs.decidir.outputs.anterior }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Baixar o instalador assinado
+        uses: actions/download-artifact@v4
+        with:
+          name: kontro-${{ needs.decidir.outputs.version }}
+          path: src-tauri/target/release/bundle/
 
       - name: Escrever as notas
         shell: pwsh
