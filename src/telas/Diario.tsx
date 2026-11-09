@@ -109,6 +109,8 @@ export function Diario({ ativa }: { ativa: boolean }) {
 
 function Mapa({ dias, maior, limiares }: { dias: Dia[]; maior: number; limiares: Limiares }) {
   const [sob, setSob] = useState<Dia | null>(null);
+  const [selecionado, selecionar] = useState<number | null>(null);
+  const detalhe = sob ?? dias.find((dia) => dia.quando === selecionado);
   const [foco, setFoco] = useState(dias.length - 1);
   const celulas = useRef<(HTMLButtonElement | null)[]>([]);
   const enchimento = (new Date(dias[0].quando).getDay() + 6) % 7;
@@ -174,6 +176,8 @@ function Mapa({ dias, maior, limiares }: { dias: Dia[]; maior: number; limiares:
                     .filter(Boolean)
                     .join(" ")}
                   tabIndex={i === foco ? 0 : -1}
+                  aria-pressed={d.quando === selecionado}
+                  onClick={() => selecionar(d.quando)}
                   aria-label={legenda(d, limiares)}
                   onMouseEnter={() => setSob(d)}
                   onMouseLeave={() => setSob(null)}
@@ -192,13 +196,13 @@ function Mapa({ dias, maior, limiares }: { dias: Dia[]; maior: number; limiares:
 
       <div className="mapa-rodape">
         <div className="mapa-leitura" aria-live="polite">
-          {sob ? (
+          {detalhe ? (
             <>
               <span className="mapa-leitura-dia">
-                {diaDaSemana(sob.quando)}, {diaEMes(new Date(sob.quando))} ·{" "}
-                {sob.minutos > 0 ? duracao(sob.minutos) : "sem sessão"}
+                {diaDaSemana(detalhe.quando)}, {diaEMes(new Date(detalhe.quando))} ·{" "}
+                {detalhe.minutos > 0 ? duracao(detalhe.minutos) : "sem sessão"}
               </span>
-              <span className="mapa-leitura-resto">{restoDaLegenda(sob, limiares)}</span>
+              <span className="mapa-leitura-resto">{restoDaLegenda(detalhe, limiares)}</span>
             </>
           ) : (
             <span className="mapa-cores">

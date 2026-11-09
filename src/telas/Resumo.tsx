@@ -29,7 +29,7 @@ interface DoControle {
 
 const VAZIO: DoControle = { serie: [], sessoes: [], saude: null };
 
-export function Resumo() {
+export function Resumo({ aoAbrirDiario }: { aoAbrirDiario: () => void }) {
   const estado = useEstado();
   const limiares = useLimiares();
   const [{ serie, sessoes, saude }, setDoControle] = useState<DoControle>(VAZIO);
@@ -82,6 +82,8 @@ export function Resumo() {
         </div>
       </section>
 
+      {estado.quantosConhecidos >= 2 && <ListaDeControles principal={estado.chave} sempre />}
+
       <div className="atividade-do-controle">
         <section className="cartao" ref={cartaoDoGrafico}>
           <Historico
@@ -110,11 +112,9 @@ export function Resumo() {
               }
             }}
           />
+          <button className="botao fantasma" onClick={aoAbrirDiario}>Abrir Diário</button>
         </section>
-
       </div>
-
-      {estado.quantosConhecidos >= 2 && <ListaDeControles principal={estado.chave} sempre />}
     </>
   );
 }

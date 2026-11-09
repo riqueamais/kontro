@@ -33,15 +33,15 @@ const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: s
   {
     id: "Sistema",
     rotulo: "Do Windows",
-    chao: "linear-gradient(115deg, #171f20 0 50%, #efebe2 50% 100%)",
-    realce: "#ecae8a",
-    texto: "#f3eee2",
+    chao: "linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%)",
+    realce: "#35d7a8",
+    texto: "#e8ecef",
   },
-  { id: "Noite", rotulo: "Noite", chao: "#171f20", realce: "#ecae8a", texto: "#f3eee2" },
-  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#ecae8a", texto: "#e8ecef" },
+  { id: "Noite", rotulo: "Noite", chao: "#0b0e11", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#35d7a8", texto: "#e8ecef" },
   { id: "Ardosia", rotulo: "Ardósia", chao: "#0d1219", realce: "#4ea8ff", texto: "#e7edf4" },
   { id: "Brasa", rotulo: "Brasa", chao: "#100c0a", realce: "#e0925a", texto: "#f2ebe5" },
-  { id: "Dia", rotulo: "Dia", chao: "#efebe2", realce: "#8e4229", texto: "#222821" },
+  { id: "Dia", rotulo: "Dia", chao: "#eef1f5", realce: "#0a6e5b", texto: "#222821" },
 ];
 
 interface Busca {
@@ -66,18 +66,32 @@ type Passo =
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
 
-const SECOES = [
-  { id: "ajustes-inicio", titulo: "Inicialização" },
-  { id: "ajustes-aparencia", titulo: "Aparência" },
-  { id: "ajustes-carga", titulo: "Limiares de carga" },
-  { id: "ajustes-avisos", titulo: "Avisos" },
-  { id: "ajustes-sobreposicao", titulo: "Sobreposição" },
-  { id: "ajustes-atalhos", titulo: "Atalhos" },
-  { id: "ajustes-versao", titulo: "Versão" },
-  { id: "ajustes-ajuda", titulo: "Ajuda" },
-];
+const GRUPOS = [
+  { id: "geral", titulo: "Geral" },
+  { id: "aparencia", titulo: "Aparência" },
+  { id: "bateria", titulo: "Bateria e avisos" },
+  { id: "pilula", titulo: "Pílula e atalhos" },
+  { id: "versao", titulo: "Versão e ajuda" },
+] as const;
 
-export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
+type Grupo = (typeof GRUPOS)[number]["id"];
+
+export function Configuracoes({
+  ativa,
+  pedidoDeVersao,
+  aoRever,
+}: {
+  ativa: boolean;
+  pedidoDeVersao: number;
+  aoRever: () => void;
+}) {
+  const [grupo, setGrupo] = useState<Grupo>("geral");
+  const previaAtiva = ativa && grupo === "pilula";
+
+  useEffect(() => {
+    if (pedidoDeVersao > 0) setGrupo("versao");
+  }, [pedidoDeVersao]);
+
   const doRust = useConfig();
   const [recusadas, setRecusadas] = useState<string[]>([]);
   const [cfg, setCfg] = useState<Config | null>(doRust);
@@ -108,11 +122,11 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   }, []);
 
   useEffect(() => {
-    void invoke("previa_da_pilula", { ligada: ativa });
+    void invoke("previa_da_pilula", { ligada: previaAtiva });
     return () => {
       void invoke("previa_da_pilula", { ligada: false });
     };
-  }, [ativa]);
+  }, [previaAtiva]);
 
   useEffect(() => {
     if (!ativa) return;
@@ -202,291 +216,305 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
   return (
     <>
       <nav className="indice-dos-ajustes" aria-label="Seções de configurações">
-        {SECOES.map(({ id, titulo }) => (
+        {GRUPOS.map(({ id, titulo }) => (
           <button
             className="botao"
             key={id}
-            onClick={() => document.getElementById(id)?.focus()}
+            aria-pressed={grupo === id}
+            onClick={() => setGrupo(id)}
           >
             {titulo}
           </button>
         ))}
       </nav>
-      {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
-      <h2 id={SECOES[0].id} tabIndex={-1}>{SECOES[0].titulo}</h2>
-      <Linha
-        titulo="Iniciar com o Windows"
-        descricao={
-          recusadas.includes("StartWithWindows")
-            ? "O Windows não deixou gravar o início automático. Veja Configurações > Aplicativos > Inicialização."
-            : "Sobe junto com o sistema e já começa a monitorar."
-        }
-        erro={recusadas.includes("StartWithWindows")}
+      <section className="grupo-de-ajustes" hidden={grupo !== "geral"} aria-labelledby="ajustes-geral">
+        <h2 id="ajustes-geral">Geral</h2>
+        <Linha
+          titulo="Iniciar com o Windows"
+          descricao={
+            recusadas.includes("StartWithWindows")
+              ? "O Windows não deixou gravar o início automático. Veja Configurações > Aplicativos > Inicialização."
+              : "Sobe junto com o sistema e já começa a monitorar."
+          }
+          erro={recusadas.includes("StartWithWindows")}
+        >
+          <Chave
+            ligado={cfg.StartWithWindows}
+            aoTrocar={(v) => gravar({ StartWithWindows: v })}
+          />
+        </Linha>
+        <Linha titulo="Abrir na bandeja" descricao="Sobe sem mostrar esta janela.">
+          <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
+        </Linha>
+        <Linha titulo="Botão de fechar" descricao="O que o X da janela faz.">
+          <Seletor
+            opcoes={[
+              { valor: "MinimizeToTray" as const, rotulo: "Esconder na bandeja" },
+              { valor: "Exit" as const, rotulo: "Encerrar o Kontro" },
+            ]}
+            valor={cfg.CloseAction}
+            aoEscolher={(CloseAction) => gravar({ CloseAction })}
+          />
+        </Linha>
+      </section>
+      <section
+        className="grupo-de-ajustes"
+        hidden={grupo !== "aparencia"}
+        aria-labelledby="ajustes-aparencia"
       >
-        <Chave
-          ligado={cfg.StartWithWindows}
-          aoTrocar={(v) => gravar({ StartWithWindows: v })}
-        />
-      </Linha>
-      <Linha titulo="Abrir na bandeja" descricao="Sobe sem mostrar esta janela.">
-        <Chave ligado={cfg.StartMinimized} aoTrocar={(v) => gravar({ StartMinimized: v })} />
-      </Linha>
-      <Linha titulo="Botão de fechar" descricao="O que o X da janela faz.">
-        <Seletor
-          opcoes={[
-            { valor: "MinimizeToTray" as const, rotulo: "Esconder na bandeja" },
-            { valor: "Exit" as const, rotulo: "Encerrar o Kontro" },
-          ]}
-          valor={cfg.CloseAction}
-          aoEscolher={(CloseAction) => gravar({ CloseAction })}
-        />
-      </Linha>
-      <h2 id={SECOES[1].id} tabIndex={-1}>{SECOES[1].titulo}</h2>
-      <Linha
-        titulo="Tema"
-        descricao={`${TEMAS.find((t) => t.id === cfg.Theme)?.rotulo ?? "Noite"} · o chão da janela. As cores de carga não mudam.`}
-        classe="tema"
-      >
-        <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
-      </Linha>
+        <h2 id="ajustes-aparencia">Aparência</h2>
+        <Linha
+          titulo="Tema"
+          descricao={`${TEMAS.find((t) => t.id === cfg.Theme)?.rotulo ?? "Noite"} · o chão da janela. As cores de carga não mudam.`}
+          classe="tema"
+        >
+          <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
+        </Linha>
+      </section>
+      <section className="grupo-de-ajustes" hidden={grupo !== "bateria"} aria-labelledby="ajustes-bateria">
+        <h2 id="ajustes-bateria">Bateria e avisos</h2>
+        <Linha
+          titulo="Carga baixa"
+          descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
+        >
+          <Deslizante
+            min={5}
+            max={90}
+            passo={5}
+            valor={cfg.WarnThreshold}
+            aoMudar={(aviso) => {
+              const critico = Math.min(cfg.CriticalThreshold, aviso - 1);
+              setAjusteDoCritico(critico !== cfg.CriticalThreshold ? critico : null);
+              gravar({ WarnThreshold: aviso, CriticalThreshold: critico });
+            }}
+          />
+        </Linha>
+        <Linha
+          titulo="Carga crítica"
+          descricao={
+            ajusteDoCritico !== null
+              ? `Ajustado para ${ajusteDoCritico}% para caber abaixo da carga baixa.`
+              : "Abaixo disto fica vermelho, e a pílula aparece mesmo fora de jogo."
+          }
+        >
+          <Deslizante
+            min={1}
+            max={cfg.WarnThreshold - 1}
+            passo={1}
+            valor={cfg.CriticalThreshold}
+            aoMudar={(CriticalThreshold) => {
+              setAjusteDoCritico(null);
+              gravar({ CriticalThreshold });
+            }}
+          />
+        </Linha>
 
-      <h2 id={SECOES[2].id} tabIndex={-1}>{SECOES[2].titulo}</h2>
-      <Linha
-        titulo="Carga baixa"
-        descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
-      >
-        <Deslizante
-          min={5}
-          max={90}
-          passo={5}
-          valor={cfg.WarnThreshold}
-          aoMudar={(aviso) => {
-            const critico = Math.min(cfg.CriticalThreshold, aviso - 1);
-            setAjusteDoCritico(critico !== cfg.CriticalThreshold ? critico : null);
-            gravar({ WarnThreshold: aviso, CriticalThreshold: critico });
-          }}
-        />
-      </Linha>
-      <Linha
-        titulo="Carga crítica"
-        descricao={
-          ajusteDoCritico !== null
-            ? `Ajustado para ${ajusteDoCritico}% para caber abaixo da carga baixa.`
-            : "Abaixo disto fica vermelho, e a pílula aparece mesmo fora de jogo."
-        }
-      >
-        <Deslizante
-          min={1}
-          max={cfg.WarnThreshold - 1}
-          passo={1}
-          valor={cfg.CriticalThreshold}
-          aoMudar={(CriticalThreshold) => {
-            setAjusteDoCritico(null);
-            gravar({ CriticalThreshold });
-          }}
-        />
-      </Linha>
-
-      <h2 id={SECOES[3].id} tabIndex={-1}>{SECOES[3].titulo}</h2>
-      <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
-        <Chave
-          ligado={cfg.NotificationsEnabled}
-          aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
-        />
-      </Linha>
-      <Linha
-        titulo="Avisar ao conectar"
-        descricao="Uma caixa no topo quando o controle entra ou sai."
-      >
-        <Chave
-          ligado={cfg.ConnectToastEnabled}
-          aoTrocar={(v) => gravar({ ConnectToastEnabled: v })}
-        />
-      </Linha>
-      <h2 id={SECOES[4].id} tabIndex={-1}>{SECOES[4].titulo}</h2>
-      <div className="previa" aria-hidden="true">
-        <MiniTela
-          x={cfg.OverlayX}
-          y={cfg.OverlayY}
-          solta={solta}
-          escala={2}
-          escalaDaPilula={cfg.OverlayScale}
-          opacidade={cfg.OverlayOpacity}
-        />
-      </div>
-      <Linha
-        titulo="Quando aparecer"
-        descricao="Desligada, só durante um jogo em tela cheia, ou sempre."
-      >
-        <Seletor
-          opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
-            valor,
-            rotulo: MODOS[valor],
-          }))}
-          valor={cfg.OverlayMode}
-          aoEscolher={(OverlayMode) => gravar({ OverlayMode })}
-        />
-      </Linha>
-      {coberta && (
-        <p className="coberta" role="status">
-          Agora: {coberta} está por cima da pílula e não deixa ela voltar. Ela tenta de novo
-          quando você trocar de janela.
-        </p>
-      )}
-      <Linha
-        titulo="Posição"
-        desabilitada={pilulaDesligada}
-        descricao={
-          solta
-            ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
-            : "A pílula fica onde você largar: solte e arraste até o ponto que quiser."
-        }
-      >
-        {!solta && (
+        <h3>Avisos</h3>
+        <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
+          <Chave
+            ligado={cfg.NotificationsEnabled}
+            aoTrocar={(v) => gravar({ NotificationsEnabled: v })}
+          />
+        </Linha>
+        <Linha
+          titulo="Avisar ao conectar"
+          descricao="Uma caixa no topo quando o controle entra ou sai."
+        >
+          <Chave
+            ligado={cfg.ConnectToastEnabled}
+            aoTrocar={(v) => gravar({ ConnectToastEnabled: v })}
+          />
+        </Linha>
+      </section>
+      <section className="grupo-de-ajustes" hidden={grupo !== "pilula"} aria-labelledby="ajustes-pilula">
+        <h2 id="ajustes-pilula">Pílula e atalhos</h2>
+        <div className="previa" aria-hidden="true">
           <MiniTela
             x={cfg.OverlayX}
             y={cfg.OverlayY}
             solta={solta}
-            aoMover={(OverlayX, OverlayY) => gravar({ OverlayX, OverlayY })}
+            escala={2}
+            escalaDaPilula={cfg.OverlayScale}
+            opacidade={cfg.OverlayOpacity}
           />
+        </div>
+        <Linha
+          titulo="Quando aparecer"
+          descricao="Desligada, só durante um jogo em tela cheia, ou sempre."
+        >
+          <Seletor
+            opcoes={(["Desligada", "EmJogo", "Sempre"] as const).map((valor) => ({
+              valor,
+              rotulo: MODOS[valor],
+            }))}
+            valor={cfg.OverlayMode}
+            aoEscolher={(OverlayMode) => gravar({ OverlayMode })}
+          />
+        </Linha>
+        {coberta && (
+          <p className="coberta" role="status">
+            Agora: {coberta} está por cima da pílula e não deixa ela voltar. Ela tenta de novo
+            quando você trocar de janela.
+          </p>
         )}
-        <BotaoDaLinha
-          className={solta ? "botao destaque" : "botao"}
-          onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
+        <Linha
+          titulo="Posição"
+          desabilitada={pilulaDesligada}
+          descricao={
+            solta
+              ? "Arraste a pílula pela tela. Perto de um canto ou do meio ela encaixa sozinha."
+              : "A pílula fica onde você largar: solte e arraste até o ponto que quiser."
+          }
         >
-          {solta ? "Prender" : "Soltar"}
-        </BotaoDaLinha>
-      </Linha>
-      <Linha
-        titulo="Monitor"
-        desabilitada={pilulaDesligada || telas.length <= 1}
-        descricao={
-          telas.length <= 1
-            ? "Só há uma tela ligada; a pílula fica nela."
-            : "Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
-        }
-      >
-        <Seletor
-          opcoes={[
-            { valor: -1, rotulo: "Segue o jogo" },
-            ...telas.map((t, i) => ({
-              valor: i,
-              rotulo: `Monitor ${i + 1} · ${t.largura}×${t.altura}${t.principal ? " · principal" : ""}`,
-            })),
-          ]}
-          valor={cfg.OverlayMonitor < telas.length ? cfg.OverlayMonitor : -1}
-          aoEscolher={(OverlayMonitor) => gravar({ OverlayMonitor })}
-        />
-      </Linha>
-      <Linha
-        titulo="Tamanho"
-        desabilitada={pilulaDesligada}
-        descricao="Quanto espaço a pílula ocupa na tela."
-      >
-        <Deslizante
-          min={75}
-          max={200}
-          passo={5}
-          valor={Math.round(cfg.OverlayScale * 100)}
-          aoMudar={(v) => gravar({ OverlayScale: v / 100 })}
-        />
-      </Linha>
-      <Linha
-        titulo="Opacidade"
-        desabilitada={pilulaDesligada}
-        descricao="Em 100% ela é sólida. Baixe para não competir com o HUD do jogo."
-      >
-        <Deslizante
-          min={30}
-          max={100}
-          passo={5}
-          valor={Math.round(cfg.OverlayOpacity * 100)}
-          aoMudar={(v) => gravar({ OverlayOpacity: v / 100 })}
-        />
-      </Linha>
-      <h2 id={SECOES[5].id} tabIndex={-1}>{SECOES[5].titulo}</h2>
-      <Linha
-        titulo="Atalhos de teclado"
-        descricao="Funcionam com o jogo em foco, sem sair dele."
-      >
-        <Chave
-          ligado={cfg.OverlayShortcutEnabled}
-          aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
-        />
-      </Linha>
-      <LinhaDeAtalho
-        titulo="Mostrar e esconder a pílula"
-        base="Tira a pílula da frente e traz de volta."
-        recusa={recusados.find((r) => r.atalho === "Mostrar")}
-        combinacao={cfg.OverlayShortcut}
-        padrao={ATALHO_DA_PILULA}
-        outra={cfg.OverlayMoveShortcut}
-        nomeDaOutra="soltar a pílula"
-        desabilitada={!cfg.OverlayShortcutEnabled}
-        ativa={ativa}
-        aoTrocar={(c) => gravar({ OverlayShortcut: c })}
-      />
-      <LinhaDeAtalho
-        titulo="Soltar a pílula para mover"
-        base="Solta a pílula para arrastar, e prende de novo onde você largar."
-        recusa={recusados.find((r) => r.atalho === "Mover")}
-        combinacao={cfg.OverlayMoveShortcut}
-        padrao={ATALHO_DE_MOVER}
-        outra={cfg.OverlayShortcut}
-        nomeDaOutra="mostrar a pílula"
-        desabilitada={!cfg.OverlayShortcutEnabled}
-        ativa={ativa}
-        aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
-      />
-      <h2 id={SECOES[6].id} tabIndex={-1}>{SECOES[6].titulo}</h2>
-      <Linha
-        titulo="Procurar atualizações"
-        descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
-        classe="versao"
-        viva
-      >
-        <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
-          {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
-        </button>
-      </Linha>
-      <Linha
-        titulo="Avisar sobre versões novas"
-        descricao="Consulta o repositório uma vez por dia, sem baixar nada sozinho."
-      >
-        <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
-      </Linha>
-      <Linha
-        titulo="Receber versões beta"
-        descricao="Versões de teste, publicadas antes da versão final. Podem ter defeitos que a final não terá."
-      >
-        <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
-      </Linha>
-      <h2 id={SECOES[7].id} tabIndex={-1}>{SECOES[7].titulo}</h2>
-      <Linha
-        titulo="Rever o passo a passo"
-        descricao="As seis telas que explicam o app, de novo do começo."
-      >
-        <button className="botao" onClick={aoRever}>
-          Rever
-        </button>
-      </Linha>
-      <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)} viva>
-        <button
-          className="botao"
-          disabled={diagnostico.passo === "gravando"}
-          onClick={async () => {
-            setDiagnostico({ passo: "gravando" });
-            try {
-              const caminho = await invoke<string>("salvar_diagnostico");
-              setDiagnostico({ passo: "pronto", caminho });
-            } catch {
-              setDiagnostico({ passo: "falhou" });
-            }
-          }}
+          {!solta && (
+            <MiniTela
+              x={cfg.OverlayX}
+              y={cfg.OverlayY}
+              solta={solta}
+              aoMover={(OverlayX, OverlayY) => gravar({ OverlayX, OverlayY })}
+            />
+          )}
+          <BotaoDaLinha
+            className={solta ? "botao destaque" : "botao"}
+            onClick={() => void invoke("soltar_a_pilula", { solta: !solta })}
+          >
+            {solta ? "Prender" : "Soltar"}
+          </BotaoDaLinha>
+        </Linha>
+        <Linha
+          titulo="Monitor"
+          desabilitada={pilulaDesligada || telas.length <= 1}
+          descricao={
+            telas.length <= 1
+              ? "Só há uma tela ligada; a pílula fica nela."
+              : "Fixa a pílula numa tela em vez de deixar que ela siga a janela em foco."
+          }
         >
-          {diagnostico.passo === "gravando" ? "Gravando…" : "Salvar"}
-        </button>
-      </Linha>
+          <Seletor
+            opcoes={[
+              { valor: -1, rotulo: "Segue o jogo" },
+              ...telas.map((t, i) => ({
+                valor: i,
+                rotulo: `Monitor ${i + 1} · ${t.largura}×${t.altura}${t.principal ? " · principal" : ""}`,
+              })),
+            ]}
+            valor={cfg.OverlayMonitor < telas.length ? cfg.OverlayMonitor : -1}
+            aoEscolher={(OverlayMonitor) => gravar({ OverlayMonitor })}
+          />
+        </Linha>
+        <Linha
+          titulo="Tamanho"
+          desabilitada={pilulaDesligada}
+          descricao="Quanto espaço a pílula ocupa na tela."
+        >
+          <Deslizante
+            min={75}
+            max={200}
+            passo={5}
+            valor={Math.round(cfg.OverlayScale * 100)}
+            aoMudar={(v) => gravar({ OverlayScale: v / 100 })}
+          />
+        </Linha>
+        <Linha
+          titulo="Opacidade"
+          desabilitada={pilulaDesligada}
+          descricao="Em 100% ela é sólida. Baixe para não competir com o HUD do jogo."
+        >
+          <Deslizante
+            min={30}
+            max={100}
+            passo={5}
+            valor={Math.round(cfg.OverlayOpacity * 100)}
+            aoMudar={(v) => gravar({ OverlayOpacity: v / 100 })}
+          />
+        </Linha>
+        <h3>Atalhos</h3>
+        <Linha
+          titulo="Atalhos de teclado"
+          descricao="Funcionam com o jogo em foco, sem sair dele."
+        >
+          <Chave
+            ligado={cfg.OverlayShortcutEnabled}
+            aoTrocar={(v) => gravar({ OverlayShortcutEnabled: v })}
+          />
+        </Linha>
+        <LinhaDeAtalho
+          titulo="Mostrar e esconder a pílula"
+          base="Tira a pílula da frente e traz de volta."
+          recusa={recusados.find((r) => r.atalho === "Mostrar")}
+          combinacao={cfg.OverlayShortcut}
+          padrao={ATALHO_DA_PILULA}
+          outra={cfg.OverlayMoveShortcut}
+          nomeDaOutra="soltar a pílula"
+          desabilitada={!cfg.OverlayShortcutEnabled}
+          ativa={previaAtiva}
+          aoTrocar={(c) => gravar({ OverlayShortcut: c })}
+        />
+        <LinhaDeAtalho
+          titulo="Soltar a pílula para mover"
+          base="Solta a pílula para arrastar, e prende de novo onde você largar."
+          recusa={recusados.find((r) => r.atalho === "Mover")}
+          combinacao={cfg.OverlayMoveShortcut}
+          padrao={ATALHO_DE_MOVER}
+          outra={cfg.OverlayShortcut}
+          nomeDaOutra="mostrar a pílula"
+          desabilitada={!cfg.OverlayShortcutEnabled}
+          ativa={previaAtiva}
+          aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
+        />
+      </section>
+      <section className="grupo-de-ajustes" hidden={grupo !== "versao"} aria-labelledby="ajustes-versao">
+        <h2 id="ajustes-versao">Versão e ajuda</h2>
+        <Linha
+          titulo="Procurar atualizações"
+          descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
+          classe="versao"
+          viva
+        >
+          <button className="botao" disabled={ocupado} onClick={() => void procurar()}>
+            {passo.tipo === "procurando" ? "Procurando..." : "Procurar"}
+          </button>
+        </Linha>
+        {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
+        <Linha
+          titulo="Avisar sobre versões novas"
+          descricao="Consulta o repositório uma vez por dia, sem baixar nada sozinho."
+        >
+          <Chave ligado={cfg.AutoCheckUpdates} aoTrocar={(v) => gravar({ AutoCheckUpdates: v })} />
+        </Linha>
+        <Linha
+          titulo="Receber versões beta"
+          descricao="Versões de teste, publicadas antes da versão final. Podem ter defeitos que a final não terá."
+        >
+          <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
+        </Linha>
+        <h3>Ajuda</h3>
+        <Linha
+          titulo="Rever o passo a passo"
+          descricao="As seis telas que explicam o app, de novo do começo."
+        >
+          <button className="botao" onClick={aoRever}>
+            Rever
+          </button>
+        </Linha>
+        <Linha titulo="Salvar diagnóstico" descricao={textoDoDiagnostico(diagnostico)} viva>
+          <button
+            className="botao"
+            disabled={diagnostico.passo === "gravando"}
+            onClick={async () => {
+              setDiagnostico({ passo: "gravando" });
+              try {
+                const caminho = await invoke<string>("salvar_diagnostico");
+                setDiagnostico({ passo: "pronto", caminho });
+              } catch {
+                setDiagnostico({ passo: "falhou" });
+              }
+            }}
+          >
+            {diagnostico.passo === "gravando" ? "Gravando…" : "Salvar"}
+          </button>
+        </Linha>
+      </section>
     </>
   );
 }

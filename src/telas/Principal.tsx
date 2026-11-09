@@ -64,6 +64,7 @@ export function Principal() {
   const cfg = useConfig();
   const novidade = useNovidade();
   const [pagina, setPagina] = useState<Pagina>("resumo");
+  const [pedidoDeVersao, pedirVersao] = useState(0);
   const [passos, setPassos] = useState<boolean | null>(null);
   const folhas = useRef<Partial<Record<Pagina, HTMLElement | null>>>({});
   const abas = useRef<Partial<Record<Pagina, HTMLButtonElement | null>>>({});
@@ -72,6 +73,7 @@ export function Principal() {
   const irPara = (proxima: Pagina, focar = false) => {
     const atual = folhas.current[pagina];
     if (atual) rolagens.current[pagina] = atual.scrollTop;
+    if (proxima === "config" && novidade) pedirVersao((pedido) => pedido + 1);
     setPagina(proxima);
     if (focar) abas.current[proxima]?.focus();
   };
@@ -79,7 +81,10 @@ export function Principal() {
   useEffect(() => {
     invoke<{ veioDe: string | null }>("versao_do_app")
       .then(({ veioDe }) => {
-        if (veioDe) setPagina("config");
+        if (veioDe) {
+          pedirVersao((pedido) => pedido + 1);
+          setPagina("config");
+        }
       })
       .catch(() => {});
   }, []);
@@ -156,13 +161,13 @@ export function Principal() {
         <div
           className="trilho"
           role="tablist"
-          aria-orientation="horizontal"
+          aria-orientation="vertical"
           aria-label="Páginas"
           onKeyDown={(e) => {
             const destino =
-              e.key === "ArrowRight"
+              e.key === "ArrowDown"
                 ? vizinha(1)
-                : e.key === "ArrowLeft"
+                : e.key === "ArrowUp"
                   ? vizinha(-1)
                   : e.key === "Home"
                     ? PAGINAS[0].id
@@ -216,10 +221,14 @@ export function Principal() {
                 <h1 className="titulo-da-pagina">{p.rotulo}</h1>
                 <p>{p.descricao}</p>
               </header>
-              {p.id === "resumo" && <Resumo />}
+              {p.id === "resumo" && <Resumo aoAbrirDiario={() => irPara("diario", true)} />}
               {p.id === "diario" && <Diario ativa={pagina === "diario"} />}
               {p.id === "config" && (
-                <Configuracoes ativa={pagina === "config"} aoRever={() => setPassos(true)} />
+                <Configuracoes
+                  ativa={pagina === "config"}
+                  pedidoDeVersao={pedidoDeVersao}
+                  aoRever={() => setPassos(true)}
+                />
               )}
             </section>
           ))}

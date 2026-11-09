@@ -9,6 +9,11 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
+**Remodelação desktop em validação.** A proposta e os critérios por superfície estão
+em [PLANO-UI-UX.md](PLANO-UI-UX.md). A janela usa navegação lateral compacta,
+paleta de referência do Kontro e grupos de configurações. O painel da bandeja
+mostra a leitura do ponto em uma faixa fixa abaixo do gráfico compacto.
+
 **Redesign da interface do Kontro.**
 
 1. Aplicar a paleta de grafite, papel e cobre às abas e ações principais e reservar as cores de
