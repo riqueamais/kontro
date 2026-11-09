@@ -47,7 +47,7 @@ export function Diario({ ativa }: { ativa: boolean }) {
   const famintos = useMemo(() => porJogo(lista), [sessoes]);
   const numeros = useMemo(() => numerosDoMes(dias, lista), [dias, sessoes]);
 
-  if (sessoes === null) return <h1 className="titulo-da-pagina">Diário</h1>;
+  if (sessoes === null) return null;
 
   const totalMinutos = dias.reduce((soma, d) => soma + d.minutos, 0);
   const maiorDia = dias.reduce((maior, d) => Math.max(maior, d.minutos), 0);
@@ -55,16 +55,9 @@ export function Diario({ ativa }: { ativa: boolean }) {
 
   return (
     <>
-      <h1 className="titulo-da-pagina">Diário</h1>
-
-      <section className="cartao">
+      <section className="cartao atividade-do-diario">
         <div className="diario-cabeca">
-          <div>
-            <div className={`diario-numero${vazio ? " apagado" : ""}`}>
-              {vazio ? "0 min" : duracao(totalMinutos)}
-            </div>
-            <div className="diario-rotulo">de jogo em {DIAS} dias</div>
-          </div>
+          <h2 className="diario-titulo">Últimos {DIAS} dias</h2>
           <Exportar
             dias={dias}
             famintos={famintos}
@@ -75,18 +68,28 @@ export function Diario({ ativa }: { ativa: boolean }) {
           />
         </div>
 
-        {!vazio && (
-          <div className="diario-numeros">
-            {numeros.map((n) => (
-              <div className="diario-par" key={n.rotulo}>
-                <span className="diario-par-valor">{n.valor}</span>
-                <span className="diario-par-rotulo">{n.rotulo}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="diario-grade">
+          <div>
+            <div className={`diario-numero${vazio ? " apagado" : ""}`}>
+              {vazio ? "0 min" : duracao(totalMinutos)}
+            </div>
+            <div className="diario-rotulo">de jogo</div>
 
-        <Mapa dias={dias} maior={maiorDia} limiares={limiares} />
+            {!vazio && (
+              <div className="diario-numeros">
+                {numeros.map((n) => (
+                  <div className="diario-par" key={n.rotulo}>
+                    <span className="diario-par-valor">{n.valor}</span>
+                    <span className="diario-par-rotulo">{n.rotulo}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <Mapa dias={dias} maior={maiorDia} limiares={limiares} />
+          </div>
+        </div>
 
         {vazio && (
           <div className="diario-vazio">
@@ -97,7 +100,7 @@ export function Diario({ ativa }: { ativa: boolean }) {
       </section>
 
       <section className="cartao">
-        <h2 className="diario-titulo">Quem come mais bateria</h2>
+        <h2 className="diario-titulo">Consumo por jogo</h2>
         <Ranking famintos={famintos} />
       </section>
     </>

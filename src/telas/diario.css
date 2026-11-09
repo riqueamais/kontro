@@ -1,14 +1,25 @@
 body[data-janela="principal"] .diario-cabeca {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
 
+body[data-janela="principal"] .diario-cabeca .diario-titulo {
+  margin: 0;
+}
+
+body[data-janela="principal"] .diario-grade {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
 body[data-janela="principal"] .diario-numero {
   font-family: var(--font-display);
-  font-size: var(--fs-display);
+  font-size: 42px;
   font-weight: 600;
   letter-spacing: -0.5px;
 }
@@ -20,8 +31,11 @@ body[data-janela="principal"] .diario-numero.apagado {
 body[data-janela="principal"] .diario-numeros {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-5);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  background: var(--ink);
+  border-radius: var(--radius-field);
 }
 
 body[data-janela="principal"] .diario-par {

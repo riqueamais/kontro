@@ -12,10 +12,11 @@ import "./principal.css";
 
 type Pagina = "resumo" | "diario" | "config";
 
-const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
+const PAGINAS: { id: Pagina; rotulo: string; descricao: string; icone: React.ReactNode }[] = [
   {
     id: "resumo",
     rotulo: "Resumo",
+    descricao: "Carga, autonomia e atividade recente do seu controle.",
     icone: (
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
         <circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
@@ -32,6 +33,7 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   {
     id: "diario",
     rotulo: "Diário",
+    descricao: "Acompanhe suas sessões e compare o consumo por jogo.",
     icone: (
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
         <rect x="2" y="3.4" width="12" height="10.2" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.4" />
@@ -43,6 +45,7 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   {
     id: "config",
     rotulo: "Configurações",
+    descricao: "Personalize os avisos, a pílula e o comportamento do Kontro.",
     icone: (
       <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
         <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
@@ -57,14 +60,11 @@ const PAGINAS: { id: Pagina; rotulo: string; icone: React.ReactNode }[] = [
   },
 ];
 
-const ALTURA_DO_INDICADOR = 16;
-
 export function Principal() {
   const cfg = useConfig();
   const novidade = useNovidade();
   const [pagina, setPagina] = useState<Pagina>("resumo");
   const [passos, setPassos] = useState<boolean | null>(null);
-  const [indicador, setIndicador] = useState<number | null>(null);
   const folhas = useRef<Partial<Record<Pagina, HTMLElement | null>>>({});
   const abas = useRef<Partial<Record<Pagina, HTMLButtonElement | null>>>({});
   const rolagens = useRef<Partial<Record<Pagina, number>>>({});
@@ -106,8 +106,6 @@ export function Principal() {
   useLayoutEffect(() => {
     const folha = folhas.current[pagina];
     if (folha) folha.scrollTop = rolagens.current[pagina] ?? 0;
-    const aba = abas.current[pagina];
-    if (aba) setIndicador(aba.offsetTop + (aba.offsetHeight - ALTURA_DO_INDICADOR) / 2);
   }, [pagina, passos]);
 
   useEffect(() => {
@@ -158,13 +156,13 @@ export function Principal() {
         <div
           className="trilho"
           role="tablist"
-          aria-orientation="vertical"
+          aria-orientation="horizontal"
           aria-label="Páginas"
           onKeyDown={(e) => {
             const destino =
-              e.key === "ArrowDown"
+              e.key === "ArrowRight"
                 ? vizinha(1)
-                : e.key === "ArrowUp"
+                : e.key === "ArrowLeft"
                   ? vizinha(-1)
                   : e.key === "Home"
                     ? PAGINAS[0].id
@@ -176,13 +174,6 @@ export function Principal() {
             irPara(destino, true);
           }}
         >
-          {indicador !== null && (
-            <span
-              className="indicador"
-              aria-hidden="true"
-              style={{ transform: `translateY(${indicador}px)` }}
-            />
-          )}
           {PAGINAS.map((p) => {
             const ativa = pagina === p.id;
             return (
@@ -221,6 +212,10 @@ export function Principal() {
               aria-labelledby={`aba-${p.id}`}
               hidden={pagina !== p.id}
             >
+              <header className="cabeca-da-pagina">
+                <h1 className="titulo-da-pagina">{p.rotulo}</h1>
+                <p>{p.descricao}</p>
+              </header>
               {p.id === "resumo" && <Resumo />}
               {p.id === "diario" && <Diario ativa={pagina === "diario"} />}
               {p.id === "config" && (

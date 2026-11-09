@@ -40,13 +40,13 @@
 }
 
 .botao.primario {
-  background: var(--realce);
-  border-color: var(--realce);
-  color: var(--ink);
+  background: var(--marca);
+  border-color: var(--marca);
+  color: var(--sobre-marca);
   font-weight: 600;
 }
 .botao.primario:hover {
-  background: color-mix(in srgb, var(--realce) 88%, #fff);
+  background: color-mix(in srgb, var(--marca) 90%, var(--sobre-marca));
 }
 
 .botao.perigo {
@@ -77,6 +77,10 @@
 .botao:active:not(:disabled) {
   background: color-mix(in srgb, var(--text-primary) 4%, transparent);
   color: var(--text-secondary);
+}
+.botao.primario:active:not(:disabled) {
+  background: var(--marca);
+  color: var(--sobre-marca);
 }
 .botao.destaque:active:not(:disabled),
 .botao.primario:active:not(:disabled),

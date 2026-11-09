@@ -9,6 +9,19 @@ descrevem estado medido — quando não há medida, não há efeito.
 
 ## Situação
 
+**Redesign da interface do Kontro.**
+
+1. Aplicar a paleta de grafite, papel e cobre às abas e ações principais e reservar as cores de
+   carga para a bateria, o histórico e os avisos.
+2. Reorganizar a janela com abas horizontais, um cartão de carga em destaque no
+   Resumo, métricas ao lado do calendário no Diário e um índice em Configurações.
+3. Organizar o painel da bandeja em leitura, histórico e ações. Expor os três modos
+   da pílula e dar acesso direto ao Resumo e aos Ajustes. Agrupar as ações no menu
+   de contexto do Windows.
+4. Conferir o tema Noite e o tema Dia, a janela mínima, os atalhos das abas e a
+   rolagem. Validar o menu nativo, o posicionamento do painel e a leitura de um
+   controle no Windows.
+
 **A Parte 2 entrou em 26/09/2026: 107 tarefas de interface, T23 a T129, e está entregue
 inteira** — os catorze movimentos, da tela cheia à primeira abertura (a T89 saiu junto da
 T32).
