@@ -8,11 +8,11 @@ body[data-janela="principal"] .app {
 
 body[data-janela="principal"] .barra {
   flex: 0 0 auto;
-  height: 32px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-left: var(--space-4);
+  padding-left: clamp(20px, 4vw, 48px);
   background: var(--fundo-barra);
   border-bottom: 1px solid var(--stroke);
   user-select: none;
@@ -22,11 +22,21 @@ body[data-janela="principal"] .marca {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--fs-caption);
-  font-weight: 400;
-  letter-spacing: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
   transition: color var(--motion-fast) var(--curva);
+}
+body[data-janela="principal"] .marca .selo {
+  --marca-anel: var(--marca-texto);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-field);
+  color: var(--marca-texto);
+  background: var(--marca-suave);
 }
 body[data-janela="principal"][data-foco="nao"] .marca,
 body[data-janela="principal"][data-foco="nao"] .botao-janela {
@@ -68,39 +78,26 @@ body[data-janela="principal"] .botao-janela.fechar:hover {
 body[data-janela="principal"] .corpo {
   flex: 1;
   display: grid;
-  grid-template-columns: 196px 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
 }
 
 body[data-janela="principal"] .corpo > .trilho {
-  position: relative;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-2);
+  gap: var(--space-2);
+  padding: 0 clamp(20px, 4vw, 48px);
   background: var(--fundo-trilho);
-  border-right: 1px solid var(--stroke);
-}
-
-body[data-janela="principal"] .trilho > .indicador {
-  position: absolute;
-  top: 0;
-  left: var(--space-2);
-  width: 3px;
-  height: 16px;
-  border-radius: var(--radius-trilho);
-  background: var(--realce);
-  transition: transform var(--motion-base) var(--curva);
-  pointer-events: none;
+  border-bottom: 1px solid var(--stroke);
 }
 
 body[data-janela="principal"] .aba {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  min-height: 46px;
+  padding: 0 var(--space-4);
   border: 0;
-  border-radius: var(--radius-field);
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   font-size: var(--fs-body);
@@ -121,29 +118,27 @@ body[data-janela="principal"] .aba:active {
 }
 
 body[data-janela="principal"] .aba.ativa {
-  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-  color: var(--text-primary);
-  font-weight: 500;
+  background: var(--marca-suave);
+  border-bottom-color: var(--marca);
+  color: var(--marca-texto);
+  font-weight: 600;
 }
 
 body[data-janela="principal"] .pagina {
   display: grid;
   min-width: 0;
   min-height: 0;
+  color: var(--text-primary);
 }
 
 body[data-janela="principal"] .pagina > .folha {
   min-height: 0;
   overflow-y: auto;
   scrollbar-gutter: stable;
-  scrollbar-color: transparent transparent;
-  padding: var(--space-5) var(--space-5) var(--space-6);
+  scrollbar-color: var(--polegar) transparent;
+  padding: var(--space-5) max(clamp(20px, 4vw, 48px), calc((100% - 1080px) / 2)) var(--space-6);
   animation: kontro-entrar var(--motion-base) var(--curva);
 }
-body[data-janela="principal"] .pagina > .folha:hover {
-  scrollbar-color: var(--polegar) transparent;
-}
-
 @keyframes kontro-entrar {
   from {
     opacity: 0;
@@ -151,21 +146,49 @@ body[data-janela="principal"] .pagina > .folha:hover {
   }
 }
 
+body[data-janela="principal"] .cabeca-da-pagina {
+  margin-bottom: var(--space-5);
+}
+
 body[data-janela="principal"] .titulo-da-pagina {
   font-family: var(--font-display);
-  font-size: var(--fs-title);
-  font-weight: 600;
-  margin: 0 0 var(--space-4);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  margin: 0;
+}
+
+body[data-janela="principal"] .cabeca-da-pagina p {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+body[data-janela="principal"] .indice-dos-ajustes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+body[data-janela="principal"] .indice-dos-ajustes .botao {
+  font-size: var(--fs-caption);
 }
 
 body[data-janela="principal"] .pagina > .folha > h2 {
-  font-family: var(--font-text);
-  font-size: var(--fs-caption);
-  font-weight: 600;
-  letter-spacing: var(--rastreio-rotulo);
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-  margin: var(--space-5) 0 var(--space-2);
+  font-size: var(--fs-subtitle);
+  font-weight: 650;
+  margin: var(--space-5) 0 var(--space-3);
+  scroll-margin-top: var(--space-4);
+}
+
+body[data-janela="principal"] .pagina > .folha > h2:focus {
+  outline: none;
+  color: var(--marca-texto);
 }
 
 body[data-janela="principal"] .cartao {
@@ -181,24 +204,33 @@ body[data-janela="principal"] .cartao.estado {
   display: flex;
   align-items: center;
   gap: var(--space-5);
+  padding: var(--space-5);
+  border-left: 3px solid var(--cor-do-estado);
   overflow: hidden;
   transition: --cor-do-estado var(--motion-base) var(--curva);
 }
 
-body[data-janela="principal"] .cartao.estado::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    120px 120px at 64px 50%,
-    color-mix(in srgb, var(--cor-do-estado) 12%, transparent),
-    transparent 70%
-  );
-  pointer-events: none;
+body[data-janela="principal"] .cartao.estado .dispositivo {
+  font-size: 20px;
 }
 
-body[data-janela="principal"] .cartao.estado > * {
-  position: relative;
+body[data-janela="principal"] .atividade-do-controle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+body[data-janela="principal"] .atividade-do-controle > .cartao {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+@media (min-width: 1040px) {
+  body[data-janela="principal"] .atividade-do-controle {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
 }
 
 body[data-janela="principal"] .cartao .numero {

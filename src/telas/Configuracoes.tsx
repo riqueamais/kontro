@@ -33,15 +33,15 @@ const TEMAS: { id: Theme; rotulo: string; chao: string; realce: string; texto: s
   {
     id: "Sistema",
     rotulo: "Do Windows",
-    chao: "linear-gradient(115deg, #0b0e11 0 50%, #eef1f5 50% 100%)",
-    realce: "#35d7a8",
-    texto: "#e8ecef",
+    chao: "linear-gradient(115deg, #171f20 0 50%, #efebe2 50% 100%)",
+    realce: "#ecae8a",
+    texto: "#f3eee2",
   },
-  { id: "Noite", rotulo: "Noite", chao: "#0b0e11", realce: "#35d7a8", texto: "#e8ecef" },
-  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#35d7a8", texto: "#e8ecef" },
+  { id: "Noite", rotulo: "Noite", chao: "#171f20", realce: "#ecae8a", texto: "#f3eee2" },
+  { id: "Preto", rotulo: "Preto", chao: "#000000", realce: "#ecae8a", texto: "#e8ecef" },
   { id: "Ardosia", rotulo: "Ardósia", chao: "#0d1219", realce: "#4ea8ff", texto: "#e7edf4" },
   { id: "Brasa", rotulo: "Brasa", chao: "#100c0a", realce: "#e0925a", texto: "#f2ebe5" },
-  { id: "Dia", rotulo: "Dia", chao: "#eef1f5", realce: "#0a6e5b", texto: "#0f151b" },
+  { id: "Dia", rotulo: "Dia", chao: "#efebe2", realce: "#8e4229", texto: "#222821" },
 ];
 
 interface Busca {
@@ -65,6 +65,17 @@ type Passo =
   | { tipo: "baixando"; porcento: number | null; bytes: number }
   | { tipo: "instalando" }
   | { tipo: "falhou"; motivo: string; ao: "verificar" | "atualizar" };
+
+const SECOES = [
+  { id: "ajustes-inicio", titulo: "Inicialização" },
+  { id: "ajustes-aparencia", titulo: "Aparência" },
+  { id: "ajustes-carga", titulo: "Limiares de carga" },
+  { id: "ajustes-avisos", titulo: "Avisos" },
+  { id: "ajustes-sobreposicao", titulo: "Sobreposição" },
+  { id: "ajustes-atalhos", titulo: "Atalhos" },
+  { id: "ajustes-versao", titulo: "Versão" },
+  { id: "ajustes-ajuda", titulo: "Ajuda" },
+];
 
 export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () => void }) {
   const doRust = useConfig();
@@ -190,9 +201,19 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
 
   return (
     <>
-      <h1 className="titulo-da-pagina">Configurações</h1>
+      <nav className="indice-dos-ajustes" aria-label="Seções de configurações">
+        {SECOES.map(({ id, titulo }) => (
+          <button
+            className="botao"
+            key={id}
+            onClick={() => document.getElementById(id)?.focus()}
+          >
+            {titulo}
+          </button>
+        ))}
+      </nav>
       {nova && <Novidade nova={nova} passo={passo} aoAtualizar={() => void atualizarAgora()} />}
-      <h2>Inicialização</h2>
+      <h2 id={SECOES[0].id} tabIndex={-1}>{SECOES[0].titulo}</h2>
       <Linha
         titulo="Iniciar com o Windows"
         descricao={
@@ -220,7 +241,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
           aoEscolher={(CloseAction) => gravar({ CloseAction })}
         />
       </Linha>
-      <h2>Aparência</h2>
+      <h2 id={SECOES[1].id} tabIndex={-1}>{SECOES[1].titulo}</h2>
       <Linha
         titulo="Tema"
         descricao={`${TEMAS.find((t) => t.id === cfg.Theme)?.rotulo ?? "Noite"} · o chão da janela. As cores de carga não mudam.`}
@@ -229,7 +250,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         <SeletorDeTema escolhido={cfg.Theme} aoEscolher={(Theme) => gravar({ Theme })} />
       </Linha>
 
-      <h2>Limiares de carga</h2>
+      <h2 id={SECOES[2].id} tabIndex={-1}>{SECOES[2].titulo}</h2>
       <Linha
         titulo="Carga baixa"
         descricao="Abaixo disto o anel fica âmbar na bandeja, no resumo e na pílula e, com os avisos ligados, chega a notificação."
@@ -266,7 +287,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         />
       </Linha>
 
-      <h2>Avisos</h2>
+      <h2 id={SECOES[3].id} tabIndex={-1}>{SECOES[3].titulo}</h2>
       <Linha titulo="Avisar carga baixa" descricao="Notificação do Windows ao cruzar cada limiar.">
         <Chave
           ligado={cfg.NotificationsEnabled}
@@ -282,7 +303,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
           aoTrocar={(v) => gravar({ ConnectToastEnabled: v })}
         />
       </Linha>
-      <h2>Sobreposição</h2>
+      <h2 id={SECOES[4].id} tabIndex={-1}>{SECOES[4].titulo}</h2>
       <div className="previa" aria-hidden="true">
         <MiniTela
           x={cfg.OverlayX}
@@ -383,7 +404,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
           aoMudar={(v) => gravar({ OverlayOpacity: v / 100 })}
         />
       </Linha>
-      <h2>Atalhos</h2>
+      <h2 id={SECOES[5].id} tabIndex={-1}>{SECOES[5].titulo}</h2>
       <Linha
         titulo="Atalhos de teclado"
         descricao="Funcionam com o jogo em foco, sem sair dele."
@@ -417,7 +438,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
         ativa={ativa}
         aoTrocar={(c) => gravar({ OverlayMoveShortcut: c })}
       />
-      <h2>Versão</h2>
+      <h2 id={SECOES[6].id} tabIndex={-1}>{SECOES[6].titulo}</h2>
       <Linha
         titulo="Procurar atualizações"
         descricao={linhaDaVersao(atual, passo, ultima, veioDe)}
@@ -440,7 +461,7 @@ export function Configuracoes({ ativa, aoRever }: { ativa: boolean; aoRever: () 
       >
         <Chave ligado={cfg.BetaUpdates} aoTrocar={(v) => void trocarCanal(v)} />
       </Linha>
-      <h2>Ajuda</h2>
+      <h2 id={SECOES[7].id} tabIndex={-1}>{SECOES[7].titulo}</h2>
       <Linha
         titulo="Rever o passo a passo"
         descricao="As seis telas que explicam o app, de novo do começo."

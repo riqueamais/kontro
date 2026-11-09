@@ -7,7 +7,7 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-card);
-  background: var(--ink);
+  background: var(--surface);
   border: 1px solid var(--stroke);
   box-shadow: var(--sombra-aviso);
   animation: kontro-entrar-de-cima var(--motion-slow) var(--curva);

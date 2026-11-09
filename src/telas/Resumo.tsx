@@ -44,8 +44,6 @@ export function Resumo() {
 
   return (
     <>
-      <h1 className="titulo-da-pagina">Resumo</h1>
-
       <section
         className={estado.leituraAntiga ? "cartao estado antiga" : "cartao estado"}
         aria-live="polite"
@@ -77,41 +75,44 @@ export function Resumo() {
         </div>
 
         <div className="acoes-do-estado">
-          <BotaoLerAgora estado={estado} className="botao" />
+          <BotaoLerAgora estado={estado} className="botao primario" />
           {estado.quantosConhecidos === 1 && estado.via === "Desligado" && (
             <Esquecer chave={estado.chave} />
           )}
         </div>
       </section>
 
-      <section className="cartao" ref={cartaoDoGrafico}>
-        <Historico
-          serie={serie}
-          trocadaEm={saude?.trocadaEm}
-          janela={
-            sessao
-              ? { inicio: sessao.inicio, fim: sessao.fim, titulo: rotuloDaSessao(sessao) }
-              : null
-          }
-          autonomiaMinutos={estado.autonomiaMinutos}
-          aoSairDaJanela={() => setSessao(null)}
-        />
-        <Saude saude={saude} />
-      </section>
-
-      <section className="cartao">
-        <Sessoes
-          sessoes={sessoes}
-          escolhida={sessao?.inicio}
-          aoEscolher={(s) => {
-            const abrindo = sessao?.inicio !== s.inicio;
-            setSessao(abrindo ? s : null);
-            if (abrindo) {
-              cartaoDoGrafico.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      <div className="atividade-do-controle">
+        <section className="cartao" ref={cartaoDoGrafico}>
+          <Historico
+            serie={serie}
+            trocadaEm={saude?.trocadaEm}
+            janela={
+              sessao
+                ? { inicio: sessao.inicio, fim: sessao.fim, titulo: rotuloDaSessao(sessao) }
+                : null
             }
-          }}
-        />
-      </section>
+            autonomiaMinutos={estado.autonomiaMinutos}
+            aoSairDaJanela={() => setSessao(null)}
+          />
+          <Saude saude={saude} />
+        </section>
+
+        <section className="cartao">
+          <Sessoes
+            sessoes={sessoes}
+            escolhida={sessao?.inicio}
+            aoEscolher={(s) => {
+              const abrindo = sessao?.inicio !== s.inicio;
+              setSessao(abrindo ? s : null);
+              if (abrindo) {
+                cartaoDoGrafico.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+              }
+            }}
+          />
+        </section>
+
+      </div>
 
       {estado.quantosConhecidos >= 2 && <ListaDeControles principal={estado.chave} sempre />}
     </>
