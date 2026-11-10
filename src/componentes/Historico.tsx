@@ -385,7 +385,7 @@ export function Historico({
                 </g>
               )}
             </svg>
-            {sob && (
+            {sob && !compacto && (
               <div
                 className={`dica${y(sob.p) < 40 ? " abaixo" : ""}`}
                 role="status"
@@ -402,7 +402,15 @@ export function Historico({
           </div>
 
           <div className="historico-rodape">
-            <span>{legenda}</span>
+            {compacto ? (
+              <span role="status">
+                {sob
+                  ? `${sob.p}% · ${quando(sob.t)}${sob.via ? ` · ${NOME_DA_VIA[sob.via]}` : ""}`
+                  : legenda}
+              </span>
+            ) : (
+              <span>{legenda}</span>
+            )}
           </div>
         </>
       )}

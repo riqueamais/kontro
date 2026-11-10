@@ -142,8 +142,9 @@ Há dois canais, um por branch, e a build é automática nos dois:
   `vX.Y.Z`, com o `latest.json` que todo mundo consulta. Se essa versão já saiu, a
   pipeline não faz nada.
 
-Nos dois canais a publicação passa pelo `verificar` antes de empacotar: formatação,
-testes, exemplos, build do front e artefatos gerados em dia. Se ele falha, nada sai. Quem
+Nos dois canais, `verificar` e `empacotar` rodam em paralelo. A publicação só começa
+depois dos dois passarem, com formatação, testes, exemplos, build do front, artefatos
+gerados em dia e instalador assinado. Quem
 decide se há o que publicar é um job curto no Linux, então um push sem versão nova nem
 chega a subir a máquina Windows. Push que só mexe em `docs/`, em `.md`, no
 `assets/banner.html` ou na `LICENSE` não gera versão; a landing sai pelo GitHub Pages, que

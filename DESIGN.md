@@ -31,15 +31,14 @@ Path do controle (use direto em `Geometry.Parse`):
 
 | token | hex | uso |
 | ----- | --- | --- |
-| Ink | `#171F20` | fundo da janela |
-| Surface | `#20292A` | cartões |
-| SurfaceAlt | `#293536` | linhas de lista, hover |
-| Stroke | `#364443` | bordas de cartão |
-| StrokeStrong | `#4C5C58` | bordas de controle focado |
-| TextPrimary | `#F3EEE2` | título, valor |
-| TextSecondary | `#B9C4BD` | descrição |
-| TextTertiary | `#A2ADA5` | rótulo, timestamp |
-| Marca | `#ECAE8A` | ação principal e aba ativa no tema Noite |
+| Ink | `#0B0E11` | fundo da janela, splash |
+| Surface | `#0F1318` | fundo do ícone, cartões |
+| SurfaceAlt | `#151A20` | linhas de lista, hover |
+| Stroke | `#1E252C` | bordas de cartão |
+| StrokeStrong | `#2A333B` | bordas de controle focado |
+| TextPrimary | `#E8ECEF` | título, valor |
+| TextSecondary | `#9AA4AD` | descrição |
+| TextTertiary | `#7C868F` | rótulo, timestamp |
 | AccentGreen | `#5FE083` | carga saudável — só carga; ação é `--realce` |
 | AccentTeal | `#35D7A8` | fim do gradiente do anel |
 | Amber | `#F2C14E` | bateria baixa |
@@ -52,13 +51,14 @@ SurfaceAlt na linha escolhida e no hover):
 
 | tema | TextTertiary | sobre Ink | sobre Surface | sobre SurfaceAlt |
 | ---- | ------------ | --------- | ------------- | ---------------- |
-| Noite | `#A2ADA5` | 7,23 | 6,41 | 5,47 |
+| Noite | `#7C868F` | 5,22 | 5,03 | 4,72 |
 | Preto | `#7C868F` | 5,66 | 5,37 | 4,81 |
 | Ardósia | `#7D8D9E` | 5,53 | 5,10 | 4,55 |
 | Brasa | `#948578` | 5,45 | 5,20 | 4,80 |
-| Dia | `#555F55` | 5,60 | 6,33 | 5,01 |
+| Dia | `#5B6673` | 5,16 | 5,84 | 4,79 |
 
-Cada um continua mais apagado que o TextSecondary do próprio tema. No Dia o realce é cobre escuro (`#8E4229`), com texto branco no botão principal. **Token novo de texto
+Cada um continua mais apagado que o TextSecondary do próprio tema. No Dia o realce é
+`#0A6E5B`: o Ink sobre ele, no hover do botão de destaque, dá 5,46:1. **Token novo de texto
 não entra sem a linha dele nesta tabela.**
 
 Gradiente do anel no ícone do app: `#5FE083` -> `#35D7A8`, diagonal (120,80) -> (400,440).

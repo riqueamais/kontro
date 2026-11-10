@@ -13,15 +13,15 @@
 :root {
   color-scheme: dark;
 
-  --ink: #171f20;
-  --surface: #20292a;
-  --surface-alt: #293536;
-  --stroke: #364443;
-  --stroke-strong: #4c5c58;
+  --ink: #0b0e11;
+  --surface: #0f1318;
+  --surface-alt: #151a20;
+  --stroke: #1e252c;
+  --stroke-strong: #2a333b;
 
-  --text-primary: #f3eee2;
-  --text-secondary: #b9c4bd;
-  --text-tertiary: #a2ada5;
+  --text-primary: #e8ecef;
+  --text-secondary: #9aa4ad;
+  --text-tertiary: #7c868f;
 
   --accent-green: #5fe083;
   --accent-teal: #35d7a8;
@@ -29,12 +29,12 @@
   --red: #f2564e;
   --gray: #8d979f;
 
-  --marca: #ecae8a;
-  --sobre-marca: #281a13;
+  --marca: #35d7a8;
+  --sobre-marca: #071610;
   --fechar-janela: #c42b1c;
   --atencao: #ff8fa3;
   --ring-track: rgba(255, 255, 255, 0.13);
-  --polegar: #52665f;
+  --polegar: #3a444d;
 
   --sombra-aviso: 0 8px 24px rgba(0, 0, 0, 0.45);
   --sombra-flutuante: 0 2px 8px rgba(0, 0, 0, 0.6);
@@ -63,7 +63,7 @@
   --radius-trilho: 2px;
   --radius-control: 4px;
   --radius-field: 6px;
-  --radius-card: 8px;
+  --radius-card: 10px;
   --radius-window: 16px;
   --radius-sistema: 10px;
 
@@ -131,15 +131,15 @@ body[data-tema="brasa"] {
 body[data-tema="dia"] {
   color-scheme: light;
 
-  --ink: #efebe2;
-  --surface: #fcf9f2;
-  --surface-alt: #e4dfd4;
-  --stroke: #d4cec2;
-  --stroke-strong: #a9a396;
+  --ink: #eef1f5;
+  --surface: #ffffff;
+  --surface-alt: #e4e9f0;
+  --stroke: #d7dee7;
+  --stroke-strong: #b6c1ce;
 
-  --text-primary: #222821;
-  --text-secondary: #465249;
-  --text-tertiary: #555f55;
+  --text-primary: #0f151b;
+  --text-secondary: #465260;
+  --text-tertiary: #5b6673;
 
   --accent-green: #10864a;
   --accent-teal: #0a7f68;
@@ -147,10 +147,10 @@ body[data-tema="dia"] {
   --red: #b8302b;
   --gray: #5f6b78;
 
-  --marca: #8e4229;
+  --marca: #0a6e5b;
   --sobre-marca: #fff;
   --atencao: #b4235a;
-  --polegar: #8c9789;
+  --polegar: #9aa6b4;
   --ring-track: rgba(15, 21, 27, 0.14);
 }
 
