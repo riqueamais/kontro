@@ -17,6 +17,10 @@ mostra a leitura do ponto em uma faixa fixa abaixo do gráfico compacto.
 O workflow de release prepara o instalador em paralelo à verificação. Só publica
 depois que os dois jobs passam.
 
+O ponto de versão nova na aba Configurações passou a se chamar `ponto-de-novidade`:
+com o nome `aviso`, ele herdava o espaçamento da folha da janela de aviso e virava
+um círculo de 64×80 px ao lado da aba sempre que havia atualização.
+
 **Redesign da interface do Kontro.**
 
 1. Aplicar a paleta de grafite, papel e cobre às abas e ações principais e reservar as cores de

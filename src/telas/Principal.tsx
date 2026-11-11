@@ -198,7 +198,7 @@ export function Principal() {
                 {p.icone}
                 <span>{p.rotulo}</span>
                 {p.id === "config" && novidade && (
-                  <span className="aviso" aria-label="versão nova disponível" />
+                  <span className="ponto-de-novidade" aria-label="versão nova disponível" />
                 )}
               </button>
             );
