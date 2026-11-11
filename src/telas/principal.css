@@ -744,7 +744,7 @@ body[data-janela="principal"] .linha.versao .descricao {
   font-size: var(--fs-mono);
 }
 
-body[data-janela="principal"] .aba .aviso {
+body[data-janela="principal"] .aba .ponto-de-novidade {
   width: 6px;
   height: 6px;
   margin-left: auto;
